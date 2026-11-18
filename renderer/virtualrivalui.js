@@ -32,18 +32,29 @@ async function renderVirtualRivals(box) {
     icon = n => Icons.svg(n, { size: 18 }),
     used = id => drivers.filter(d => d.driverType === 'virtual' && d.virtualRivalSystem === id);
   if (!rivalEditor) {
-    box.innerHTML = `<p class="muted">Replay a saved lap sequence as a virtual opponent. Link a system to a virtual driver in Database, then select that driver in a lane on Home. Its car selector becomes the Rival Setup selector.</p><button class="btn primary" data-rival-new>New Virtual Rival System</button><div class="wrap"><table class="fields"><tr><th>System</th><th>Track / replay</th><th>Used by</th><th>Actions</th></tr>${
-      profiles
-        .map(
-          p =>
-            `<tr><td>${esc(p.name)}</td><td>${esc(p.trackName)} · ${V.sequence(p).length} laps</td><td>${
-              used(p.id)
-                .map(d => esc(d.name))
-                .join(', ') || 'No driver yet'
-            }</td><td><button class="btn" data-rival-edit="${esc(p.id)}">Edit</button> <button class="btn" data-rival-copy="${esc(p.id)}">Duplicate</button> <button class="btn danger" data-rival-delete="${esc(p.id)}">Delete</button></td></tr>`
-        )
-        .join('') || '<tr><td colspan="4">No systems yet. Start with a saved race or practice recording.</td></tr>'
-    }</table></div>`;
+    // (2.4.0) cards, as on the other system pages; the words about it are in the note above (editor.js, SETUP_NOTES)
+    box.innerHTML = `<div class="row"><button class="btn primary" data-rival-new>Add virtual rival system</button></div>${
+      profiles.length
+        ? `<div class="rscards syscards">${profiles
+            .map(p =>
+              sysCardHtml({
+                look: 'vr',
+                icon: 'timing',
+                eyebrow: 'Virtual rival system',
+                name: p.name,
+                facts: [
+                  ['Track', p.trackName || ''],
+                  ['Replay', V.sequence(p).length + ' laps']
+                ],
+                used: used(p.id).map(d => d.name),
+                what: 'driver',
+                empty: 'Link it to a virtual driver in Database.',
+                actions: `<button class="btn" data-rival-edit="${esc(p.id)}">Edit</button><button class="btn" data-rival-copy="${esc(p.id)}">Duplicate</button><button class="btn danger" data-rival-delete="${esc(p.id)}">Delete</button>`
+              })
+            )
+            .join('')}</div>`
+        : '<p class="muted">No virtual rival systems yet. Start with a saved race or practice recording.</p>'
+    }`;
     box.onchange = box.oninput = null;
     box.onclick = async e => {
       const b = e.target.closest('button');

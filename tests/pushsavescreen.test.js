@@ -63,7 +63,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   say('Push & Save follows Weather Systems in the open systems row', tabs.includes('Push &amp; Save Systems') && tabs.indexOf('data-id="weather"') < tabs.indexOf('data-id="pushsave"') && tabs.indexOf('data-id="pushsave"') < tabs.indexOf('data-id="rotation"'));
   say('...it is the open one now, in its own colour (the class of the chip is ss-ps)', /class="sstab ss-ps" role="tab" aria-selected="true" data-id="pushsave"/.test(tabs));
   say('...it is not in the Database tab', !run('state.schema').pushsavesystems.database && !(run("typeof DB_TABS !== 'undefined' ? JSON.stringify(DB_TABS) : ''") || '').includes('pushsave'));
-  say('the Push & Save introduction explains the median and the two affected systems', /median/.test(E('setupnote').textContent) && /tyres/.test(E('setupnote').textContent) && /fuel/.test(E('setupnote').textContent));
+  say('the Push & Save introduction explains the median and the two affected systems', /median/.test(E('setupnote').innerHTML) && /tyres/.test(E('setupnote').innerHTML) && /fuel/.test(E('setupnote').innerHTML));
   say('...the sets are listed and kept like the other rule sets', E('setupmgr').innerHTML.includes('Club pace') && run('state.schema.pushsavesystems.plural') === 'Push and save systems');
 
   { run("state.settings.dbView = 'grid'; state.settings.setupView = 'grid'"); await run('render()');

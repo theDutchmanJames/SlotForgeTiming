@@ -72,7 +72,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   const tabs = E('setuptabs').innerHTML;
   say('Race Setup has Championships after Rotation Setups and before the extra systems', tabs.includes('Championships') && tabs.indexOf('data-id="rotation"') < tabs.indexOf('data-id="championships"') && tabs.indexOf('data-id="championships"') < tabs.indexOf('data-id="bop"'));
   say('...it is the open one, in its own colour (the class of the chip is ss-ch) with its own picture', /class="sstab ss-ch" role="tab" aria-selected="true" data-id="championships"/.test(tabs) && tabs.includes(run("Icons.PATHS['championship']")) && E('setuppage') !== undefined);
-  say('...a note says what a championship is', E('setupnote').textContent.includes('A championship is a series of rounds') && E('setupnote').textContent.includes('one click loads it'));
+  say('...a note says what a championship is', E('setupnote').innerHTML.includes('A championship is a series of rounds') && E('setupnote').innerHTML.includes('one click loads it'));
   say('...there are none yet: the page says so and has the New championship button', mgr().innerHTML.includes('No championships yet.') && mgr().innerHTML.includes('id="newch"'));
   { const h = await home(); say('...the Home tab shows no card for a championship while there is none, and Start a race has no choice of a championship either', !h.includes('id="champband"') && !h.includes('id="champsel"')); }
 

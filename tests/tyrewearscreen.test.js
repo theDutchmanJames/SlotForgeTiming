@@ -56,7 +56,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   const tabs = E('setuptabs').innerHTML;
   say('Race Setup exposes Tyre Wear with all race systems before the remaining folders', tabs.includes('Tyre Wear Systems') && tabs.indexOf('Fuel Systems') < tabs.indexOf('Tyre Wear Systems') && tabs.indexOf('Penalty Systems') < tabs.indexOf('Tyre Wear Systems') && tabs.indexOf('Tyre Wear Systems') < tabs.indexOf('<span class="sslabel">Events</span>'));
   say('...it is not in the Database tab', !run('state.schema').tyrewearsystems.database && !(run("typeof DB_TABS !== 'undefined' ? JSON.stringify(DB_TABS) : ''") || '').includes('tyrewear'));
-  say('...with a note that says what a tyre wear system is, and that a race setup chooses one', E('setupnote').textContent.includes('A tyre wear system makes the tyres lose life') && E('setupnote').textContent.includes('Choose one in a race setup'));
+  say('...with a note that says what a tyre wear system is, and that a race setup chooses one', E('setupnote').innerHTML.includes('A tyre wear system makes the tyres lose life') && E('setupnote').innerHTML.includes('Choose one in a race setup'));
   say('...the sets are listed and kept like the other rule sets (the page lists the sets of that kind)', E('setupmgr').innerHTML.includes('Club tyres') && run('state.schema.tyrewearsystems.plural') === 'Tyre wear systems');
 
   // ---------- the fields ----------

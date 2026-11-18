@@ -86,7 +86,7 @@ const Rot = require(R + 'renderer/rotation.js');
   const tabs = E('setuptabs').innerHTML;
   say('Race Setup has Rotation Setups after the open Race Systems row', tabs.includes('Rotation Setups') && tabs.indexOf('data-id="setups"') < tabs.indexOf('data-id="rotation"') && tabs.indexOf('data-id="pushsave"') < tabs.indexOf('data-id="rotation"'));
   say('the strip of the Race Setup tab (1.45.0) has the Rotation Setups button selected, fifteen tabs in all, and the page under it carries the brown of that sub-tab (its buttons use it)', /class="sstab ss-rot" role="tab" aria-selected="true" data-id="rotation"/.test(tabs) && (tabs.match(/role="tab"/g) || []).length === 15 && (tabs.match(/aria-selected="true"/g) || []).length === 1 && run('view.innerHTML').includes('class="setuppage ss-rot"'));
-  say('...with a note that says what a rotation setup is, and that a race setup chooses one', E('setupnote').textContent.includes('A rotation setup is a heat plan that you make yourself') && E('setupnote').textContent.includes('Choose one in a race setup'));
+  say('...with a note that says what a rotation setup is, and that a race setup chooses one', E('setupnote').innerHTML.includes('A rotation setup is a heat plan that you make yourself') && E('setupnote').innerHTML.includes('Choose one in a race setup'));
   say('the list is empty to begin with, with a button for a new one (2.4.0: the line about the participants is in the note of the page)', html().includes('id="newrot"') && html().includes('No rotation setups yet.'));
 
   // ---------- a new rotation: filling and swapping places ----------

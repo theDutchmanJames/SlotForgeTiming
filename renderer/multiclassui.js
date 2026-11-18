@@ -27,7 +27,28 @@ async function renderMultiClass(box) {
   const deleteButton = c =>
     `<button class="btn danger mc-remove-class" type="button" data-mc-class-delete="${esc(c.id)}" aria-label="Delete Race Class ${esc(c.name)}">Delete class</button>`;
   if (!multiEditor) {
-    box.innerHTML = `<p class="muted">Race together, compete within your class. Overall and class points are separate. Label your cars in Database → Slotcars → Race Class. Select their classes here and assign drivers, then choose matching cars on Home.</p><button type="button" class="btn primary" id="mc-new">New Multi-Class System</button><div class="wrap"><table class="fields"><tr><th>System</th><th>Classes</th><th>Heats</th><th></th></tr>${profiles.map(p => `<tr><td>${esc(p.name)}</td><td>${esc((p.classes || []).map(c => defs.find(d => d.id === c.id)?.name || 'Missing class').join(', '))}</td><td>${p.heats === 'separate' ? 'Separate classes' : 'Mixed classes'}</td><td><button class="btn" data-mc-edit="${esc(p.id)}">Edit</button> <button class="btn" data-mc-copy="${esc(p.id)}">Duplicate</button> <button class="btn danger" data-mc-delete="${esc(p.id)}">Delete</button></td></tr>`).join('')}</table></div>`;
+    // (2.4.0) cards, as on the other system pages; the words about it are in the note above (editor.js, SETUP_NOTES)
+    box.innerHTML = `<div class="row"><button type="button" class="btn primary" id="mc-new">Add multi-class system</button></div>${
+      profiles.length
+        ? `<div class="rscards syscards">${profiles
+            .map(p =>
+              sysCardHtml({
+                look: 'mc',
+                icon: 'layers',
+                eyebrow: 'Multi-class system',
+                name: p.name,
+                facts: [
+                  ['Classes', (p.classes || []).map(c => defs.find(d => d.id === c.id)?.name || 'Missing class').join(', ') || 'None yet'],
+                  ['Heats', p.heats === 'separate' ? 'Separate classes' : 'Mixed classes'],
+                  ['Drivers', String((p.driverClasses || []).length)]
+                ],
+                used: setups.filter(r => r && r.multiClass === p.id).map(r => r.name),
+                actions: `<button class="btn" data-mc-edit="${esc(p.id)}">Edit</button><button class="btn" data-mc-copy="${esc(p.id)}">Duplicate</button><button class="btn danger" data-mc-delete="${esc(p.id)}">Delete</button>`
+              })
+            )
+            .join('')}</div>`
+        : '<p class="muted">No multi-class systems yet. Use the button above to add one.</p>'
+    }`;
     box.innerHTML += `<details class="mc-info"><summary>Race Class labels · ${defs.length}</summary><p class="muted">All database labels, including labels no longer used by a car. Deleting a label also removes its current assignments; saved race results keep their classes.</p>${defs.map(c => `<div class="mc-label-row"><span><b>${esc(c.name)}</b> · ${cars.filter(car => car.raceClass === c.id).length} slotcars</span>${deleteButton(c)}</div>`).join('') || '<p>No Race Class labels yet. Create them in Database → Slotcars.</p>'}</details>`;
     box.oninput = box.onchange = null;
     box.onclick = async e => {
@@ -151,7 +172,7 @@ async function renderMultiClass(box) {
     sections,
     icon,
     navLabel: 'Multi-Class settings',
-    used: setups.filter(s => s.multiClass === ed.id).map(s => s.name),
+    used: setups.filter(s => ed.id && s.multiClass === ed.id).map(s => s.name),
     usedNone: 'Select this system under Race Setup › Rules and Systems',
     say: '<div class="rssaytext"><span class="rseye">IN PLAIN WORDS</span><p id="mc-plain"></p></div>',
     foot: '<p class="error" id="mc-error" role="alert"></p><button class="btn" type="button" id="mc-back">Back to systems</button><button class="btn primary" id="mc-save" type="submit">Save system</button>'

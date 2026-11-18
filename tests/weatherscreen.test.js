@@ -56,7 +56,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   run("state.settings = { theme: 'dark' }; state.tab = 'setup'; state.setupSub = 'weather'"); await run('render()'); await wait(50);
   const tabs = E('setuptabs').innerHTML;
   say('Race Setup has a Weather Systems tab, after Penalty Systems and before Balance of Power', tabs.includes('Weather Systems') && tabs.indexOf('Penalty Systems') < tabs.indexOf('Weather Systems') && tabs.indexOf('Weather Systems') < tabs.indexOf('Balance of Power') && tabs.indexOf('Balance of Power') < tabs.indexOf('Time Tokens'));
-  say('...with a note that says what a weather system is, and that a race setup chooses one', E('setupnote').textContent.includes('A weather system is a spell of rain') && E('setupnote').textContent.includes('Choose one in a race setup'));
+  say('...with a note that says what a weather system is, and that a race setup chooses one', E('setupnote').innerHTML.includes('A weather system is a spell of rain') && E('setupnote').innerHTML.includes('Choose one in a race setup'));
   say('...and the sets are made and kept like the fuel systems and penalty systems (the page lists the sets of that kind)', E('setupmgr').innerHTML.includes('Showers') && run('state.schema.weathersystems.plural') === 'Weather systems');
 
   // The map is a form-only explanation of the existing twelve fields: profiles

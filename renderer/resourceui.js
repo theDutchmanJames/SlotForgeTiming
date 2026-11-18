@@ -23,7 +23,27 @@ async function renderResources(box) {
   tyreSystems.forEach(s => Object.assign(defs, s.tyres || {}));
   const catalog = Wx.withTyres(defs).TYRES;
   if (!resourceEditor) {
-    box.innerHTML = `<p class="muted">A shared supply box for each driver, slotcar or team. Select a Resource System in Race Setup › Rules and Systems.</p><button class="btn primary" id="resource-new">New Resource System</button><div class="wrap"><table class="fields"><tr><th>System</th><th>Owner</th><th>Lasts for</th><th></th></tr>${profiles.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.owner)}</td><td>${esc(p.scope)}</td><td><button class="btn" data-resource-edit="${esc(p.id)}">Edit</button> <button class="btn" data-resource-copy="${esc(p.id)}">Duplicate</button> <button class="btn danger" data-resource-delete="${esc(p.id)}">Delete</button></td></tr>`).join('')}</table></div>`;
+    // (2.4.0) cards, as on the other system pages; the words about it are in the note above (editor.js, SETUP_NOTES)
+    box.innerHTML = `<div class="row"><button class="btn primary" id="resource-new">Add resource system</button></div>${
+      profiles.length
+        ? `<div class="rscards syscards">${profiles
+            .map(p =>
+              sysCardHtml({
+                look: 'resource',
+                icon: 'resources',
+                eyebrow: 'Resource system',
+                name: p.name,
+                facts: [
+                  ['One box per', String(p.owner || '').replace(/^./, c => c.toUpperCase())],
+                  ['Lasts for', String(p.scope || '').replace(/^./, c => c.toUpperCase())]
+                ],
+                used: setups.filter(r => r && r.resourceSystem === p.id).map(r => r.name),
+                actions: `<button class="btn" data-resource-edit="${esc(p.id)}">Edit</button><button class="btn" data-resource-copy="${esc(p.id)}">Duplicate</button><button class="btn danger" data-resource-delete="${esc(p.id)}">Delete</button>`
+              })
+            )
+            .join('')}</div>`
+        : '<p class="muted">No resource systems yet. Use the button above to add one.</p>'
+    }`;
     box.oninput = box.onchange = null;
     box.onclick = async e => {
       const b = e.target.closest('button');
@@ -143,7 +163,7 @@ async function renderResources(box) {
     sections: sections.map(s => ({ ...s, body: '<div class="resource-section">' + s.body + '</div>' })),
     icon,
     navLabel: 'Resource settings',
-    used: setups.filter(s => s.resourceSystem === ed.id).map(s => s.name),
+    used: setups.filter(s => ed.id && s.resourceSystem === ed.id).map(s => s.name),
     usedNone: 'Select this under Race Setup › Rules and Systems',
     say: '<div class="rssaytext"><span class="rseye">IN PLAIN WORDS</span><p id="resource-plain"></p></div>',
     foot: '<p role="alert" class="error" id="resource-error"></p><button class="btn" type="button" id="resource-back">Back to systems</button><button class="btn primary" type="submit" id="resource-save">Save system</button>'

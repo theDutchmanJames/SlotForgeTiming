@@ -59,7 +59,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
 
   // ---------- the form ----------
   run("state.settings = { theme: 'dark' }; state.tab = 'setup'; state.setupSub = 'safetycar'"); await run('render()'); await wait(50);
-  say('the page of the Safety Car Systems tells that the folder Random Flags can put the yellow flag up at random moments', E('setupnote').textContent.includes('The folder Random Flags can also put the yellow flag up at random moments.'));
+  say('the page of the Safety Car Systems tells that the folder Random Flags can put the yellow flag up at random moments', E('setupnote').innerHTML.includes('The folder Random Flags can also put the yellow flag up at random moments.'));
   run("openForm('safetycarsystems', null)"); await wait(30);
   { const h = E('dlg').innerHTML, fg = h.slice(h.indexOf('<details class="fgroup rssec" data-fg="flags"'));
     say('the form of a new system has the section Random Flags after Behind the Safety Car (1.76.0: Basics, Lap times and Pit stops are one section), and it is closed to begin with (no "open" on it)', ['Behind the Safety Car', 'Random Flags'].every(x => h.includes(x)) && h.indexOf('Behind the Safety Car') < h.indexOf('Random Flags') && /^<details class="fgroup rssec" data-fg="flags"><summary>/.test(fg));

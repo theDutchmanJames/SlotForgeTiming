@@ -308,7 +308,8 @@ const setupTabsHtml = (current, used = new Set()) => {
   const hidden = setupShowHidden ? [] : setupHidden(),
     shown = items => items.filter(t => !hidden.includes(t[0]) || t[0] === current),
     n = setupHidden().length;
-  const tools = `<div class="sstools"><button type="button" class="btn ssmini" data-sschoose title="Hide the systems your club never uses">Choose systems…</button>${n ? `<button type="button" class="btn ssmini" data-ssall aria-pressed="${setupShowHidden}">${setupShowHidden ? 'Hide the ' + n + ' unused' : 'Show ' + n + ' hidden'}</button>` : ''}</div>`;
+  // (2.4.0) a clear button at the end of the list, with what it does in its name (it hides tabs: a race setup that uses a system keeps it)
+  const tools = `<div class="sstools"><button type="button" class="sstool" data-sschoose title="Choose which systems have a tab here and a choice in the race setup form. Nothing is deleted.">${Icons.svg('sliders', { size: 16, stroke: 1.8 })}<span class="sstext">Hide unused systems…</span></button>${n ? `<button type="button" class="sstool" data-ssall aria-pressed="${setupShowHidden}">${Icons.svg(setupShowHidden ? 'up' : 'down', { size: 16, stroke: 1.8 })}<span class="sstext">${setupShowHidden ? 'Hide the ' + n + ' unused again' : 'Show ' + n + ' hidden'}</span></button>` : ''}</div>`;
   const groups = SETUP_GROUPS.map(([name, all]) => {
     const items = shown(all);
     return items.length
@@ -317,12 +318,111 @@ const setupTabsHtml = (current, used = new Set()) => {
   }).join('');
   return `<div class="ssrailtitle">Race Setup</div><button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 18, stroke: 1.8 })}</span><span class="sstext">${esc(hlabel)}</span></button>${groups}${tools}`;
 };
+// (2.4.0) the note under the title of a page: what it is (one line), a few more words, and where you use it. A box with the icon of the section.
+const SETUP_NOTES = {
+  racesetups: [
+    'A race setup is one kind of race you run: how it starts, how it ends and who wins.',
+    'It can use the race systems in the list on the left: fuel, penalties, weather and more.',
+    'Pick one on the Home tab to start a race.'
+  ],
+  penalties: [
+    'A penalty system says how penalty points turn into time and when a driver is disqualified.',
+    '',
+    'Choose one in a race setup (Rules and Systems).'
+  ],
+  damage: [
+    'A damage system gives a car damage points: a hit from the Race Director, a deslot.',
+    'The level they reach says how long the car must stand in the pits to be repaired, or that it is out.',
+    'Choose one in a race setup (Rules and Systems).'
+  ],
+  tyrewear: [
+    'A tyre wear system makes the tyres lose life while a car drives, from 100% to 0%.',
+    'New tyres help the car, worn out tyres hinder it, and a pit stop gives a fresh set.',
+    'Choose one in a race setup (Rules and Systems).'
+  ],
+  safetycar: [
+    'A safety car system is the Safety Car that comes out with the yellow flag, including a yellow Track Call.',
+    'It says how slowly the cars must drive and how much shorter the work in a pit stop is. The folder Random Flags can also put the yellow flag up at random moments.',
+    'Choose one in a race setup (Rules and Systems).'
+  ],
+  pushsave: [
+    'A Push & Save System compares each lap with the driver’s pace benchmark (median by default).',
+    'Faster laps use more tyres and fuel, slower laps save. Choose tyres, fuel or both. App Settings › Calculations selects the benchmark; older systems can keep their best-lap reference.',
+    'Choose one in a race setup (Rules and Systems).'
+  ],
+  fuel: [
+    'A Fuel System sets the tank, the fixed fuel used per lap, the refuel speed and what happens when it runs out.',
+    'It can also give Push & Save a pace reference (Track or Manual).',
+    'Choose one in a race setup (Rules and Systems) to race with fuel.'
+  ],
+  weather: [
+    'A weather system is a spell of rain with a forecast: when it starts, how long it lasts, the clouds before and the drying after.',
+    'Cars change tyres in the pits and can get penalty points or be hindered if they do not.',
+    'Choose one in a race setup (Rules and Systems).'
+  ],
+  rotation: [
+    'A rotation setup is a heat plan that you make yourself: which participant races in which heat and in which lane, and the order of the heats.',
+    'Without one, the heats are planned from the settings of the race setup, as before.',
+    'Choose one in a race setup for a Heat-based race (under Session).'
+  ],
+  championships: [
+    'A championship is a series of rounds, with a roster of drivers.',
+    'Every round has its sessions (practice, qualifying, a race), each driven with one of your race setups. The race that you drive is saved as part of the championship.',
+    'On the Home tab the next session is waiting: one click loads it.'
+  ],
+  bop: [
+    'Balance of Power evens out a race: a car that is too fast is hindered and a car that is too slow is helped.',
+    'It works through its fuel use, refuelling speed and tank.',
+    'Used by every race setup that has Balance of Power on.'
+  ],
+  tokens: [
+    'The Time Token System sells track time: a lane is switched on with paid time and turns red when the time is up.',
+    '',
+    'Used by every Time Token Session.'
+  ],
+  virtualrivals: [
+    'A Virtual Rival replays a saved lap sequence as an opponent in a lane.',
+    'Make one from a saved race or practice recording, then link it to a virtual driver in Database. On Home, the car selector of that driver becomes the Rival Setup selector.',
+    'Choose its virtual driver in a lane on Home.'
+  ],
+  multiclass: [
+    'Multi-Class: race together, compete within your class.',
+    'Overall and class points are separate. Label your cars in Database › Slotcars › Race Class, then choose those classes here and assign the drivers.',
+    'Choose one in a race setup (Rules and Systems). On Home, choose cars of the matching classes.'
+  ],
+  resources: [
+    'A Resource System is a shared supply box for each driver, slotcar or team: tyre sets, repair credits and replacement components.',
+    'Balances follow the owner, not the lane.',
+    'Choose one in a race setup (Rules and Systems).'
+  ]
+};
+function setupNote(box, sub) {
+  if (!box) return;
+  const [lead, more, use] = SETUP_NOTES[sub] || SETUP_NOTES.racesetups;
+  const tab = [SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === sub) || SETUP_HERO;
+  box.innerHTML = `<span class="sn-tile">${Icons.svg(tab[2], { size: 20, stroke: 1.8 })}</span><p class="sn-lead">${esc(lead)}</p>${more ? `<p class="sn-more">${esc(more)}</p>` : ''}<p class="sn-use">${Icons.svg('arrow', { size: 14, stroke: 2 })}<span>${esc(use)}</span></p>`;
+}
+// (2.4.0) a race system as a card, the same as the cards of the other system pages (database/manager.js, sysCard): for the pages that draw their own list
+// (Virtual Rival, Multi-Class, Resource Systems). facts: [label, value]; used: the names of what uses it; actions: the buttons (html).
+const sysCardHtml = ({ look, icon, eyebrow, name, facts = [], used = [], what = 'race setup', empty, actions }) => {
+  const f = facts.filter(x => x && x[1] !== '' && x[1] !== undefined && x[1] !== null);
+  return `<article class="rscard syscard ss-${look}"><div class="rsidentity" data-kind="system"><div class="rshead"><span class="rstile">${Icons.svg(icon, { size: 22 })}</span><div class="rstitle"><div class="rseye">${esc(eyebrow)}</div><div class="rsname">${esc(String(name || '').trim() || '(unnamed)')}</div></div></div>
+    <div class="rsfacts sysfacts">${f.map(([k, v]) => `<div class="gd"><span class="muted">${esc(k)}</span> ${esc(v)}</div>`).join('') || '<p class="muted">The standard settings.</p>'}</div></div>
+    <section class="rslinked" aria-label="What uses ${esc(name)}"><div class="rslinked-head"><strong>Used by</strong><span>${used.length ? used.length + ' ' + what + (used.length === 1 ? '' : 's') : 'Not used yet'}</span></div>${
+      used.length
+        ? `<div class="rspills">${used
+            .slice(0, 3)
+            .map(u => `<span class="rspill">${esc(String(u || '').trim() || '(unnamed)')}</span>`)
+            .join('')}${used.length > 3 ? `<span class="rspill">+${used.length - 3}</span>` : ''}</div>`
+        : `<p class="rslinked-empty">${esc(empty || 'Choose it under Rules and systems in a race setup.')}</p>`
+    }</section><div class="row rsactions">${actions}</div></article>`;
+};
 // the title of the page of a section
 const setupTitleOf = id => ([SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id) || SETUP_HERO)[1];
 
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
 async function renderSetup() {
-  view.innerHTML = `<div class="setupshell"><nav class="setupstrip" id="setuptabs" role="tablist" aria-label="Race Setup sections" aria-orientation="vertical"></nav><div class="setuppage ss-${setupColorOf(state.setupSub)}" id="setuppage"><h2 id="setuptitle">${esc(setupTitleOf(state.setupSub))}</h2><p class="muted" id="setupnote"></p><div id="setupmgr"></div></div></div>`;
+  view.innerHTML = `<div class="setupshell"><nav class="setupstrip" id="setuptabs" role="tablist" aria-label="Race Setup sections" aria-orientation="vertical"></nav><div class="setuppage ss-${setupColorOf(state.setupSub)}" id="setuppage"><h2 id="setuptitle">${esc(setupTitleOf(state.setupSub))}</h2><div class="sn" id="setupnote"></div><div id="setupmgr"></div></div></div>`;
   const strip = document.getElementById('setuptabs');
   strip.innerHTML = setupTabsHtml(state.setupSub);
   // (the dots of the systems that a race setup uses: drawn when the race setups are read, without holding up the page)
@@ -403,40 +503,14 @@ async function renderSetup() {
                   : sub === 'weather'
                     ? 'weathersystems'
                     : 'racesetups';
-  document.getElementById('setupnote').textContent =
-    sub === 'penalties'
-      ? 'A penalty system says how penalty points turn into time and when a driver is disqualified. Choose one in a race setup.'
-      : sub === 'damage'
-        ? 'A damage system gives a car damage points (a hit from the Race Director, a deslot). The level they reach says how long the car must stand in the pits to be repaired, or that it is out. Choose one in a race setup.'
-        : sub === 'tyrewear'
-          ? 'A tyre wear system makes the tyres lose life while a car drives, from 100% to 0%. New tyres help the car, worn out tyres hinder it, and a pit stop gives a fresh set. Choose one in a race setup (Rules and systems).'
-          : sub === 'safetycar'
-            ? 'A safety car system is the Safety Car that comes out with the yellow flag, including a yellow Track Call: how slowly the cars must drive and how much shorter the work in a pit stop is. Choose one in a race setup (Rules and Systems). The folder Random Flags can also put the yellow flag up at random moments.'
-            : sub === 'pushsave'
-              ? 'A Push & Save System compares each lap with the driver’s pace benchmark (median by default): faster laps use more tyres and fuel, slower laps save. Choose tyres, fuel or both. App Settings > Calculations selects the benchmark; older systems can keep their best-lap reference. Choose a system in Race Setup > Rules and Systems.'
-              : sub === 'fuel'
-                ? 'A Fuel System sets the tank, the fixed fuel used per lap, refuel speed and what happens when it runs out. It can also provide a Track or Manual pace reference for Push & Save. Choose one in a race setup to race with fuel.'
-                : sub === 'weather'
-                  ? 'A weather system is a spell of rain with a forecast: when it starts, how long it lasts, the clouds before and the drying after. Cars change tyres in the pits and can get penalty points or be hindered if they do not. Choose one in a race setup.'
-                  : sub === 'rotation'
-                    ? 'A rotation setup is a heat plan that you make yourself: which participant races in which heat and in which lane, and the order of the heats. Choose one in a race setup for a Heat-based race (under Session). Without one, the heats are planned from the settings of the race setup, as before.'
-                    : sub === 'championships'
-                      ? 'A championship is a series of rounds. Every round has its sessions (practice, qualifying, a race), each driven with one of your race setups, and the championship has a roster of drivers. On the Home tab the next session is waiting: one click loads it, and the race that you drive is saved as part of the championship.'
-                      : sub === 'bop'
-                        ? 'Balance of Power evens out a race: a car that is too fast is hindered and a car that is too slow is helped, through its fuel use, refuelling speed and tank. These settings are used by every race setup that has Balance of Power on.'
-                        : sub === 'tokens'
-                          ? 'The Time Token System sells track time: a lane is switched on with paid time and turns red when the time is up. These settings are used by every Time Token Session.'
-                          : 'Create the race setups you want to use. Pick one on the Home tab to start a race.';
+  setupNote(document.getElementById('setupnote'), sub);
   if (sub === 'resources') {
-    document.getElementById('setupnote').textContent = '';
     return renderResources(document.getElementById('setupmgr'));
   }
   if (sub === 'multiclass') {
-    document.getElementById('setupnote').textContent = '';
     return renderMultiClass(document.getElementById('setupmgr'));
   }
   if (sub === 'virtualrivals') {
-    document.getElementById('setupnote').textContent = '';
     return renderVirtualRivals(document.getElementById('setupmgr'));
   }
   if (sub === 'rotation') {

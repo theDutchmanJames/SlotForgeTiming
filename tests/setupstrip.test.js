@@ -94,7 +94,7 @@ ok('the buttons can be reached with the keyboard and show where they are (a focu
   ok('...the chip says Fuel Systems and keeps its id, its picture and its green', fb && fb.text === 'Fuel Systems' && fb.cls === 'sstab ss-fuel' && fb.inner.includes('<svg') && ctx.out.color('fuel') === 'fuel');
   const sch = require(path.join(R, '..', 'schema.js'));
   ok('...and the records are called Fuel systems everywhere: the table, the form, and the field of the race setup', sch.fuelrules.label === 'Fuel system' && sch.fuelrules.plural === 'Fuel systems' && sch.racesetups.fields.find(x => x.key === 'fuelRules').label === 'Fuel System');
-  ok('...the page note of the tab says fuel system, and no text of the app calls it a fuel setup any more', has(editor, "sub === 'fuel' ? 'A Fuel System sets the tank") && ['renderer/editor.js', 'renderer/help.js', 'renderer/bopui.js', 'schema.js'].every(f => !/fuel setup/i.test(fs.readFileSync(path.join(R, '..', f), 'utf8')))); }
+  ok('...the page note of the tab says fuel system, and no text of the app calls it a fuel setup any more', has(editor, "fuel: ['A Fuel System sets the tank") && ['renderer/editor.js', 'renderer/help.js', 'renderer/bopui.js', 'schema.js'].every(f => !/fuel setup/i.test(fs.readFileSync(path.join(R, '..', f), 'utf8')))); }
 
 if (fails) { console.log(fails + ' SETUP STRIP TESTS FAILED'); process.exit(1); }
 console.log('ALL SETUP STRIP TESTS PASSED');

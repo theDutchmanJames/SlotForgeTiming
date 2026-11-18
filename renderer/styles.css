@@ -3001,3 +3001,43 @@ html .rsform.ss-fuel .rssec[data-fg="basics"] .field:is([data-key="tank"],[data-
 /* a chosen option card: a calm fill with the accent edge and its tick (not a red block) */
 html .rsform .fu-card.on{background:color-mix(in srgb,var(--ink) 7%,var(--panel));border-color:color-mix(in srgb,var(--accent) 65%,var(--line))}
 html .rsform .fu-card.on .fu-ci{color:var(--accent-text,var(--accent))}
+
+/* 2.4.0 the note under the title of a Race Setup page: a calm box with the icon of the section, what it is (one line), a few more words, and where you use it */
+.setupshell>.setuppage>#setupnote.sn{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;row-gap:3px;align-items:start;max-width:860px;margin:4px 0 22px;padding:14px 18px 14px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+#setupnote .sn-tile{grid-row:1 / span 3;display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--c,var(--accent)) 16%,var(--panel));color:var(--c,var(--accent))}
+#setupnote .sn-lead{grid-column:2;margin:0;color:var(--ink);font-size:14.5px;font-weight:500;line-height:1.45}
+#setupnote .sn-more{grid-column:2;margin:0;color:var(--muted);font-size:13.5px;line-height:1.55}
+#setupnote .sn-use{grid-column:2;display:flex;align-items:center;gap:7px;margin:7px 0 0;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font-size:12.5px;line-height:1.4}
+#setupnote .sn-use svg{flex:none;color:var(--accent-text,var(--accent))}
+#setupnote:empty{display:none}
+/* the buttons at the end of the side list: as the items of the list, with an icon, so they are easy to find */
+#setuptabs .sstools{align-items:stretch;gap:2px;margin:16px 0 0;padding-top:12px}
+#setuptabs .sstool{display:flex;align-items:center;gap:11px;width:100%;min-height:34px;padding:7px 10px;border:1px dashed color-mix(in srgb,var(--ink) 18%,transparent);border-radius:8px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13px;text-align:left;cursor:pointer}
+#setuptabs .sstool+.sstool{border-style:solid;border-color:transparent}
+#setuptabs .sstool svg{flex:none;color:var(--muted)}
+#setuptabs .sstool:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+#setuptabs .sstool:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+/* the pages that draw their own list (Virtual Rival, Multi-Class, Resource Systems) have the cards of the other systems */
+#setupmgr>.row+.rscards,#setupmgr>.row+p.muted{margin-top:16px}
+#setupmgr>.mc-info{max-width:860px;margin-top:22px;border-color:var(--line);background:var(--panel)}
+#setupmgr>.mc-info>summary{font-weight:600;cursor:pointer}
+/* ...and their windows the calm look of the other system windows */
+html .ss-vr .rshd{border-top:0}
+html #vr-form .rsplain{background:var(--panel);border:1px solid var(--line)}
+html .vr-info{background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html #vr-form .vr-choices button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+/* the editors that open on the page itself (Virtual Rival, Multi-Class, Resource Systems): the same sizes, name and spacing as the system windows */
+#setupmgr .rsform.rspage{font-size:14px}
+#setupmgr .rsform.rspage :is(input,select,textarea):not(.rsname){font-size:14px}
+html #setupmgr .rsform h3.rseye{margin:0 0 2px;font:700 11px/1.4 "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+#setupmgr .rsform .rshd input.rsname{width:100%;max-width:640px;font:italic 700 30px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em;padding:2px 0 4px;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;box-shadow:none;color:var(--ink)}
+#setupmgr .rsform .rshd input.rsname:hover{border-bottom-color:var(--muted)}
+#setupmgr .rsform .rshd input.rsname:focus-visible{outline:none;border-bottom:1px solid var(--accent)}
+#setupmgr .rsform .rssec>:not(summary):not(.fgrid):not(.resource-section){margin:14px 18px}
+#setupmgr .rsform .rssec>:last-child:not(summary):not(.fgrid):not(.resource-section){margin-bottom:18px}
+#setupmgr .rsform .resource-section{padding:16px 18px 18px}
+#setupmgr .rsform .rssec .field{font-size:13px;font-weight:600;color:var(--ink)}
+#setupmgr .rsform .rssec :is(p.muted,.hint){font-size:13px;font-weight:400;line-height:1.5}
+html #setupmgr .rsform .mc-info{padding:12px 14px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,var(--panel));font-size:13px}
+#setupmgr .rsform .rssec .field :is(input,select,textarea){font-weight:400}
+html #setupmgr .rsform .resource-note{border-color:var(--line);background:color-mix(in srgb,var(--ink) 4%,var(--panel));font-size:13px}
