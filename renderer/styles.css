@@ -2833,3 +2833,60 @@ dialog.ss-choose{width:min(620px,94vw)}
 :where(#view) :is(.gcard .row,.catalogue-navigation) .btn.icon:not(.big){width:28px;min-height:28px;padding:0}
 #view .gcard .row .btn.danger.icon{margin-left:auto}
 @media(max-width:900px){#view .catalogue-controls{width:100%;justify-content:flex-start}#view .catalogue-search input{width:160px}}
+/* 2.4.0 baseline for windows and folders. A window: rounded, a big title in Barlow with a line under it, the buttons at the bottom on the right (the main one last).
+   A folder (forms, settings, results): a quiet box, the title on the left and a chevron on the right; an open folder has a thin accent mark and a line under its title.
+   (The folders of the Race Director keep their own colours.) */
+dialog{border-radius:14px;padding:22px 24px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(5,7,10,.62);backdrop-filter:blur(2px)}
+dialog>h3:first-child,dialog>:is(form,div)>h3:first-child{margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid var(--line);font-size:24px;line-height:1.1}
+dialog>:is(form,div)>.row:last-child,dialog>.row:last-child,#frm>.row:last-child{flex-direction:row-reverse;justify-content:flex-start;gap:8px;margin:14px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+dialog .field>label,dialog .field>.lbl{font-size:12.5px;color:var(--muted)}
+:where(dialog,#view) :is(input[type=text],input[type=number],input[type=date],input[type=search],input:not([type]),select,textarea){border-radius:7px;min-height:34px;box-shadow:none}
+dialog .fgtools{gap:6px;margin:0 0 12px}
+dialog .fgtools .btn{min-height:28px;padding:0 10px;font-size:12.5px;background:transparent;border-color:var(--line)}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec){border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:clip}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec)>summary{padding:12px 42px 12px 16px;border-radius:0;background:transparent;transition:background .12s}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec)>summary:hover{background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec)>summary::before{left:auto;right:18px;border-color:var(--muted);transform:rotate(45deg);margin-top:-6px}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec)[open]>summary{background:color-mix(in srgb,var(--ink) 4%,var(--panel));border-bottom:1px solid var(--line);box-shadow:inset 3px 0 0 var(--accent)}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec)[open]>summary::before{transform:rotate(-135deg);margin-top:-2px}
+:is(.fgroup,.dbfolder):not(.dirfolder):not(.rssec)>summary strong{font-family:'SF Barlow Condensed','Bahnschrift',sans-serif;font-weight:700;font-style:italic;text-transform:uppercase;letter-spacing:.02em;font-size:17px}
+/* Circuit design: the same window as the others (no coloured top), its sections as the folders above, its side list as the side lists of the pages */
+.track-design-dialog .td-head{border-top:0;background:linear-gradient(110deg,color-mix(in srgb,var(--accent) 10%,var(--panel)),var(--panel) 60%)}
+.track-design-dialog .td-head .muted{font-size:11px;font-weight:700;letter-spacing:.14em}
+.track-design-dialog .td-head h2{font-size:30px;line-height:1}
+.track-design-dialog .td-layout nav{background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+.track-design-dialog .td-layout nav .btn{justify-content:flex-start;width:100%;min-height:36px;margin:0 0 2px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font-size:13.5px}
+.track-design-dialog .td-layout nav .btn:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+.track-design-dialog .td-layout nav p{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted)}
+.track-design-dialog .td-layout :is(section,details){border-radius:12px;padding:18px 20px}
+.track-design-dialog .td-layout :is(section>h3,details>summary){font-family:'SF Barlow Condensed','Bahnschrift',sans-serif;font-weight:700;font-style:italic;text-transform:uppercase;letter-spacing:.02em;font-size:18px}
+.track-design-dialog .td-layout details>summary{list-style:none;display:flex;align-items:center;justify-content:space-between}
+.track-design-dialog .td-layout details>summary::-webkit-details-marker{display:none}
+.track-design-dialog .td-layout details>summary::after{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px}
+.track-design-dialog .td-layout details[open]>summary::after{transform:rotate(-135deg)}
+/* View settings: a head with its title and the reset, then every choice a switch (on: the accent), group by group */
+.viewbar{padding:16px 18px;border-radius:12px;margin:0 0 16px}
+.vb-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 6px}
+.vb-title{font:italic 700 18px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.vb-head p{margin:3px 0 0;font-size:12.5px}
+.vsgroup{border:0;margin:12px 0 0;padding:0;gap:8px}
+.vsgroup legend{float:left;width:100%;margin:0 0 8px;padding:0;font:600 11px/1.4 "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.vschip{position:relative;gap:8px;padding:6px 12px 6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--bg);font-size:13px;color:color-mix(in srgb,var(--ink) 80%,var(--muted));white-space:normal;transition:background .12s,border-color .12s}
+.vschip:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line));color:var(--ink)}
+.vschip input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.vschip::before{content:'';width:14px;height:14px;flex:none;border-radius:4px;border:1.5px solid color-mix(in srgb,var(--ink) 35%,var(--line));background:transparent no-repeat center/10px 10px}
+.vschip:has(input:checked){border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--ink)}
+.vschip:has(input:checked)::before{border-color:var(--accent-fill,var(--accent));background-color:var(--accent-fill,var(--accent));background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.5 9.5 3.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.vschip:has(input:focus-visible){outline:2px solid #4c9aff;outline-offset:2px}
+.vschip:has(input:disabled){opacity:.65;cursor:not-allowed}
+/* 2.4.0: the file pickers and the scroll bars follow the theme; text in the fields of a window is the size of the rest of the window */
+:where(#view,dialog) input[type=file]{font-size:13px;color:var(--muted)}
+:where(#view,dialog) input[type=file]::file-selector-button{margin-right:10px;min-height:30px;padding:0 12px;border:1px solid transparent;border-radius:7px;background:color-mix(in srgb,var(--ink) 9%,var(--panel));color:var(--ink);font:400 13px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+:where(#view,dialog) input[type=file]::file-selector-button:hover{background:color-mix(in srgb,var(--ink) 14%,var(--panel))}
+dialog :is(select,input[type=text],input[type=number],input[type=date],input:not([type])){font-size:14px}
+*::-webkit-scrollbar{width:11px;height:11px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{border:3px solid transparent;border-radius:8px;background:color-mix(in srgb,var(--ink) 22%,transparent) padding-box}
+*::-webkit-scrollbar-thumb:hover{background-color:color-mix(in srgb,var(--ink) 34%,transparent)}
+*::-webkit-scrollbar-corner{background:transparent}

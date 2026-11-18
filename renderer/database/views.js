@@ -86,7 +86,7 @@ const viewGroup = (title, path, cols) => {
     .join('')}</fieldset>`;
 };
 const viewBar = (id, hint, groups) =>
-  `<div class="viewbar" role="group" aria-label="View settings"><p class="muted">${esc(hint)}</p>${groups.join('')}<div class="row"><button class="btn" type="button" data-vsreset="${esc(id)}">Back to the standard view</button></div></div>`;
+  `<div class="viewbar" role="group" aria-label="View settings"><div class="vb-head"><div><strong class="vb-title">View settings</strong><p class="muted">${esc(hint)}</p></div><button class="btn ghost sm" type="button" data-vsreset="${esc(id)}">Back to the standard view</button></div>${groups.join('')}</div>`; // (2.4.0: a title and the reset in the head, every choice a switch)
 // A click on a check box of a bar: the column goes on or off. colsOf(path) gives the columns of that table. Returns true when it was one of ours.
 async function viewToggle(cb, colsOf) {
   if (!cb || !cb.dataset || cb.dataset.vs === undefined) return false;
