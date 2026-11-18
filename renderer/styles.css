@@ -3971,3 +3971,25 @@ html body .rsform.sy.sy .sy-tile .ss-step>input{width:48px!important}
 html body .rsform.sy .sy-tile>.sy-tilet>:is(span,small){white-space:nowrap}
 html body .rsform.sy .sy-tilelist{gap:0!important;background:var(--sy-box,var(--panel))}
 html body .rsform.sy .sy-tilelist>.sy-tile{box-shadow:0 0 0 .5px var(--ss-line,var(--line))!important}
+/* 2.4.0 Grid Slot: a lane of Start a race, the same at every width. The number and the driver's name on the first line, the car under it, Browse cars
+   under that; the driver's picture as a portrait on the right that fills the card from top to bottom and fades into it; the tick in the top corner. */
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"n f" ". m" "w w";column-gap:14px;row-gap:0;align-items:start;align-content:center;min-height:116px;padding:16px 18px 14px;overflow:hidden;background:linear-gradient(90deg,var(--panel) 45%,color-mix(in srgb,var(--c,var(--accent)) 10%,var(--panel)))}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane:has(>.hs-avatar){padding-right:calc(var(--gs-pic,132px) * .72 + 18px)}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-num{grid-area:n;align-self:start}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-fields{grid-area:f;position:relative;z-index:1;align-self:center}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-more{grid-area:m;position:relative;z-index:1;margin:8px 0 0;justify-content:flex-start}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-note{grid-area:w;position:relative;z-index:1;margin-top:8px}
+/* the portrait: full height on the right, fading to the left into the card */
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar{display:block;position:absolute;top:0;right:0;bottom:0;width:var(--gs-pic,132px);height:auto;margin:0;border-radius:0;background:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 38%);mask-image:linear-gradient(90deg,transparent 0,#000 38%);pointer-events:none}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar img{width:100%;height:100%;object-fit:cover;object-position:center 18%}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar img:not(.own){object-fit:contain;object-position:right bottom}
+/* the tick: in the top right corner, over the portrait */
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-tick{position:absolute;top:12px;right:12px;z-index:2;box-shadow:0 0 0 3px var(--panel)}
+/* more lanes, smaller cards */
+html #hmc-start .hs-lanes:has(>.lane:nth-child(4)){--gs-pic:104px}
+html #hmc-start .hs-lanes:has(>.lane:nth-child(4)) .lane.lane.lane{min-height:100px;padding-top:12px;padding-bottom:12px}
+/* a narrow card: a smaller portrait, the name a little smaller */
+@container hs-lanes (max-width:620px){html #hmc-start .hs-lanes{--gs-pic:104px}html #hmc-start .hs-fields>.hs-sel:first-child>select{font-size:22px}}
+@container hs-lanes (min-width:1100px){html #hmc-start .hs-lanes:not(:has(>.lane:nth-child(4))){--gs-pic:180px}}
+@container hs-lanes (min-width:1100px){html #hmc-start .hs-lanes:not(:has(>.lane:nth-child(4)))>.lane{--gs-pic:180px}}
+@container hs-lanes (max-width:620px){html #hmc-start .hs-lanes>.lane{--gs-pic:104px}}

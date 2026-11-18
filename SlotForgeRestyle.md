@@ -39,6 +39,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Tech Sheet](#tech-sheet) | A big editor: header with name, side list of sections, plain-words summary, folders, sticky foot | Add / Edit Race System, Race Setup editor |
 | [Toggle Chips](#toggle-chips) | Checkboxes as pill switches | View settings, Hide unused systems |
 | [Broadcast Hero](#broadcast-hero) | A header picture across the page with big titles on it | Home |
+| [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
 | [Timing Tower](#timing-tower) | A ranked list: position, colour stripe, time, gap chip | Personal Bests card |
 | [Rulebook](#rulebook) | A document page: header, sheet with a grouped toolbar | Racing Rules |
 | [Finishing Touches](#finishing-touches) | Scroll bars and file pickers in the theme | Everything |
@@ -1174,6 +1175,19 @@ html #view .help-hub .help-article-body{font-size:14.5px;line-height:1.7}
 html #view .help-hub .help-related .btn{min-height:30px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent}
 ```
 
+## Grid Slot
+
+A lane of **Start a race** on Home, the same at every width. The lane number and the driver's name (Barlow) on the first line, the car under
+it, **Browse cars** under that; the driver's picture as a portrait on the right that fills the card from top to bottom and fades into it
+(`--gs-pic`: 132px, 180px when the lanes are wide, 104px when narrow or with four lanes or more); the ready tick in the top corner; a faint
+tint of the lane colour behind the portrait.
+
+```css
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"n f" ". m" "w w";min-height:116px;padding:16px 18px 14px;overflow:hidden}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar{display:block;position:absolute;top:0;right:0;bottom:0;width:var(--gs-pic,132px);mask-image:linear-gradient(90deg,transparent 0,#000 38%)}
+html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-tick{position:absolute;top:12px;right:12px}
+```
+
 ## Finishing Touches
 
 ```css
@@ -1255,3 +1269,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | System Sheet | Darker sheets and boxes; the page editors open as a window; Fuel, Penalty, Damage, Weather and Push & Save regrouped and reworded |
 | 2026-11 | System Sheet | Balance of Power and Time Tokens: a card on the page, the editor as a window; padding for words inside a sheet |
 | 2026-11 | System Sheet | Safety Car in four sections; More for long explanations; form labels; Resource tyre sets as rows; tables with the 30px kit |
+| 2026-11 | Grid Slot | New: the lanes of Start a race on Home fill their card at every width, with the driver as a full-height portrait |
