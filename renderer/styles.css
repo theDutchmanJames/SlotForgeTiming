@@ -3243,3 +3243,65 @@ html .wb-preview>header,html .wb-fold>header{position:static;height:auto;min-hei
 html .wb-preview>header{padding:0;border:0;background:none;box-shadow:none}
 @media(max-width:1200px){.wb-kgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .wb-kgrid{clear:both}
+/* 2.4.0 Picture Bench (Image Settings › a picture set): what it is for as cards, the pictures as tiles you drop a file on, a big live preview */
+.ps-bench{font-size:13.5px}
+.ps-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:18px;align-items:start}
+.ps-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ps-kinds{margin:0;padding:0;border:0;min-width:0}
+.ps-kinds>legend{float:left;width:100%;margin:0 0 8px;padding:0;font:700 11px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ps-kinds>legend .muted{font-weight:400;letter-spacing:0;text-transform:none}
+.ps-kgrid{clear:both;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.ps-kind{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-align:center;cursor:pointer;min-width:0}
+.ps-kind:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+.ps-kind input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.ps-kind:has(input:focus-visible){outline:3px solid #4c9aff;outline-offset:2px}
+.ps-kind b{font-size:12.5px;line-height:1.2}
+.ps-kico{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--ink)}
+.ps-kind.on,.ps-kind:has(input:checked){border-color:color-mix(in srgb,var(--accent) 65%,var(--line));background:color-mix(in srgb,var(--ink) 7%,var(--panel))}
+.ps-kind.on .ps-kico,.ps-kind:has(input:checked) .ps-kico{color:var(--accent-text,var(--accent))}
+.ps-kinds:disabled .ps-kind:not(.on){opacity:.45;cursor:not-allowed}
+.ps-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.ps-eye{font:700 11px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ps-steps{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}
+.ps-steps input{width:5em}
+.ps-note{flex:1 1 100%;margin:0;max-width:110ch;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.ps-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.ps-tile{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.ps-tile.over{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.ps-pic{position:relative;display:grid;place-items:center;aspect-ratio:1;cursor:pointer;background:var(--bg)}
+.ps-tile.has .ps-pic{background:repeating-conic-gradient(color-mix(in srgb,var(--ink) 6%,var(--bg)) 0 25%,var(--bg) 0 50%) 0 0/16px 16px}
+.ps-pic>img{max-width:86%;max-height:86%;object-fit:contain}
+.ps-pic>input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.ps-pic:has(input:focus-visible){outline:3px solid #4c9aff;outline-offset:-3px}
+.ps-pic .ps-std{position:absolute;max-width:60%;max-height:60%;opacity:.28}
+.ps-drop{position:absolute;inset:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed color-mix(in srgb,var(--ink) 18%,var(--line));border-radius:8px;font-size:11.5px;line-height:1.3;text-align:center;color:var(--muted)}
+.ps-drop svg{transform:rotate(-90deg)}
+.ps-pic:hover .ps-drop{border-color:var(--accent);color:var(--ink)}
+.ps-lab{display:flex;align-items:center;gap:6px;min-height:34px;padding:4px 6px 4px 9px;border-top:1px solid var(--line);font-size:12px}
+.ps-lab b{min-width:0;overflow-wrap:anywhere;font-weight:600}
+.ps-lab span{margin-left:auto;color:var(--muted);font:500 11.5px 'SF Roboto Mono',Consolas,monospace}
+.ps-lab .btn{margin-left:auto}
+.ps-lab span+.btn{margin-left:4px}
+.ps-prog{display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--muted)}
+.ps-bar{flex:1;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.ps-bar i{display:block;height:100%;background:#3ecf8e}
+.ps-preview{position:sticky;top:12px;display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 70%,#000)}
+html .ps-preview>header{position:static;display:block;height:auto;padding:0;border:0;background:none;box-shadow:none}
+.ps-preview>header strong{font:italic 700 17px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+#is-pvbox{display:flex;flex-direction:column;gap:10px}
+.ps-big{display:grid;place-items:center;aspect-ratio:1;border:1px solid var(--line);border-radius:12px;background:repeating-conic-gradient(color-mix(in srgb,var(--ink) 6%,var(--bg)) 0 25%,var(--bg) 0 50%) 0 0/20px 20px;overflow:hidden}
+.ps-big>img{max-width:80%;max-height:80%;object-fit:contain}
+.ps-big>.ps-std{max-width:60%;max-height:60%}
+.ps-none{max-width:24ch;padding:16px;font-size:12.5px;line-height:1.5;text-align:center;color:var(--muted)}
+#is-fuelpct{width:100%;accent-color:var(--accent-fill,var(--accent))}
+.ps-scale{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)}
+.ps-scale b{font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+.ps-field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600}
+.ps-field select{width:100%;font-weight:400}
+@media(max-width:1200px){.ps-cols{grid-template-columns:minmax(0,1fr)}.ps-preview{position:static}.ps-kgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ps-note{max-width:none}
+.ps-pic .ps-std~.ps-drop{justify-content:flex-end;padding-bottom:6px;border-style:dashed;background:linear-gradient(transparent 55%,color-mix(in srgb,var(--bg) 85%,transparent))}
+.ps-pic span.ps-std{display:grid;place-items:center;width:58%;height:58%}
+.ps-pic span.ps-std .setslot,.ps-pic span.ps-std .setslot svg{display:block;width:100%;height:100%}
+.ps-big>.ps-bigstd{display:grid;place-items:center;width:60%;height:60%;max-width:60%;max-height:60%;object-fit:contain;opacity:.55}
+.ps-big>.ps-bigstd svg{width:100%;height:100%}

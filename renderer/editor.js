@@ -929,26 +929,94 @@ function lightsPreviewHtml(d) {
     <div class="lgprevbox" id="is-prevbox">${Widgets.lightsHtml(3, { pick: (i, lit) => Widgets.lightPic(im, st, i, lit) }, Widgets.lightColor({}, st))}</div><span class="muted">Three lights on, two off.</span></div>`;
 }
 
+const PS_KIND_NAMES = {
+  fuel: 'Fuel',
+  flag: 'Race flag',
+  lights: 'Start lights',
+  avatars: 'Avatars',
+  tyres: 'Tyres',
+  weather: 'Weather',
+  conditions: 'Conditions'
+};
+const PS_KIND_ICONS = {
+  fuel: 'fuel',
+  flag: 'flag',
+  lights: 'lights',
+  avatars: 'driver',
+  tyres: 'tyre',
+  weather: 'weather',
+  conditions: 'gauge'
+};
 function renderImageSetEditor(box) {
   const d = imgEd.draft,
     fuel = d.kind === 'fuel';
-  box.innerHTML = `<div class="ed-bar"><label>Name <input type="text" id="is-name" value="${esc(d.name)}" maxlength="40"></label>
-      <label>For <select id="is-kind" ${imgEd.id ? 'disabled' : ''}>${SET_KINDS.map(([k, t]) => `<option value="${k}"${k === d.kind ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
-      ${fuel ? `<label>Number of pictures (2 to 20) <input type="number" id="is-steps" min="2" max="20" value="${Widgets.clampInt(d.steps, 2, 20, 10)}" style="width:5em"></label>` : ''}
-      ${undoButtons('is')}<button class="btn primary" id="is-save">Save picture set</button><button class="btn" id="is-back">Back</button><span id="is-msg" class="muted" role="status"></span></div>
-    <p class="muted">${fuel ? 'The first picture shows when the tank is full, the last when it is empty.' : d.kind === 'lights' ? 'Every light can have its own picture for every state of the race. A cell you leave empty uses the dimmed picture shown in it: the "All lights" picture of its row. Every row stands on its own: the Countdown pictures are only for the countdown, and a state with no picture is drawn as plain round lights (Lights off is for every light that is off, in every state). A light with no picture at all is drawn as a plain round light.' : d.kind === 'avatars' ? 'One avatar for each lane (up to 8). The Avatar widget shows the picture of the driver; a driver without a picture gets the avatar of the lane he or she drives in. A lane you leave empty uses the standard avatar shown dimmed in it.' : d.kind === 'tyres' ? 'One picture for each tyre. A tyre you leave empty is drawn in the colours of Formula 1 (the standard picture shown dimmed in it).' : d.kind === 'weather' ? 'One picture for each state of the weather. A state you leave empty is drawn (the standard picture is shown dimmed in it).' : d.kind === 'conditions' ? 'An icon for each item of the Track Conditions widget. An item you leave empty is drawn (the standard icon is shown dimmed in it). Draw the wind direction pointing up: it is turned to the direction the wind blows.' : 'A state without a picture shows its name as text.'} Pictures keep their transparency (a PNG stays a PNG).${Picture.NOTE}</p>
-    ${
-      d.kind === 'lights'
-        ? lightsPreviewHtml(d) + lightsGridHtml(d)
-        : `<div class="wrap"><table class="fields"><tr><th>${fuel ? 'Picture' : d.kind === 'tyres' ? 'Tyre' : d.kind === 'conditions' ? 'Item' : 'State'}</th><th>Preview</th><th></th></tr>${setSlots(
-            d
-          )
-            .map(([k, label]) => {
-              const img = (d.images || {})[k];
-              return `<tr><td>${esc(label)}</td><td>${img ? `<img class="optimg" src="${esc(img)}" alt="">` : d.kind === 'avatars' ? `<img class="optimg dim" src="${esc(Avatars.STANDARD[Number(k) - 1])}" alt=""> <span class="muted">the standard avatar</span>` : ['tyres', 'weather', 'conditions'].includes(d.kind) ? `<span class="setslot">${WxW.slotIcon(d.kind, k)}</span> <span class="muted">the standard picture</span>` : '<span class="muted">none</span>'}</td><td class="actions"><input type="file" accept="image/*" aria-label="Picture for ${esc(String(label))}" data-slot="${k}">${img ? ` <button class="btn" type="button" data-clear="${k}">Remove</button>` : ''}</td></tr>`;
-            })
-            .join('')}</table></div>`
-    }`;
+  // (2.4.0) Picture Bench: what the set is for as seven cards, the pictures as tiles you drop a file on (or click), and a big live preview on the right
+  const slots = d.kind === 'lights' ? [] : setSlots(d),
+    have = setCount(d),
+    all = setSlots(d).length;
+  const kinds = `<fieldset id="is-kind" class="ps-kinds"${imgEd.id ? ' disabled' : ''}><legend>What is it for?${imgEd.id ? ' <span class="muted">(fixed once a set is saved)</span>' : ''}</legend><div class="ps-kgrid">${SET_KINDS.map(
+    ([k, t]) =>
+      `<label class="ps-kind${k === d.kind ? ' on' : ''}" title="${esc(t)}"><input type="radio" name="is-kind" value="${k}"${k === d.kind ? ' checked' : ''}${imgEd.id ? ' disabled' : ''}><span class="ps-kico">${Icons.svg(PS_KIND_ICONS[k] || 'square', { size: 18, stroke: 1.8 })}</span><b>${esc(PS_KIND_NAMES[k] || t)}</b></label>`
+  ).join('')}</div></fieldset>`;
+  const tile = ([k, label], i) => {
+    const img = (d.images || {})[k],
+      std =
+        d.kind === 'avatars'
+          ? `<img class="ps-std" src="${esc(Avatars.STANDARD[Number(k) - 1])}" alt="">`
+          : ['tyres', 'weather', 'conditions'].includes(d.kind)
+            ? `<span class="ps-std"><span class="setslot">${WxW.slotIcon(d.kind, k)}</span></span>`
+            : '';
+    const sub = fuel
+      ? i === 0
+        ? 'Full'
+        : i === slots.length - 1
+          ? 'Empty'
+          : Math.round((100 * (slots.length - 1 - i)) / (slots.length - 1)) + '%'
+      : '';
+    return `<div class="ps-tile${img ? ' has' : ''}" data-drop="${esc(k)}"><label class="ps-pic" title="Choose or drop a picture for ${esc(String(label))}">${
+      img
+        ? `<img src="${esc(img)}" alt="">`
+        : `${std}<span class="ps-drop">${Icons.svg('arrow', { size: 14, stroke: 2 })}${std ? 'Drop your own' : 'Drop a picture<br>or click'}</span>`
+    }<input type="file" accept="image/*" aria-label="Picture for ${esc(String(label))}" data-slot="${k}"></label><div class="ps-lab"><b>${esc(fuel ? String(i + 1) : String(label))}</b>${sub ? `<span>${esc(sub)}</span>` : ''}${img ? `<button class="btn ghost icon sm" type="button" data-clear="${k}" title="Remove this picture" aria-label="Remove the picture of ${esc(String(label))}">${Icons.svg('trash', { size: 14, stroke: 1.8 })}</button>` : ''}</div></div>`;
+  };
+  const pv = () => {
+    if (d.kind === 'lights') return lightsPreviewHtml(d);
+    if (fuel) {
+      const n = Widgets.clampInt(d.steps, 2, 20, 10),
+        pct = imgEd.pvFuel ?? 62,
+        frac = pct / 100,
+        stepNo = Math.max(0, Math.min(n - 1, n - Math.ceil(frac * n - 1e-9))),
+        img = (d.images || [])[stepNo];
+      return `<div class="ps-big">${img ? `<img src="${esc(img)}" alt="">` : `<span class="ps-none">No picture ${stepNo + 1}: the widget shows the fuel number here.</span>`}</div><input type="range" id="is-fuelpct" min="0" max="100" value="${pct}" aria-label="Fuel left"><div class="ps-scale"><span>Empty</span><b>${pct}% left · picture ${stepNo + 1}</b><span>Full</span></div>`;
+    }
+    const keys = slots.map(x => x[0]),
+      cur = keys.includes(imgEd.pvSlot) ? imgEd.pvSlot : keys[0],
+      img = (d.images || {})[cur],
+      label = (slots.find(x => x[0] === cur) || [0, ''])[1];
+    const std =
+      d.kind === 'avatars'
+        ? `<img class="ps-bigstd" src="${esc(Avatars.STANDARD[Number(cur) - 1])}" alt="">`
+        : ['tyres', 'weather', 'conditions'].includes(d.kind)
+          ? `<span class="ps-bigstd">${WxW.slotIcon(d.kind, cur)}</span>`
+          : `<span class="ps-none">No picture: the widget shows "${esc(String(label))}" as text.</span>`;
+    return `<div class="ps-big">${img ? `<img src="${esc(img)}" alt="">` : std}</div><label class="ps-field">Show<select id="is-pv">${slots.map(([k, t]) => `<option value="${esc(k)}"${k === cur ? ' selected' : ''}>${esc(String(t))}</option>`).join('')}</select></label>`;
+  };
+  box.innerHTML = `<div class="ps-bench">${pitBoard({
+    cls: 'ps-pitboard',
+    back: 'Picture sets',
+    backId: 'is-back',
+    eyebrow: 'Picture set · ' + (PS_KIND_NAMES[d.kind] || d.kind).toLowerCase(),
+    name: `<input type="text" class="pb-name" id="is-name" value="${esc(d.name)}" maxlength="40" aria-label="Name">`,
+    msgId: 'is-msg',
+    undoId: 'is-undo',
+    redoId: 'is-redo',
+    saveId: 'is-save',
+    save: 'Save picture set'
+  })}<div class="ps-cols"><div class="ps-main">${kinds}
+    <div class="ps-head"><span class="ps-eye">Pictures</span>${fuel ? `<label class="ps-steps">How many<input type="number" id="is-steps" min="2" max="20" value="${Widgets.clampInt(d.steps, 2, 20, 10)}"></label>` : ''}<p class="ps-note">${fuel ? 'The first picture shows when the tank is full, the last when it is empty.' : d.kind === 'lights' ? 'Every light can have its own picture for every state of the race. A cell you leave empty uses the dimmed picture shown in it: the "All lights" picture of its row. Every row stands on its own: the Countdown pictures are only for the countdown, and a state with no picture is drawn as plain round lights (Lights off is for every light that is off, in every state). A light with no picture at all is drawn as a plain round light.' : d.kind === 'avatars' ? 'One avatar for each lane (up to 8). The Avatar widget shows the picture of the driver; a driver without a picture gets the avatar of the lane he or she drives in. A lane you leave empty uses the standard avatar shown dimmed in it.' : d.kind === 'tyres' ? 'One picture for each tyre. A tyre you leave empty is drawn in the colours of Formula 1 (the standard picture shown dimmed in it).' : d.kind === 'weather' ? 'One picture for each state of the weather. A state you leave empty is drawn (the standard picture is shown dimmed in it).' : d.kind === 'conditions' ? 'An icon for each item of the Track Conditions widget. An item you leave empty is drawn (the standard icon is shown dimmed in it). Draw the wind direction pointing up: it is turned to the direction the wind blows.' : 'A state without a picture shows its name as text.'} Pictures keep their transparency (a PNG stays a PNG).${Picture.NOTE}</p></div>
+    ${d.kind === 'lights' ? lightsGridHtml(d) : `<div class="ps-tiles">${slots.map(tile).join('')}</div>`}
+    <div class="ps-prog"><span>${have} of ${all} pictures</span><span class="ps-bar"><i style="width:${all ? Math.round((100 * have) / all) : 0}%"></i></span><span>${have >= all ? 'Complete' : 'Drop a file on a tile to fill it'}</span></div></div>
+    <aside class="ps-preview" aria-label="Preview"><header><strong>Live preview</strong></header><div id="is-pvbox">${pv()}</div></aside></div></div>`;
   // Undo and redo (a typed name is one step after a quiet moment; every other change is a step of its own)
   const U = draftUndo(imgEd, 'is', () => renderImageSetEditor(box)),
     mark = U.mark,
@@ -958,12 +1026,53 @@ function renderImageSetEditor(box) {
     d.name = e.target.value;
     mark();
   };
+  pbWatch(box, () => imgEd && imgEd.dirty);
+  const pvBox = $('is-pvbox');
+  if (pvBox)
+    pvBox.oninput = pvBox.onchange = e => {
+      if (e.target.id === 'is-fuelpct') {
+        // (only the picture and its words change while the slider is dragged: the slider itself stays, so the drag goes on)
+        imgEd.pvFuel = Number(e.target.value);
+        const tmp = document.createElement('div');
+        tmp.innerHTML = pv();
+        ['.ps-big', '.ps-scale'].forEach(q => {
+          const from = tmp.querySelector(q),
+            to = pvBox.querySelector(q);
+          if (from && to) to.innerHTML = from.innerHTML;
+        });
+      } else if (e.target.id === 'is-pv') {
+        imgEd.pvSlot = e.target.value;
+        renderImageSetEditor(box);
+      }
+    };
+  if (box.addEventListener && !box._psDrop) {
+    box._psDrop = true; // (one set of listeners for the box: they act on the editor that is open)
+    box.addEventListener('dragover', ev => {
+      const t = ev.target.closest && ev.target.closest('[data-drop]');
+      if (!t || !imgEd) return;
+      ev.preventDefault();
+      t.classList.add('over');
+    });
+    box.addEventListener('dragleave', ev => {
+      const t = ev.target.closest && ev.target.closest('[data-drop]');
+      if (t) t.classList.remove('over');
+    });
+    box.addEventListener('drop', ev => {
+      const t = ev.target.closest && ev.target.closest('[data-drop]');
+      const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (!t || !imgEd || !file) return;
+      ev.preventDefault();
+      t.classList.remove('over');
+      if (box.onchange) box.onchange({ target: { dataset: { slot: t.dataset.drop }, files: [file] } });
+    });
+  }
   if ($('is-prev'))
     $('is-prev').onchange = e => {
       imgEd.preview = e.target.value;
       renderImageSetEditor(box);
     };
   $('is-kind').onchange = e => {
+    if (!e.target.value || e.target.value === d.kind) return;
     d.kind = e.target.value;
     d.images = d.kind === 'fuel' ? [] : {};
     step();
