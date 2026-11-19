@@ -27,7 +27,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Page Note](#page-note) | The box under a page title that explains the page | Every Race Setup page |
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
 | [Gear Selector](#gear-selector) | A quiet segmented control | List / Grid, filters, choices in forms, inner tabs |
-| [Garage Card](#garage-card) | A picture card: picture edge to edge, title, detail rows, button foot | Database grid (tracks, cars, drivers…) |
+| [Garage Card](#garage-card) | A picture card: picture edge to edge, title, detail rows, button foot | Other picture lists (the Database lists are a [Garage](#garage) since 2.4.0) |
 | [Showroom Card](#showroom-card) | A card whose top is a real, scaled preview of the design it stands for | Layouts, row designs, charts, widgets, picture sets |
 | [Entry Card](#entry-card) | An icon card: tile, eyebrow, name, facts, "Used by", button foot | Race setups, race systems, rotations, championships |
 | [Replay Monitor](#replay-monitor) | Settings in folders on the left, a live preview of the real screen on the right | Race Results |
@@ -54,6 +54,8 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
 | [Status Lights](#status-lights) | The three lights of the main menu (Timing, Next race, Sharing) as one button; its drop-down is the check before the start | Main menu, every page |
 | [Setup Sheet](#setup-sheet) | The race setup form: the race in one line with chips, Set and Missing in the rail, six kinds, the tracks as cards, Start and flags, a system and its switch on one row | Race Setup › Edit |
+| [Garage](#garage) | The Database lists: a car drawn in its livery, a driver's helmet and callsign, a track with its lanes; figures from the races; filters with counts, sort, ticks; no red on a card | Database › Slotcars, Drivers, Tracks, Teams |
+| [Build Sheet](#build-sheet) | The car editor: the drawn car on top, a rail of sections, the gearing worked out, a service meter and log, More for the rest | Database › Slotcars › Edit |
 | [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
@@ -1747,6 +1749,62 @@ html .rs-quick .btn{height:28px;border-radius:999px;font:500 12.5px 'SF Roboto M
 
 ---
 
+## Garage
+
+The Database lists of tracks, drivers, teams and slotcars (`renderer/garage.js` makes the markup, `renderer/database/manager.js` draws it,
+`renderer/database/garageactions.js` does what the menus do; styles under `.gx-`). It replaces the [Garage Card](#garage-card) of these lists and their
+letter tiles. Nothing changed in how a record is stored; the livery colours and the service log of a car are kept by Timing (`settings.garage.cars`).
+
+- **On top**: what is in the list in figures (*48 cars · 23,501 laps driven · 3 due for a service*), in Roboto Mono with words after them; for slotcars
+  the *Slotcar library · Dealership cars* switch on the right.
+- **The Control Strip** (`.gx-strip`): Add (the one accent), the page's own import (*Import a club list*, *Import from Circuit*), the search, the
+  **filters as chips with their counts** (*Service due* with an amber dot), *Sort*, Cards or List as a [Gear Selector](#gear-selector), and **⋯** for
+  Extra fields, View settings and Refresh.
+- **A card** (`.gx-card`): the picture area shows the thing's own photo, else its **drawing**: a car seen from above in its livery with its number
+  on a roundel, a driver's helmet in their colour with the callsign big in Roboto Mono and the country, a track as an oval with its lanes in the lane
+  colours. Badges on the picture (class; *Service due* amber, *Retired*, *Virtual rival* purple, *Raced most*). Under it a small caps line, the
+  name in Barlow, and **three figures** from the races (laps, best lap in purple, raced; races, wins, best; record, by, races). The foot has Edit
+  and **⋯** (no red on a card: Delete and Archive are in the menu). A driver card has a line in the driver's colour under the picture.
+- **The list** (`.gx-table`): a tick, a small drawing, the name, the columns chosen in View settings, the three figures, Edit and ⋯. Ticked rows
+  get a bar over the list (*2 chosen · Set class… · Mark serviced · Archive · Clear*).
+- **Empty** (`.gx-empty`): a dashed card with a big icon, what the thing is, and Add (and the import).
+
+```css
+html .gx-strip{display:flex;gap:8px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html .gx-chip.on{border-color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+html .gx-pic{aspect-ratio:16/8.4;background:radial-gradient(120% 90% at 50% 100%,color-mix(in srgb,var(--ink) 9%,var(--panel)),color-mix(in srgb,var(--bg) 70%,var(--panel)))}
+html .gx-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line)}
+html .gx-stats b.fl{color:#b48cff}
+html .gx-menu{position:fixed;padding:5px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+```
+
+---
+
+## Build Sheet
+
+The car editor (`renderer/paddockshared.js` for a car of the shared library; the local form is a [Tech Sheet](#tech-sheet) by `schema.js` slotcars
+`rail`; styles under `.bs-`).
+
+- **The header**: the drawn car (its livery colours, its number), *Edit car · shared library* as a kicker, the name in Barlow (it follows the name
+  field), pills (class, scale, number) and a state on the right (*Ready to race* green, *Service due* amber, *Out for repair* or *Archived* grey).
+- **The rail**: *This car*: The car · Motor and gearing · In the race · Service, each with a one-line note in Roboto Mono (*12:36 · 3.00 : 1 · 21k rpm*,
+  *Due now · 1,204 laps*); *Only if you need it*: Extra fields.
+- **The sections** are boxes with a Barlow title and a question as subtitle, fields in a 6-column grid with the unit in the box (*teeth*, *mm*, *rpm*).
+  *Livery colours* as swatches, *Can it race?* as a Gear Selector (Available · Kept for one driver · Out for repair). Under the gearing **three tiles
+  worked out**: gear ratio, one motor turn, top speed in theory. *Service*: a meter of the laps since the last service (green, amber when due),
+  the counters, a note for the log, *Mark serviced now* (amber outline), and the service log.
+- **The foot**: a note, **More** (Archive car, Reload current record, Save history), Cancel and Save.
+
+```css
+html dialog.bs-dialog{width:min(1180px,calc(100vw - 48px));height:min(760px,calc(100vh - 40px));padding:0;border-radius:16px}
+html .bs-hd{display:grid;grid-template-columns:170px minmax(0,1fr) auto;gap:18px;padding:14px 18px}
+html .bs-g{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px 14px}
+html .bs-tile b{font:700 20px 'SF Roboto Mono',Consolas,monospace}
+html .bs-meter.due{border-color:color-mix(in srgb,#f2b705 40%,var(--line))}
+```
+
+---
+
 ## Race Control
 
 The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
@@ -2071,3 +2129,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Race Control | New: the bar on top of the race window (state, flag stripe, clock, the controls whatever the layout has, Tools), a track call with Resume racing, Give or Take a lap and a note, the order as a timing tower, the race screen as a monitor (Hide, S, M, L); the default layout has eight lanes and a header row |
 | 2026-11 | Status Lights | New: the lights of the main menu are one button (Timing, Next race, Sharing) with the check before the start in a drop-down; the strip of chips on Home is in it |
 | 2026-11 | Setup Sheet | The race setup form: the race in one line with chips, Set and Missing instead of dots, six kinds, the tracks as cards, quick picks, Start and flags with Track Call together, the heat scoring in Heats, a system and On at the start on one row |
+| 2026-11 | Garage | New: the Database lists as Garage cards (drawn cars, helmets, tracks, figures from the races), a Control Strip with filters, sort and ⋯, a list with ticks and a bar for many at once, empty cards |
+| 2026-11 | Build Sheet | New: the car editor with the drawn car, a rail, the gearing worked out, livery colours, Can it race?, a service meter and log, More for Archive, Reload and Save history |

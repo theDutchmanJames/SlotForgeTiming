@@ -258,6 +258,7 @@ module.exports = [
   ['raceover.test.js', 'node-test'],
   ['racecontrol.test.js', 'node-test'],
   ['racecheck.test.js', 'node-test'],
+  ['garage.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],
@@ -303,4 +304,5 @@ module.exports = [
   ['interface.test.js', 'node-test'],
   ['performance.test.js', 'node-test'],
   ['library-move.test.js', 'node-test'],
+  ['mergedrivers.test.js', 'node-test'],
 ];

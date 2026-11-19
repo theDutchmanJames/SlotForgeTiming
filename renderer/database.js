@@ -215,13 +215,18 @@ function openForm(e, item, preset) {
       : s.used && Array.isArray(state.refs[s.used.entity])
         ? state.refs[s.used.entity].filter(r => item && r[s.used.key] === item.id).map(r => String(r.name || '').trim() || '(unnamed)')
         : null; // (a system: the race setups that choose it)
-  const tileName = v => (e === 'racesetups' ? SETUP_KIND_ICON[v.sessionType] || 'racesetups' : (SETUP_LOOK[e] || [])[0] || 'racesetups'); // (the picture in the header: the kind of a race setup, the picture of a system)
+  const tileName = v =>
+    e === 'racesetups'
+      ? SETUP_KIND_ICON[v.sessionType] || 'racesetups'
+      : e === 'slotcars'
+        ? 'car'
+        : (SETUP_LOOK[e] || [])[0] || 'racesetups'; // (the picture in the header: the kind of a race setup, the picture of a system)
   const frameWords =
     e === 'racesetups'
       ? {}
       : {
           navLabel: `The sections of this ${s.label.toLowerCase()}`,
-          caption: 'This system',
+          caption: e === 'slotcars' ? 'This car' : 'This system',
           save: `Save ${s.label.toLowerCase()}`,
           usedNone: 'Not used yet. Choose it under Rules and systems in a race setup.',
           usedIcon: 'racesetups'
@@ -258,7 +263,7 @@ function openForm(e, item, preset) {
         used: usedBy,
         ...frameWords,
         tile: Icons.svg(tileName(e === 'racesetups' ? { sessionType: val(fieldOf('sessionType')) } : {}), { size: 26, stroke: 1.6 }),
-        name: one(nameField),
+        name: nameField ? one(nameField) : '',
         sections: sections.map(x => ({
           id: x.id,
           title: x.title,
@@ -344,8 +349,8 @@ function openForm(e, item, preset) {
       return;
     }
     const lanes = Number(track.lanes) > 0 ? `${track.lanes} ${Number(track.lanes) === 1 ? 'lane' : 'lanes'}` : 'Lane count not set';
-    const pic = track.image
-      ? `<img src="${esc(track.image)}" alt="">`
+    const pic = track.picture
+      ? `<img src="${esc(track.picture)}" alt="">`
       : `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span>`;
     box.innerHTML = `${pic}<p><b>${esc(track.name || 'Unnamed track')}</b><small>${esc(lanes)}${track.length ? ` · ${esc(Distance.text(track.length, dUnit()))}` : ''}</small></p>`;
     drawTrackCards();
@@ -371,7 +376,7 @@ function openForm(e, item, preset) {
     const html = (state.refs.tracks || [])
       .map(t => {
         const n = Number(t.lanes) > 0 ? Number(t.lanes) : 0;
-        return `<button type="button" class="rs-track${t.id === now ? ' on' : ''}" data-trackpick="${esc(t.id)}" aria-pressed="${t.id === now}">${t.image ? `<img src="${esc(t.image)}" alt="">` : oval(n)}<span><b>${esc(t.name || 'Unnamed track')}</b><small>${n ? `${n} ${n === 1 ? 'lane' : 'lanes'}` : 'lanes not set'}${t.length ? ' · ' + esc(Distance.text(t.length, dUnit())) : ''}</small></span></button>`;
+        return `<button type="button" class="rs-track${t.id === now ? ' on' : ''}" data-trackpick="${esc(t.id)}" aria-pressed="${t.id === now}">${t.picture ? `<img src="${esc(t.picture)}" alt="">` : oval(n)}<span><b>${esc(t.name || 'Unnamed track')}</b><small>${n ? `${n} ${n === 1 ? 'lane' : 'lanes'}` : 'lanes not set'}${t.length ? ' · ' + esc(Distance.text(t.length, dUnit())) : ''}</small></span></button>`;
       })
       .join('');
     if (grid.innerHTML !== html) grid.innerHTML = html;
@@ -510,6 +515,30 @@ function openForm(e, item, preset) {
   fields.forEach(f => {
     if (!f.custom) defaultsOf[f.key] = f.default;
   });
+  // (2.4.0, "Build Sheet") a car in one line: its name, scale, number and gearing; ready to race once it has a name
+  const carSheet = v => {
+    const t = titleOf(e, v),
+      gear = typeof Garage !== 'undefined' ? Garage.gearing({ gearing: v.gearing }, v.scale) : null,
+      pills = [v.scale, v.number ? '#' + v.number : '', gear ? gear.ratioText : '', v.availability || '']
+        .filter(Boolean)
+        .map(text => ({ text, tone: '' }));
+    const say = t
+      ? [
+          { t: t, b: true },
+          {
+            t:
+              [v.scale ? ', ' + v.scale : '', v.motor ? ', with a ' + v.motor : '', gear ? `, geared ${gear.ratioText}` : ''].join('') + '.'
+          }
+        ]
+      : [{ t: 'Give the car a brand or a model, so it can be found on the grid.' }];
+    return {
+      pills,
+      say,
+      ready: t ? { ok: true, text: v.availability ? v.availability : 'Ready to race' } : { ok: false, text: 'Give it a name' },
+      notes: {},
+      strip: null
+    };
+  };
   const railDraw = (v, rctx, notes) => {
     if (!sections) return;
     const info =
@@ -562,7 +591,7 @@ function openForm(e, item, preset) {
           : e === 'safetycarsystems'
             ? { track: (state.refs.tracks || []).find(t => t.id === v.safetyTrack) || null }
             : {};
-    const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : SystemWords.describe(e, v, rctx);
+    const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : e === 'slotcars' ? carSheet(v) : SystemWords.describe(e, v, rctx);
     const pills = byId('rspills'),
       ready = byId('rsready'),
       tile = byId('rstile');
@@ -571,7 +600,19 @@ function openForm(e, item, preset) {
       ready.className = 'rsready' + (d.ready.ok ? ' ok' : '');
       ready.innerHTML = `${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}`;
     }
-    if (tile) tile.innerHTML = Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
+    if (tile)
+      tile.innerHTML =
+        e === 'slotcars' && typeof Garage !== 'undefined'
+          ? Garage.carSvg(
+              Garage.carColors(
+                { id: item?.id || 'new', name: titleOf(e, v) },
+                v.colour ? [v.colour] : (item && GarageLooks.of(item.id).colors) || []
+              ),
+              Garage.numberOf(v, titleOf(e, v)),
+              'form'
+            )
+          : Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
+    if (tile) tile.classList.toggle('rscar', e === 'slotcars');
     const bar = byId('rs-strip');
     if (bar) bar.innerHTML = RailForm.strip(d.strip); // (the bar of the levels of a damage system)
     // (2.4.0, SlotForgeRestyle.md "Setup Sheet") a race setup in one line, with chips: ready or not, Track Call, the systems, the screens and the sound
@@ -1535,6 +1576,8 @@ function openForm(e, item, preset) {
     saving = true; // (a second click while the first is being written would add the row twice)
     try {
       await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...built, custom }));
+      if (e === 'slotcars' && item && serviceReset && typeof GarageLooks !== 'undefined')
+        await GarageLooks.log(item.id, { laps: CarStats.sinceOf(item) }).catch(() => {}); // (2.4.0: a line in the service log of the car)
       dlg.close();
     } catch (x) {
       byId('err').textContent = 'It could not be saved: ' + (x && x.message ? x.message : x);

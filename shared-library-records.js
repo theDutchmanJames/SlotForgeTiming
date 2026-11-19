@@ -457,6 +457,18 @@ function wrap(base, client, options = {}) {
       client.scheduleHistory();
       return value;
     },
+    // (2.4) drivers are not library records: the merge is the base's, after the shared races it changes are prepared as for a removal
+    ...(typeof base.mergeDrivers === 'function'
+      ? {
+          async mergeDrivers(fromId, intoId) {
+            for (const sid of await base.affectedSharedSessions('drivers', fromId))
+              await require('./shared-library-adopted-history').prepare(base, client, sid);
+            const value = await base.mergeDrivers(fromId, intoId);
+            client.scheduleHistory();
+            return value;
+          }
+        }
+      : {}),
     async saveSession(session, laps) {
       const id = await base.saveSession(session, laps);
       client.scheduleHistory();

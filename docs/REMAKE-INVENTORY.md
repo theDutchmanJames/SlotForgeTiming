@@ -191,6 +191,6 @@ shell, one empty-state card, one rule for red, and settings in tiers (everyday f
 2. Race window during the race (#2): one control strip, no duplicate controls, a board that doesn't overlap itself.
 3. Race Setup editor and start checks (#3), with settings in tiers.
 4. The shared fixes (explainer, editor shell, empty state, red, tiers), so every later remake starts from them.
-5. Database lists and the Car editor, then Results and Records (#8).
+5. Database lists and the Car editor (**done, 2.4.0, "Garage" and "Build Sheet"**), then Results and Records (#8).
 6. Timing Hardware with DS and the Lane Check (#4, #5).
 7. Audio (#6), Widgets (#7), Paddock (#9), Calculations, then the Tier 2 reworks.

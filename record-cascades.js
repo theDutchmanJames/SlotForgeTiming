@@ -106,4 +106,77 @@ function remove(d, entity, id, removeLapsWhere) {
       if (field.type === 'ref' && field.ref === entity) for (const row of d[table] || []) if (row[field.key] === id) row[field.key] = '';
   d[entity] = d[entity].filter(r => r.id !== id);
 }
-module.exports = { remove, dependencies };
+// (2.4) One driver merged into another: the kept driver takes over every lap, result, team place, roster place and class of the duplicate,
+// then the duplicate is removed. relabelLapsWhere(pred, patch) lets the backend change the laps so its own caches stay right.
+function merge(d, fromId, intoId, relabelLapsWhere) {
+  if (typeof fromId !== 'string' || !fromId || typeof intoId !== 'string' || !intoId) throw new Error('Choose two drivers to merge.');
+  if (fromId === intoId) throw new Error('A driver cannot be merged into itself.');
+  const from = (d.drivers || []).find(r => r.id === fromId),
+    into = (d.drivers || []).find(r => r.id === intoId);
+  if (!from) throw new Error('The driver to merge was not found.');
+  if (!into) throw new Error('The driver to keep was not found.');
+  const name = into.name;
+  // (a session row is put back field by field when a merge fails: its standings and journal get new objects, never changed in place)
+  const relabel = row => {
+    if (!row || row.driverId !== fromId) return row;
+    const next = { ...row, driverId: intoId };
+    if (Object.hasOwn(row, 'driverName') && name !== undefined) next.driverName = name;
+    return next;
+  };
+  const named = e => e.driverId === fromId || (e.changes || []).some(change => change.driverId === fromId);
+  for (const s of d.sessions || []) {
+    const affected =
+      (d.laps || []).some(l => l.sessionId === s.id && l.driverId === fromId) ||
+      (s.standings || []).some(row => row.driverId === fromId) ||
+      (s.paddockJournal?.heats || []).some(h => (h.entries || []).some(named));
+    if (affected) PaddockRecords.withdraw(d, s, 'Timing records were changed in this session.');
+  }
+  relabelLapsWhere(l => l.driverId === fromId, Object.assign({ driverId: intoId }, name !== undefined ? { driverName: name } : {}));
+  for (const s of d.sessions || []) {
+    if (Array.isArray(s.standings) && s.standings.some(row => row.driverId === fromId)) s.standings = s.standings.map(relabel);
+    const heats = s.paddockJournal?.heats;
+    if (Array.isArray(heats) && heats.some(h => (h.entries || []).some(named)))
+      s.paddockJournal = {
+        ...s.paddockJournal,
+        heats: heats.map(h =>
+          Array.isArray(h.entries)
+            ? {
+                ...h,
+                entries: h.entries.map(e => {
+                  const next = relabel(e);
+                  return Array.isArray(e.changes) ? { ...next, changes: e.changes.map(relabel) } : next;
+                })
+              }
+            : h
+        )
+      };
+  }
+  (d.teams || []).forEach(t => {
+    if (!Array.isArray(t.drivers) || !t.drivers.includes(fromId)) return;
+    const out = [];
+    for (const x of t.drivers.map(x => (x === fromId ? intoId : x))) if (x !== intoId || !out.includes(x)) out.push(x);
+    t.drivers = out;
+  });
+  (d.championships || []).forEach(c => {
+    if (!Array.isArray(c.roster) || !c.roster.some(x => x.driver === fromId)) return;
+    const kept = c.roster.some(x => x.driver === intoId);
+    c.roster = kept ? c.roster.filter(x => x.driver !== fromId) : c.roster;
+    c.roster.forEach(x => {
+      if (x.driver === fromId) x.driver = intoId;
+    });
+  });
+  (d.multiclasssystems || []).forEach(p => {
+    if (!Array.isArray(p.driverClasses) || !p.driverClasses.some(a => a.driverId === fromId)) return;
+    const kept = p.driverClasses.some(a => a.driverId === intoId);
+    p.driverClasses = kept ? p.driverClasses.filter(a => a.driverId !== fromId) : p.driverClasses;
+    p.driverClasses.forEach(a => {
+      if (a.driverId === fromId) a.driverId = intoId;
+    });
+  });
+  for (const [table, definition] of Object.entries(schema))
+    for (const field of definition.fields || [])
+      if (field.type === 'ref' && field.ref === 'drivers')
+        for (const row of d[table] || []) if (row[field.key] === fromId) row[field.key] = intoId;
+  d.drivers = d.drivers.filter(r => r.id !== fromId);
+}
+module.exports = { remove, merge, dependencies };

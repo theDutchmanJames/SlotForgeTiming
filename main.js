@@ -877,6 +877,11 @@ function registerDatabaseHandlers() {
   });
   ipcMain.handle('db:update', (_e, entity, id, patch) => records.update(entity, id, patch));
   ipcMain.handle('db:remove', (_e, entity, id) => records.remove(entity, id));
+  ipcMain.handle('db:merge-drivers', (_e, from, into) =>
+    typeof records.mergeDrivers === 'function'
+      ? records.mergeDrivers(from, into)
+      : { unsupported: true, reason: 'Merging drivers needs the standard database. It is not available with SQLite storage yet.' }
+  );
   ipcMain.handle('db:linked', (_e, entity, id) => records.linkedLaps(entity, id));
 }
 // resource events, and saving or removing a session

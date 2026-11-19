@@ -135,7 +135,7 @@ async function renderHome() {
     g => g.items
   );
   const referenceRevision = entity => referenceGroups[entities.indexOf(entity)]?.revision;
-  const drivers = allDrivers.filter(d => d.driverType !== 'virtual');
+  const drivers = allDrivers.filter(d => d.driverType !== 'virtual' && !d.retired); // (2.4.0: a retired driver keeps their results but is not offered for a race)
   const isRival = row => VirtualRival.isDriver(row, allDrivers);
   const [multiProfiles, classDefs] = await Promise.all(['multiclasssystems', 'raceclasses'].map(e => api.list(e)));
   // Shared choices remain metadata only until selected; cache a signed racing profile before saving a local car ID.

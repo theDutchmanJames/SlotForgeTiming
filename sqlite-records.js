@@ -266,10 +266,66 @@ function removeRecord(s, { entity: table, recordId, expectedRevision }) {
   s.checkpoint('cascade-written');
   return { recordId, deleted: true };
 }
+// (2.4) One driver merged into another, with the rules of the JSON database (record-cascades.merge). A relabelled lap is put again at its
+// own place (replace keeps lap_index and the derived tables right); the cars stay the same, so their lap counters do not change.
+function mergeDrivers(s, { fromId, intoId, expectedFromRevision, expectedIntoRevision }) {
+  if (typeof fromId !== 'string' || !fromId || typeof intoId !== 'string' || !intoId) throw Error('Choose two drivers to merge.');
+  if (fromId === intoId) throw Error('A driver cannot be merged into itself.');
+  if (!s.get('drivers', fromId)) throw Error('The driver to merge was not found.');
+  if (!s.get('drivers', intoId)) throw Error('The driver to keep was not found.');
+  s.expect('drivers', fromId, expectedFromRevision);
+  s.expect('drivers', intoId, expectedIntoRevision);
+  const data = Object.fromEntries(Object.keys(schema).map(k => [k, []])),
+    before = new Map();
+  for (const dep of Cascades.dependencies('drivers')) {
+    if (dep === 'laps') continue;
+    data[dep] = s
+      .statement('SELECT id FROM records WHERE entity=? ORDER BY ordinal')
+      .all(dep)
+      .map(r => s.get(dep, r.id, ['sessions', 'championships', 'multiclasssystems'].includes(dep)).value);
+    before.set(dep, structuredClone(data[dep]));
+  }
+  data.laps = s
+    .statement("SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.driverId=? ORDER BY r.ordinal")
+    .all(fromId)
+    .map(r => s.get('laps', r.id, true).value);
+  const state = s.paddockState();
+  data.paddock = state.paddock;
+  const paddockBefore = JSON.stringify(data.paddock);
+  let laps = 0;
+  Cascades.merge(data, fromId, intoId, (predicate, patch) => {
+    data.laps = data.laps.map(lap => {
+      if (!predicate(lap)) return lap;
+      const next = { ...lap, driverId: patch.driverId };
+      if (Object.hasOwn(lap, 'driverName') && Object.hasOwn(patch, 'driverName')) next.driverName = patch.driverName;
+      s.replace('laps', lap.id, next);
+      laps++;
+      return next;
+    });
+  });
+  for (const [dep, oldRows] of before) {
+    const survivors = new Map(data[dep].map(row => [row.id, row]));
+    for (const old of oldRows) {
+      const next = survivors.get(old.id);
+      if (!next) {
+        s.erase(dep, old.id);
+        continue;
+      }
+      for (const key of new Set([...Object.keys(old), ...Object.keys(next)])) {
+        if (JSON.stringify(old[key]) === JSON.stringify(next[key])) continue;
+        setPath(s, dep, old.id, [key], next[key], !Object.hasOwn(next, key));
+      }
+    }
+  }
+  s.savePaddock({ paddock: data.paddock }, paddockBefore);
+  s.checkpoint('cascade-written');
+  return { merged: true, fromId, intoId, laps };
+}
 const commands = {
   addRecord,
   updateRecord,
   removeRecord,
+  mergeDrivers,
   resetService,
   setSettings,
   addCustomDefinition,

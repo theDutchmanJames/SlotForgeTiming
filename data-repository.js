@@ -147,6 +147,9 @@ class DataRepository {
     if (entity === 'sessions') return this.removeSession(id);
     await this.undone(() => this.db.remove(entity, id));
   } // (a session takes its laps and the cars' lap counters with it, as on SQLite)
+  async mergeDrivers(fromId, intoId) {
+    return this.undone(() => this.db.mergeDrivers(fromId, intoId));
+  }
   async saveSession(session, laps) {
     if (session.resourceRunId) {
       const resources = this.getResourceStore();

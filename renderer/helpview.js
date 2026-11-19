@@ -79,6 +79,7 @@
       'Database & app settings',
       [
         'database',
+        'garage',
         'paddock',
         'paddocklocal',
         'paddocksharededit',

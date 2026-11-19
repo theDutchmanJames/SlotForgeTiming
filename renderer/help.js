@@ -212,6 +212,20 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'garage',
+          title: 'Database lists',
+          note: 'Cards, filters, retire, merge and a club list',
+          body: `
+        <ul>
+          <li><b>The cards</b>: a car without a photo is drawn in its livery with its number, a driver has a helmet and their callsign, a track is drawn with its lanes. Under it are figures from your races: laps, best lap, last raced; races and wins; the record and who holds it.</li>
+          <li><b>The bar on top</b>: Add, the search, filters with counts (Service due, Retired, the lanes), <b>Sort</b>, Cards or List, and <b>⋯</b> for Extra fields, View settings and Refresh.</li>
+          <li><b>⋯ on a card</b>: a car can be <b>duplicated</b> (no number, no laps) or <b>marked serviced</b>; a driver can be <b>retired</b> (their results stay; Home no longer offers them) or <b>merged</b> into another driver who is in the list twice.</li>
+          <li>In the <b>List</b>, tick rows to set the class of cars, mark them serviced, archive them, or retire drivers.</li>
+          <li><b>Import a club list</b> (Drivers) reads a CSV file: Name, Nickname, Callsign, Country. Names already there are skipped.</li>
+          <li>The <b>car editor</b>: The car (livery colours, Can it race?), Motor and gearing (ratio, one motor turn and top speed worked out), In the race, Service (a meter and a log). Archive, Reload and Save history are under <b>More</b>.</li>
+        </ul>`
+        },
+        {
           id: 'trackbuilder',
           title: 'Circuit designs',
           note: 'Import a circuit and map it to Live Track',

@@ -33,6 +33,7 @@ async function mountManagerPage(box, e) {
   box.onkeydown = null;
   box.innerHTML = '<p role="status" aria-live="polite">Loading ' + esc(state.schema[e]?.plural || 'database') + '…</p>';
   let s = state.schema[e];
+  const garage = typeof Garage !== 'undefined' && VIEW_ENTITIES.includes(e); // (2.4.0, "Garage": tracks, drivers, teams and slotcars as cards that say what they are)
   const direct = e === 'slotcars' && api.libraryStatus ? (await api.libraryStatus()).available : false;
   if (direct && !s.fields.some(f => f.key === 'name'))
     s = { ...s, fields: [{ key: 'name', label: 'Car name', type: 'text' }, ...s.fields] };
@@ -77,14 +78,18 @@ async function mountManagerPage(box, e) {
     pageNotice = '';
   async function fetchPage() {
     try {
-      return await api.catalogue(e, { search: paging.search, limit: 48, cursor: paging.cursors[paging.index] });
+      return await api.catalogue(e, {
+        search: paging.search,
+        limit: garage && e !== 'slotcars' ? 100 : 48,
+        cursor: paging.cursors[paging.index]
+      });
     } catch (error) {
       if (run !== subRun) return null;
       if (!/catalogue changed/i.test(error.message) || paging.index === 0) throw error;
       paging.cursors = [null];
       paging.index = 0;
       pageNotice = 'The catalogue changed. Showing the first page.';
-      return api.catalogue(e, { search: paging.search, limit: 48 });
+      return api.catalogue(e, { search: paging.search, limit: garage && e !== 'slotcars' ? 100 : 48 });
     }
   }
   const [listed, custom] = await Promise.all([paged ? fetchPage() : api.list(e), s.extra === false ? [] : api.customFields(e)]);
@@ -107,6 +112,8 @@ async function mountManagerPage(box, e) {
   if (e === 'slotcars') state.refs.tyrewearsystems = await api.list('tyrewearsystems');
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
   if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
+  // the figures of the cards: races, wins, best laps and records, from the saved races
+  const gx = garage ? garageContext(e, items, Garage.statsOf(await api.list('sessions').catch(() => [])), direct) : null;
   if (run !== subRun) return;
   let detailRequest = 0,
     pagingBusy = false,
@@ -150,14 +157,17 @@ async function mountManagerPage(box, e) {
   const customCand = f => ({ key: 'custom:' + f.id, label: f.label, custom: f });
   const listCands = !viewable
     ? null
-    : [...s.fields.map(f => ({ key: f.key, label: fl(f), on: true, field: f })), ...custom.map(f => ({ ...customCand(f), on: true }))];
+    : [
+        ...s.fields.map(f => ({ key: f.key, label: fl(f), on: !garage, field: f })),
+        ...custom.map(f => ({ ...customCand(f), on: !garage }))
+      ]; // (a Garage list has its figures; more columns are chosen in View settings)
   const gridCands = !viewable
     ? null
     : [
         ...cardKeys
           .map(k => s.fields.find(f => f.key === k))
           .filter(Boolean)
-          .map(f => ({ key: f.key, label: fl(f), on: true, field: f })),
+          .map(f => ({ key: f.key, label: fl(f), on: !garage, field: f })),
         ...s.fields
           .filter(f => !['image', 'gallery'].includes(f.type) && !(s.title || []).includes(f.key) && !cardKeys.includes(f.key))
           .map(f => ({ key: f.key, label: fl(f), on: false, field: f })),
@@ -321,34 +331,122 @@ async function mountManagerPage(box, e) {
             ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>`
             : tableHtml(rsShown, cols)
           : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
-  box.innerHTML =
-    (e === 'slotcars'
-      ? '<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">' +
-        (direct ? 'Slotcar library' : 'Local Database') +
-        '</button><button class="btn" id="paddock-view" aria-pressed="false">Dealership Cars</button></div></div>'
-      : '') +
-    `<div class="row${e === 'racesetups' ? ' rstoolbar' : paged ? ' catalogue-toolbar' : ''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
+  // (2.4.0) a Garage list: the figures on top, the Control Strip, the cards or the rows, the empty card
+  const gxFilters = garage ? Garage.filters(e, items, gx) : [];
+  const gxFilter = garage ? (gxFilters.some(f => f.id === garageView.filter[e]) ? garageView.filter[e] : gxFilters[0].id) : '';
+  const gxSort = garage ? garageView.sort[e] || 'name' : 'name';
+  const gxShown = garage ? Garage.sortItems(e, gxSort, Garage.filterItems(e, gxFilter, items, gx), gx) : [];
+  if (garage && !garageView.picked.has(e)) garageView.picked.set(e, new Set());
+  const gxPicked = garage ? garageView.picked.get(e) : null;
+  if (gxPicked) for (const id of [...gxPicked]) if (!items.some(i => i.id === id)) gxPicked.delete(id);
+  const gxPicture = i => {
+    const img = s.image && i[s.image],
+      frame = s.image && i[s.image + 'Frame'];
+    return img?._cataloguePicture
+      ? catalogueImage(img, '', frame)
+      : img
+        ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">`
+        : '';
+  };
+  const gxDetails = i =>
+    !gridCands
+      ? ''
+      : gridCands
+          .filter(c => shownKeys.includes(c.key))
+          .map(c => {
+            const v = candValue(c, i);
+            return v === undefined || v === null || v === ''
+              ? ''
+              : `<div class="gd"><span class="muted">${esc(c.label)}</span> ${candHtml(c, v)}</div>`;
+          })
+          .join('');
+  const gxCols =
+    garage && mode === 'list' && listCands
+      ? listCands.filter(
+          c =>
+            shownKeys.includes(c.key) &&
+            !['image', 'gallery'].includes(c.field && c.field.type) &&
+            !(c.field && (c.field.key === 'name' || (s.title || []).includes(c.field.key)))
+        )
+      : [];
+  const gxMark = i =>
+    e === 'slotcars' && i.paddock
+      ? `<span class="badge paddock-source" title="Details managed in SlotForge Paddock">Paddock${i.paddock.archived ? ' · unavailable' : ''}</span>`
+      : '';
+  const gxBody = !garage
+    ? ''
+    : !items.length
+      ? Garage.emptyHtml(e, { searching: paging.search, plural: s.plural.toLowerCase() })
+      : !gxShown.length
+        ? Garage.emptyHtml(e, { filtered: (gxFilters.find(f => f.id === gxFilter) || {}).label, plural: s.plural.toLowerCase() })
+        : mode === 'grid'
+          ? `<div class="gx-grid">${gxShown.map(i => Garage.cardHtml(e, i, gx, { picture: gxPicture(i), details: gxDetails(i), mark: gxMark(i) })).join('')}</div>`
+          : `${Garage.bulkHtml(e, gxPicked.size, { direct })}<div class="gx-table" role="table" ${gxCols.length ? `style="grid-template-columns:28px 76px minmax(180px,2.2fr) repeat(${gxCols.length},minmax(70px,1fr)) repeat(3,minmax(64px,.8fr)) 112px"` : ''}>${Garage.rowHead(
+              e,
+              gxCols,
+              gxShown.length > 0 && gxShown.every(i => gxPicked.has(i.id))
+            )}${gxShown
+              .map(i =>
+                Garage.rowHtml(e, i, gx, {
+                  picture: gxPicture(i),
+                  picked: gxPicked.has(i.id),
+                  cells: gxCols.map(c => candHtml(c, candValue(c, i)))
+                })
+              )
+              .join('')}</div>`;
+  const gxSource =
+    e === 'slotcars'
+      ? `<span class="gx-gear gx-source" role="group" aria-label="Car database"><button type="button" class="on" aria-pressed="true">${direct ? 'Slotcar library' : 'Local database'}</button><button type="button" id="paddock-view" aria-pressed="false">Dealership cars</button></span>`
+      : '';
+  if (garage)
+    box.innerHTML = `<div class="gx"><div class="gx-top">${Garage.summary(e, items, gx)}${gxSource}</div>${Garage.stripHtml({
+      e,
+      label: s.label.toLowerCase(),
+      plural: s.plural.toLowerCase(),
+      placeholder: { slotcars: 'Find a car, a make or a number', drivers: 'Find a driver', tracks: 'Find a track', teams: 'Find a team' }[
+        e
+      ],
+      search: paging.search,
+      filters: gxFilters,
+      filter: gxFilter,
+      sort: gxSort,
+      mode
+    })}${bar}${gxBody}</div>`;
+  else
+    box.innerHTML =
+      (e === 'slotcars'
+        ? '<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">' +
+          (direct ? 'Slotcar library' : 'Local Database') +
+          '</button><button class="btn" id="paddock-view" aria-pressed="false">Dealership Cars</button></div></div>'
+        : '') +
+      `<div class="row${e === 'racesetups' ? ' rstoolbar' : paged ? ' catalogue-toolbar' : ''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
       ${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn ghost" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${paged ? '<div class="catalogue-controls"><div class="catalogue-tools">' : ''}${toggle}${paged ? '</div></div>' : ''}</div>${bar}` +
-    (e === 'racesetups'
-      ? rsBody
-      : items.length && mode === 'grid'
-        ? sysLook
-          ? `<div class="rscards syscards">${items.map(sysCard).join('')}</div>`
-          : gridHtml(items)
-        : items.length
-          ? tableHtml(items, viewCols || cols)
-          : `<p class="muted">${paged && paging.search ? 'No matching ' + esc(s.plural.toLowerCase()) + '.' : `No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.`}</p>`);
+      (e === 'racesetups'
+        ? rsBody
+        : items.length && mode === 'grid'
+          ? sysLook
+            ? `<div class="rscards syscards">${items.map(sysCard).join('')}</div>`
+            : gridHtml(items)
+          : items.length
+            ? tableHtml(items, viewCols || cols)
+            : `<p class="muted">${paged && paging.search ? 'No matching ' + esc(s.plural.toLowerCase()) + '.' : `No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.`}</p>`);
   if (paged) {
     // (2.4.0) the pager: where you are, then small icon buttons with their names as tooltips and for screen readers
     const navigation = `<div class="row catalogue-navigation"><span role="status">Page ${paging.index + 1} · ${items.length} shown</span><button class="btn ghost icon" type="button" data-catalogue-prev aria-label="Previous page" title="Previous page"${paging.index === 0 ? ' disabled' : ''}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button><button class="btn ghost icon" type="button" data-catalogue-next aria-label="Next page" title="Next page"${!page.next ? ' disabled' : ''}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button><button class="btn ghost icon" type="button" data-catalogue-refresh aria-label="Refresh" title="Refresh the list"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button></div>`;
-    box
-      .querySelector('.catalogue-tools')
-      .insertAdjacentHTML(
-        'afterbegin',
-        `<form class="row catalogue-search" data-catalogue-search role="search"><label class="catalogue-field"><span class="hs-vh">Find ${esc(s.plural.toLowerCase())}</span><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><input name="search" type="search" maxlength="200" value="${esc(paging.search)}" placeholder="Search ${esc(s.plural.toLowerCase())}" aria-label="Search ${esc(s.plural.toLowerCase())}"></label><button class="btn" type="submit">Search</button>${pageNotice ? `<span role="status">${pageNotice}</span>` : ''}</form>`
-      );
-    box.querySelector('.catalogue-controls').insertAdjacentHTML('beforeend', navigation);
-    if (items.length) box.insertAdjacentHTML('beforeend', navigation);
+    if (garage) {
+      if (items.length && (paging.index > 0 || page.next)) box.querySelector('.gx').insertAdjacentHTML('beforeend', navigation);
+      if (pageNotice) box.querySelector('.gx-strip').insertAdjacentHTML('afterend', `<p class="muted" role="status">${pageNotice}</p>`);
+    } else
+      box
+        .querySelector('.catalogue-tools')
+        .insertAdjacentHTML(
+          'afterbegin',
+          `<form class="row catalogue-search" data-catalogue-search role="search"><label class="catalogue-field"><span class="hs-vh">Find ${esc(s.plural.toLowerCase())}</span><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><input name="search" type="search" maxlength="200" value="${esc(paging.search)}" placeholder="Search ${esc(s.plural.toLowerCase())}" aria-label="Search ${esc(s.plural.toLowerCase())}"></label><button class="btn" type="submit">Search</button>${pageNotice ? `<span role="status">${pageNotice}</span>` : ''}</form>`
+        );
+    if (!garage) {
+      box.querySelector('.catalogue-controls').insertAdjacentHTML('beforeend', navigation);
+      if (items.length) box.insertAdjacentHTML('beforeend', navigation);
+    }
     box.onsubmit = ev => {
       if (!ev.target.matches('[data-catalogue-search]')) return;
       ev.preventDefault();
@@ -359,7 +457,7 @@ async function mountManagerPage(box, e) {
     };
     stopCataloguePictures = loadCataloguePictures(box, e, page.revision, () => run === subRun && box.isConnected !== false);
   } else box.onsubmit = null;
-  box.onchange = !viewable
+  const viewChange = !viewable
     ? null
     : async ev => {
         // a check box of the View settings bar
@@ -369,6 +467,144 @@ async function mountManagerPage(box, e) {
           viewFocus(box, cb);
         }
       };
+  box.onchange = async ev => {
+    const t = ev.target;
+    if (garage && t.matches('[data-gx-sort]')) {
+      garageView.sort[e] = t.value;
+      return mountManager(box, e);
+    }
+    if (garage && t.matches('[data-pick],[data-pick-all]')) {
+      if (t.dataset.pick) t.checked ? gxPicked.add(t.dataset.pick) : gxPicked.delete(t.dataset.pick);
+      else for (const i of gxShown) t.checked ? gxPicked.add(i.id) : gxPicked.delete(i.id);
+      return mountManager(box, e);
+    }
+    if (viewChange) return viewChange(ev);
+  };
+  // ---- (2.4.0) what the menus and the buttons of a Garage list do ----
+  const remount = () => (manager?.box === box && manager.e === e && box.isConnected !== false ? mountManager(box, e) : null);
+  const gxTry = async (work, what) => {
+    try {
+      if ((await work()) !== false) await remount();
+    } catch (err) {
+      await Dialog.alert(`Could not ${what}: ${err.message}`);
+      await remount();
+    }
+  };
+  const gxDelete = async list => {
+    let laps = 0;
+    if (s.linked !== false) for (const i of list) laps += await api.linkedLaps(e, i.id);
+    const name = list.length === 1 ? `"${titleOf(e, list[0])}"` : `${list.length} ${s.plural.toLowerCase()}`;
+    const extra =
+      s.linked === false
+        ? ''
+        : `\n\nThis also deletes ${laps} saved ${laps === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
+    const retire = e === 'drivers' ? '\n\nTo keep their results, choose Retire instead.' : '';
+    if (!(await Dialog.confirm(`Delete ${name}?${extra}${retire}\n\nThis can't be undone.`, { ok: 'Delete', danger: true }))) return false;
+    for (const i of list) await api.remove(e, i.id);
+  };
+  const gxAct = async (act, it) => {
+    if (act === 'edit') {
+      if (direct && e === 'slotcars') return PaddockShared.open(libraryEditorApi(), it.id, remount);
+      const full = await fullItem(it.id);
+      return full && openForm(e, full);
+    }
+    if (act === 'design') {
+      const track = await fullItem(it.id);
+      return track && TrackDesignUI.open(api, track, remount);
+    }
+    if (act === 'duplicate') {
+      if (direct) return PaddockShared.open(libraryEditorApi(), null, remount, { copyOf: it.id });
+      const full = await fullItem(it.id);
+      return full && openForm(e, null, carCopy(full));
+    }
+    if (act === 'service')
+      return gxTry(async () => {
+        if (
+          !(await Dialog.confirm(`Mark ${titleOf(e, it)} as serviced today? Its laps since the last service start again at 0.`, {
+            ok: 'Mark serviced'
+          }))
+        )
+          return false;
+        await garageServiced(e, direct ? it : await fullItem(it.id), direct);
+      }, 'mark the car serviced');
+    if (act === 'archive')
+      return gxTry(async () => {
+        const back = !!it.archived;
+        if (
+          !(await Dialog.confirm(
+            back ? `Restore ${titleOf(e, it)} to the library?` : `Archive ${titleOf(e, it)} in both apps? Its race history stays.`,
+            back ? { ok: 'Restore' } : { ok: 'Archive', danger: true }
+          ))
+        )
+          return false;
+        await librarySaveOne(it.id, back ? 'restore' : 'archive');
+      }, 'archive the car');
+    if (act === 'delete') return gxTry(() => gxDelete([it]), 'delete');
+    if (act === 'retire' || act === 'unretire') return gxTry(() => garageRetire([it], act === 'retire'), 'change the driver');
+    if (act === 'merge') return gxTry(async () => garageMerge(it, await referenceList('drivers')), 'merge the drivers');
+  };
+  const gxPage = async act => {
+    if (act === 'extra') return openExtra(e);
+    if (act === 'view') {
+      if (viewBars.has(viewId)) viewBars.delete(viewId);
+      else viewBars.add(viewId);
+      return remount();
+    }
+    if (act === 'refresh') {
+      paging.index = 0;
+      paging.cursors = [null];
+      return remount();
+    }
+    if (act === 'import') return gxTry(garageImport, 'read the club list');
+  };
+  const gxBulk = async act => {
+    const list = gxShown.filter(i => gxPicked.has(i.id));
+    if (act === 'clear') {
+      gxPicked.clear();
+      return remount();
+    }
+    if (!list.length) return;
+    const done = async work => {
+      const r = await work();
+      if (r !== false) gxPicked.clear();
+      return r;
+    };
+    if (act === 'class') return gxTry(() => done(() => garageSetClass(e, list, direct)), 'set the class');
+    if (act === 'service')
+      return gxTry(
+        () =>
+          done(async () => {
+            if (
+              !(await Dialog.confirm(`Mark ${list.length} ${list.length === 1 ? 'car' : 'cars'} as serviced today?`, {
+                ok: 'Mark serviced'
+              }))
+            )
+              return false;
+            for (const i of list) await garageServiced(e, direct ? i : await fullItem(i.id), direct);
+          }),
+        'mark the cars serviced'
+      );
+    if (act === 'archive')
+      return gxTry(
+        () =>
+          done(async () => {
+            if (
+              !(await Dialog.confirm(
+                `Archive ${list.length} ${list.length === 1 ? 'car' : 'cars'} in both apps? Their race history stays.`,
+                {
+                  ok: 'Archive',
+                  danger: true
+                }
+              ))
+            )
+              return false;
+            for (const i of list) await librarySaveOne(i.id, 'archive');
+          }),
+        'archive the cars'
+      );
+    if (act === 'delete') return gxTry(() => done(() => gxDelete(list)), 'delete');
+    if (act === 'retire' || act === 'unretire') return gxTry(() => done(() => garageRetire(list, act === 'retire')), 'change the drivers');
+  };
   box.onkeydown = !canView
     ? null
     : ev => {
@@ -380,7 +616,37 @@ async function mountManagerPage(box, e) {
         }
       };
   box.onclick = async ev => {
+    if (garage && ev.target.closest('.gx-cb')) return; // (a tick: see onchange)
     const b = ev.target.closest('button');
+    if (garage && b) {
+      const it = items.find(i => i.id === b.dataset.more);
+      if (it) return garageMenu(b, garageCardMenu(e, it, direct), act => gxAct(act, it));
+      if (b.hasAttribute('data-gx-page-more'))
+        return garageMenu(
+          b,
+          [
+            ...(s.extra === false ? [] : [{ act: 'extra', label: 'Extra fields…' }]),
+            ...(viewable ? [{ act: 'view', label: viewBars.has(viewId) ? 'Hide view settings' : 'View settings…' }] : []),
+            ...(e === 'drivers' ? [{ act: 'import', label: 'Import a club list…' }] : []),
+            { act: 'refresh', label: 'Refresh the list' }
+          ],
+          gxPage
+        );
+      if (b.dataset.gxFilter) {
+        garageView.filter[e] = b.dataset.gxFilter;
+        return mountManager(box, e);
+      }
+      if (b.hasAttribute('data-gx-import')) return gxPage('import');
+      if (b.dataset.bulk) return gxBulk(b.dataset.bulk);
+      if (b.hasAttribute('data-clear-search')) {
+        paging.search = '';
+        paging.index = 0;
+        paging.cursors = [null];
+        return mountManager(box, e);
+      }
+      const ed = b.dataset.edit && items.find(i => i.id === b.dataset.edit);
+      if (ed) return gxAct('edit', ed);
+    }
     if (!b) {
       // not on a button: a click on a row or a card shows it
       const v = canView && ev.target.closest('[data-view]'),

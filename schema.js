@@ -234,6 +234,39 @@ module.exports = {
     gallery: 'extraPictures',
     card: ['scale', 'motor', 'tyres', 'lapsDriven'], // (1.30.0: the Statistics folder has the service interval, Laps Driven, Laps Since Last Interval, Last Serviced and (in the form) the Mileage)
     // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
+    // (2.4.0, "Build Sheet") the form as a Tech Sheet: the car, motor and gearing, pictures, service
+    rail: [
+      {
+        id: 'basics',
+        title: 'The car',
+        open: true,
+        ask: 'What it is and how it looks: this is how it shows on the grid and the screens.',
+        icon: 'car',
+        groups: ['basics']
+      },
+      {
+        id: 'technical',
+        title: 'Motor and gearing',
+        open: true,
+        ask: 'What is fitted, and how the race systems treat this car.',
+        icon: 'gauge',
+        groups: ['technical']
+      },
+      {
+        id: 'pictures',
+        title: 'Pictures',
+        ask: 'The main picture, and more of the chassis and parts.',
+        icon: 'layers',
+        groups: ['pictures']
+      },
+      {
+        id: 'stats',
+        title: 'Service',
+        ask: 'How often the car needs a look, the laps it has driven, and its best laps.',
+        icon: 'garage',
+        groups: ['stats']
+      }
+    ],
     groups: [
       { id: 'basics', title: 'Basics', note: 'Brand, manufacturer, model and scale', open: true },
       { id: 'technical', title: 'Technical details', note: 'Motor, tyres, gearing and weight', open: true },
@@ -258,6 +291,27 @@ module.exports = {
       { key: 'brand', group: 'basics', label: 'Brand', type: 'text' },
       { key: 'manufacturer', group: 'basics', label: 'Manufacturer', type: 'text' },
       { key: 'model', group: 'basics', label: 'Model', type: 'text' },
+      { key: 'number', group: 'basics', label: 'Race number', type: 'text', maxLength: 3, optional: true },
+      {
+        key: 'colour',
+        group: 'basics',
+        label: 'Body colour',
+        type: 'color',
+        optional: true,
+        hint: 'The colour of the car when it is drawn on its card.'
+      },
+      {
+        key: 'availability',
+        group: 'basics',
+        label: 'Can it race?',
+        type: 'select',
+        default: '',
+        options: [
+          ['', 'Available'],
+          ['Kept for one driver', 'Kept for one driver'],
+          ['Out for repair', 'Out for repair']
+        ]
+      },
       { key: 'scale', group: 'basics', label: 'Scale', type: 'choice', options: ['1:24', '1:32', '1:43', 'HO'], allowOther: true },
       { key: 'motor', group: 'technical', label: 'Motor', type: 'text' },
       { key: 'tyres', group: 'technical', label: 'Tyres', type: 'text' },
@@ -359,7 +413,34 @@ module.exports = {
     fields: [
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
       { key: 'nickname', group: 'basics', label: 'Nickname', type: 'text' },
-      { key: 'callsign', group: 'basics', label: 'Callsign (3 letters)', type: 'text', maxLength: 3, uppercase: true },
+      {
+        key: 'callsign',
+        group: 'basics',
+        label: 'Callsign',
+        type: 'text',
+        maxLength: 3,
+        uppercase: true,
+        hint: 'Three letters for the timing screens, for example ANN.'
+      },
+      {
+        key: 'color',
+        group: 'basics',
+        label: 'Colour',
+        type: 'color',
+        optional: true,
+        hint: 'The colour of this driver on their card and helmet in the Database.'
+      },
+      {
+        key: 'retired',
+        group: 'basics',
+        label: 'Still racing?',
+        type: 'select',
+        default: '',
+        options: [
+          ['', 'Racing'],
+          ['retired', 'Retired: kept in the results, not offered for a race']
+        ]
+      },
       {
         key: 'driverType',
         group: 'basics',

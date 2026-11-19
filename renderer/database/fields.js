@@ -44,6 +44,12 @@ function fieldHtml(f, v, extra) {
     case 'list':
       inp = `<select id="${id}"><option value=""></option>${f.options.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
       break;
+    case 'color': {
+      // (2.4.0) the lane colours as swatches and one of your own; an optional colour can be left empty
+      const sw = typeof Garage !== 'undefined' ? Garage.LANES : [];
+      inp = `<span class="gx-swatches" role="group" aria-label="${esc(ffl(f))}"><input id="${id}" type="hidden" value="${esc(v)}">${f.optional ? `<button type="button" class="gx-sw none${v ? '' : ' on'}" data-swatch="" data-for="${id}" aria-label="No colour" aria-pressed="${!v}"></button>` : ''}${sw.map(c => `<button type="button" class="gx-sw${String(v).toLowerCase() === c ? ' on' : ''}" style="--sw:${c}" data-swatch="${c}" data-for="${id}" aria-label="Colour ${c}" aria-pressed="${String(v).toLowerCase() === c}"></button>`).join('')}<input type="color" class="gx-swpick" data-swatch-own data-for="${id}" value="${esc(/^#[0-9a-f]{6}$/i.test(v) ? v : '#888888')}" aria-label="Another colour"></span>`;
+      break;
+    }
     case 'select':
       inp = `<select id="${id}">${f.options.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
       break;

@@ -59,6 +59,9 @@ class SqliteRepository {
   remove(entity, recordId, { commandId, expectedRevision }) {
     return this.execute(commandId, 'removeRecord', { entity, recordId, expectedRevision });
   }
+  mergeDrivers(fromId, intoId, { commandId, expectedFromRevision, expectedIntoRevision }) {
+    return this.execute(commandId, 'mergeDrivers', { fromId, intoId, expectedFromRevision, expectedIntoRevision });
+  }
   resetService(carId, { commandId, expectedRevision }) {
     return this.execute(commandId, 'resetService', { carId, expectedRevision });
   }

@@ -89,6 +89,17 @@ class SqliteAppRepository extends SqliteCompatibilityReads {
       await this.commands.remove(entity, id, { commandId, expectedRevision: before.revision });
     });
   }
+  mergeDrivers(fromId, intoId) {
+    const commandId = randomUUID();
+    return this.queue(async () => {
+      const [from, into] = await Promise.all([this.client.snapshot('drivers', fromId), this.client.snapshot('drivers', intoId)]);
+      return this.commands.mergeDrivers(fromId, intoId, {
+        commandId,
+        expectedFromRevision: from.revision,
+        expectedIntoRevision: into.revision
+      });
+    });
+  }
   removeSession(id) {
     return this.remove('sessions', id);
   }

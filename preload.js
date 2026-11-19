@@ -237,6 +237,7 @@ contextBridge.exposeInMainWorld('api', {
   add: (entity, item) => editorSave('add', 'db:add', entity, item),
   update: (entity, id, patch) => editorSave('update', 'db:update', entity, id, patch),
   remove: (entity, id) => editorSave('remove', 'db:remove', entity, id),
+  mergeDrivers: (from, into) => call('db:merge-drivers', from, into),
   linkedLaps: (entity, id) => call('db:linked', entity, id),
   saveSession: (session, laps) => call('session:save', session, laps),
   removeSession: id => editorSave('remove', 'session:remove', 'sessions', id),

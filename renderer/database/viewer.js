@@ -55,6 +55,26 @@ function openView(e, item) {
     return `<section class="vcsec vcsec-${k}">${title ? `<h4 class="vcsechead">${esc(title)}</h4>` : ''}${k === 'service' ? meter : ''}<dl class="vcfields${k === 'stats' ? ' vcstats' : ''}">${mine.map(rowHtml).join('')}</dl></section>`;
   }).join('');
   const kind = { slotcars: 'Slotcar', drivers: 'Driver', tracks: 'Track' }[e] || '';
+  // (2.4.0, "Garage") without a photo: the car drawn in its livery, the driver's helmet, the track with its lanes
+  const noPictureDrawn = (e, i, t) =>
+    typeof Garage === 'undefined'
+      ? `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`
+      : `<span class="ph vcdrawn">${
+          e === 'slotcars'
+            ? Garage.carSvg(
+                Garage.carColors(
+                  i,
+                  typeof GarageLooks !== 'undefined' ? GarageLooks.of(i.id).colors || (i.colour ? [i.colour] : undefined) : undefined
+                ),
+                Garage.numberOf(i, t),
+                i.id + 'vc'
+              )
+            : e === 'tracks'
+              ? Garage.trackSvg(i.lanes)
+              : e === 'drivers'
+                ? `<img src="avatars/Lane${Garage.helmetOf(i)}.png" alt="">`
+                : esc((t.trim()[0] || '?').toUpperCase())
+        }</span>`;
   const t = titleOf(e, item),
     main = s.image && item[s.image],
     frame = s.image && item[s.image + 'Frame'];
@@ -62,7 +82,7 @@ function openView(e, item) {
   const pics = [main, ...gal].filter(Boolean); // (what a click can show large: the main picture first)
   dlg.oninput = null;
   dlg.onchange = null;
-  dlg.innerHTML = `<div class="vcard vc-${esc(e)}"><div class="vchead"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
+  dlg.innerHTML = `<div class="vcard vc-${esc(e)}"><div class="vchead"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPictureDrawn(e, item, t)}</button>
     <div class="vchead-t">${kind ? `<span class="vckind">${kind}</span>` : ''}<h3 class="vctitle">${esc(t)}</h3>${svcSt && svcSt.due ? '<span class="svc-due">Service due</span>' : ''}</div></div>
     ${e === 'slotcars' && typeof PaddockSpecs !== 'undefined' ? PaddockSpecs.html(item) : ''}
     ${rows.length ? sections : '<p class="muted">Nothing more is filled in.</p>'}

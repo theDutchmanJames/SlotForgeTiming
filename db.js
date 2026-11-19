@@ -805,6 +805,30 @@ class Database {
     this.touchAll(); // (a removal changes items of other tables too: every text is made again, as before 1.61.2)
     this.guard(this.untilChanged(saved));
   }
+  // (2.4) A duplicate driver merged into the one that is kept, all or nothing as remove(). A relabelled lap is a new object (the saved laps list keeps the
+  // old ones, so putting back is enough); the laps stay with the same cars, so the cars' lap counters do not change.
+  mergeDrivers(fromId, intoId) {
+    const saved = this.tablesNow(this.removalTables('drivers'));
+    let laps = 0;
+    try {
+      require('./record-cascades').merge(this.data, fromId, intoId, (pred, patch) => {
+        this.data.laps = this.data.laps.map(l => {
+          if (!pred(l)) return l;
+          laps++;
+          const next = { ...l, driverId: patch.driverId };
+          if (Object.hasOwn(l, 'driverName') && Object.hasOwn(patch, 'driverName')) next.driverName = patch.driverName;
+          return next;
+        });
+      });
+    } catch (x) {
+      this.putBack(saved);
+      this.touchAll();
+      throw x;
+    }
+    this.touchAll();
+    this.guard(this.untilChanged(saved));
+    return { merged: true, fromId, intoId, laps };
+  }
   // One finished session with all of its laps, saved in a single write.
   saveSession(session, laps) {
     if (session.saveKey !== undefined) {

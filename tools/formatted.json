@@ -201,6 +201,8 @@
     "renderer/raceover.js",
     "renderer/racecontrol.js",
     "renderer/racecheck.js",
+    "renderer/garage.js",
+    "renderer/database/garageactions.js",
     "renderer/report.js",
     "renderer/resources.js",
     "renderer/resourceui.js",
