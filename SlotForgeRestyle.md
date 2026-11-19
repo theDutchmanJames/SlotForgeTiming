@@ -1570,3 +1570,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Lane Desk | The Control Strip starts with the race and its clock, the status as a pill, Simulated cars as a switch; the same desk on the Race Director page of Live Race (phones keep the one-lane view) |
 | 2026-11 | Race Sheet | New: the tables of a race in small capitals and mono, the notes as a grey line, the tyre correction as one compact box |
 | 2026-11 | Scrutineering | New: Finalize race results with a gold stripe for the winner, slim lap rows with small buttons, quiet Adjust pads |
+| 2026-11 | Pit Wall | The shared library's light shows the results waiting to be sent in amber with their number ("1 to send"), never as a red "Library" |

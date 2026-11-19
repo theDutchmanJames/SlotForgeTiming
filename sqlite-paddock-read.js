@@ -175,6 +175,17 @@ function read(s, kind, o = {}) {
           );
           d.payload.source = { id: get(['payload', 'source', 'id']) };
           if (d.receipt?.warnings?.length) d.payload.participants = get(['payload', 'participants']);
+          // (2.4.0) a result that needs attention: whether it holds anything to send, and whether any of it ever reached the library (App Settings >
+          // Shared Library: Retry prepares a failed conversion again, Remove takes a never-shared race off the list). Only these few rows are read further.
+          if (d.status === 'attention') {
+            if (!['format', 'sessionId', 'databaseId'].some(k => d.payload[k] !== undefined && d.payload[k] !== null)) d.payload = null;
+            d.guardBlocked = get(['guardBlocked']);
+            d.prior = get(['prior']) ?? null;
+            d.previousPayload = get(['previousPayload']) ?? null;
+            d.baseline = get(['baseline']) ?? null;
+            const ops = get(['guard', 'operations']);
+            d.guard = ops && typeof ops === 'object' && Object.keys(ops).length ? { operations: Object.values(ops) } : null; // (an array comes back as an object with its numbers)
+          }
           return d;
         })
         .filter(d => d && d.status !== 'withdrawn');

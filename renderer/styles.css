@@ -4944,3 +4944,4 @@ html .rdeck .rd-calls .lv-calls li.muted{font-size:12px}
   html .rdeck .lc[data-n="1"] .lc-strip{display:none}
   html .rdeck .lc-bar,html .rdeck .lc-log{margin:0}
 }
+html body.app-shell>header>#tabs .mb-light.wait i{background:#f2b705}

@@ -82,8 +82,17 @@ const MainBar = (() => {
     const html = list
       .slice(0, 3)
       .map(c => {
-        const st = c.state === 'on' || c.state === 'ok' ? 'on' : c.state === 'warn' || c.state === 'bad' ? 'warn' : 'off';
-        const name = NAME[c.key] || 'Timing';
+        // (the shared library is on this computer: its light only shows results that wait to be sent, in amber with their number, never as "not connected")
+        const waiting = c.key === 'library' ? parseInt(c.text, 10) || 0 : 0;
+        const st =
+          c.key === 'library'
+            ? 'wait'
+            : c.state === 'on' || c.state === 'ok'
+              ? 'on'
+              : c.state === 'warn' || c.state === 'bad'
+                ? 'warn'
+                : 'off';
+        const name = c.key === 'library' ? `${waiting} to send` : NAME[c.key] || 'Timing';
         return `<span class="mb-light ${st}" title="${esc(c.text)}"><i aria-hidden="true"></i><span>${esc(name)}</span></span>`;
       })
       .join('');

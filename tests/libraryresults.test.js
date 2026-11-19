@@ -153,6 +153,13 @@ test('SQLite database: the same two actions as storage commands', t => {
   migrateCopy({ source: src, destination: copy });
   forkCopy(copy, work);
   s = new WorkingStore(work);
+  // (the list App Settings shows is read from SQLite fields: it has to tell a failed conversion and a race that never reached the library)
+  const list = () =>
+    require('../sqlite-paddock-read')
+      .read(s, 'summary')
+      .deliveries.filter(d => d.transport === 'engine');
+  const before = Object.fromEntries(list().map(d => [d.sessionId, [d.convertFailed, d.neverShared]]));
+  assert.deepEqual(before, { a: [true, false], b: [true, true] });
   assert.deepEqual(s.command({ id: 'r1', type: 'libraryResult', sessionId: 'a', action: 'reconvert' }), { changed: true });
   assert.deepEqual(s.command({ id: 'r2', type: 'libraryResult', sessionId: 'b', action: 'reconvert' }), { changed: true });
   assert.equal(H.failed(s.get('sessions', 'b', true).value.paddockDelivery), true, 'it still cannot be converted');

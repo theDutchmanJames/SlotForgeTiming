@@ -1012,6 +1012,7 @@ async function renderSharedLibraryResults(box, note = '') {
     return;
   }
   if (!box.isConnected && box.isConnected !== undefined) return;
+  if (typeof homeLibraryWaiting !== 'undefined') homeLibraryWaiting = view.results.length; // (2.4.0: the light in the main menu follows right away, after a Retry or a Remove)
   const rows = view.results
     .map(
       r =>
@@ -1025,6 +1026,8 @@ async function renderSharedLibraryResults(box, note = '') {
   const b = box.querySelector('[data-library-retry]');
   b.onclick = async () => {
     b.disabled = true;
+    const m = box.querySelector('[data-library-msg]');
+    if (m) m.textContent = 'Working…';
     let msg;
     try {
       const r = await api.libraryResultsRetry();
@@ -1032,9 +1035,11 @@ async function renderSharedLibraryResults(box, note = '') {
         still = r?.failed
           ? `${r.failed} race${r.failed === 1 ? '' : 's'} still cannot be converted: remove ${r.failed === 1 ? 'it' : 'them'} from this list, or keep ${r.failed === 1 ? 'it' : 'them'} for a later version. `
           : '';
-      msg = r?.deferred
-        ? conv + still + 'Results are sent after the race.'
-        : conv + still + `Sent ${r?.sent || 0} of ${r?.offered || 0} result${r?.offered === 1 ? '' : 's'} offered again.`;
+      msg = r?.background
+        ? conv + still + 'Sending goes on by itself: this list shows it when it is done.'
+        : r?.deferred
+          ? conv + still + 'Results are sent after the race.'
+          : conv + still + `Sent ${r?.sent || 0} of ${r?.offered || 0} result${r?.offered === 1 ? '' : 's'} offered again.`;
     } catch (error) {
       msg = 'Retry failed: ' + error.message;
     }

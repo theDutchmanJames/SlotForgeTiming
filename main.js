@@ -582,7 +582,15 @@ function registerLibraryHandlers() {
         if (now?.convertFailed) failed++;
         else converted++;
       }
-    const r = await c.retryResults();
+    // (a delivery that is already running, or a library that does not answer, must not leave the button without an answer: after 20 s the page is
+    // told that sending goes on by itself)
+    let timer;
+    const r = await Promise.race([
+      c.retryResults(),
+      new Promise(res => {
+        timer = setTimeout(() => res({ background: true, offered: 0, sent: 0 }), 20000);
+      })
+    ]).finally(() => clearTimeout(timer));
     return { ...r, converted, failed };
   });
   ipcMain.handle('library:results-remove', async (e, sessionId) => {
