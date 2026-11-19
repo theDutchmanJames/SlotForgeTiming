@@ -18,20 +18,43 @@ function openView(e, item) {
       .map(f => ({
         label: fl(f),
         html: f.type === 'longtext' ? esc(getv(f.key)).replace(/\n/g, '<br>') : cell(f, getv(f.key)),
-        wide: f.type === 'longtext'
+        wide: f.type === 'longtext',
+        sec: e === 'slotcars' && f.group === 'stats' ? 'service' : 'details'
       })),
     ...(e === 'slotcars'
       ? [
-          { label: 'Next Service', html: `<span id="vc-service"></span>` },
-          ...CAR_STATS.map(f => ({ label: f.label, html: `<span id="vc${f.key}">Calculating…</span>` })),
-          { label: CAR_TRACKS.label, html: '<div id="vc_byTrack">Calculating…</div>', wide: true }
+          { label: 'Next Service', html: `<span id="vc-service"></span>`, sec: 'service' },
+          ...CAR_STATS.map(f => ({ label: f.label, html: `<span id="vc${f.key}">Calculating…</span>`, sec: 'stats', key: f.key })),
+          { label: CAR_TRACKS.label, html: '<div id="vc_byTrack">Calculating…</div>', wide: true, sec: 'tracks' }
         ]
       : []), // (1.30.0 the mileage, 1.33.0 the rest: worked out from the laps when the card is open)
     ...(e === 'drivers' && item.driverType !== 'virtual' && typeof api.driverProgress === 'function'
-      ? [{ label: 'Progress', html: '<div id="vc_progress">Calculating…</div>', wide: true }]
+      ? [{ label: 'Progress', html: '<div id="vc_progress">Calculating…</div>', wide: true, sec: 'progress' }]
       : []), // (2.3.0: faster and steadier over time, per track and month)
-    ...(state.custom[e] || []).filter(f => filled((item.custom || {})[f.id])).map(f => ({ label: f.label, html: esc(item.custom[f.id]) }))
+    ...(state.custom[e] || [])
+      .filter(f => filled((item.custom || {})[f.id]))
+      .map(f => ({ label: f.label, html: esc(item.custom[f.id]), sec: 'details' }))
   ];
+  // (2.4.0, SlotForgeRestyle.md "Record Card") the parts of the card: the figures as tiles first, then the service with its meter, the tracks, the details, the progress of a driver last
+  const SECS = [
+    ['stats', 'Statistics'],
+    ['service', 'Service'],
+    ['tracks', ''],
+    ['details', 'Details'],
+    ['progress', '']
+  ];
+  const svcSt = e === 'slotcars' ? CarStats.status(item) : null,
+    meter =
+      svcSt && svcSt.interval
+        ? `<div class="vcmeter${svcSt.due ? ' due' : ''}" role="img" aria-label="${esc(svcSt.since + ' of ' + svcSt.interval + ' laps since the last service')}"><i style="--p:${Math.min(100, Math.round((svcSt.since / svcSt.interval) * 100))}%"></i><span>${esc(svcSt.since.toLocaleString('en-US'))} / ${esc(svcSt.interval.toLocaleString('en-US'))} laps</span></div>`
+        : '';
+  const rowHtml = r => `<div${r.wide ? ' class="wide"' : ''}><dt>${esc(r.label)}</dt><dd>${r.html}</dd></div>`;
+  const sections = SECS.map(([k, title]) => {
+    const mine = rows.filter(r => (r.sec || 'details') === k);
+    if (!mine.length) return '';
+    return `<section class="vcsec vcsec-${k}">${title ? `<h4 class="vcsechead">${esc(title)}</h4>` : ''}${k === 'service' ? meter : ''}<dl class="vcfields${k === 'stats' ? ' vcstats' : ''}">${mine.map(rowHtml).join('')}</dl></section>`;
+  }).join('');
+  const kind = { slotcars: 'Slotcar', drivers: 'Driver', tracks: 'Track' }[e] || '';
   const t = titleOf(e, item),
     main = s.image && item[s.image],
     frame = s.image && item[s.image + 'Frame'];
@@ -39,10 +62,10 @@ function openView(e, item) {
   const pics = [main, ...gal].filter(Boolean); // (what a click can show large: the main picture first)
   dlg.oninput = null;
   dlg.onchange = null;
-  dlg.innerHTML = `<div class="vcard"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
-    <h3 class="vctitle">${esc(t)}</h3>
+  dlg.innerHTML = `<div class="vcard vc-${esc(e)}"><div class="vchead"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
+    <div class="vchead-t">${kind ? `<span class="vckind">${kind}</span>` : ''}<h3 class="vctitle">${esc(t)}</h3>${svcSt && svcSt.due ? '<span class="svc-due">Service due</span>' : ''}</div></div>
     ${e === 'slotcars' && typeof PaddockSpecs !== 'undefined' ? PaddockSpecs.html(item) : ''}
-    ${rows.length ? `<dl class="vcfields">${rows.map(r => `<div${r.wide ? ' class="wide"' : ''}><dt>${esc(r.label)}</dt><dd>${r.html}</dd></div>`).join('')}</dl>` : '<p class="muted">Nothing more is filled in.</p>'}
+    ${rows.length ? sections : '<p class="muted">Nothing more is filled in.</p>'}
     ${gal.length ? `<h4 class="vcgaltitle">${gal.length === 1 ? 'Another picture' : gal.length + ' more pictures'}</h4><div class="vcgal">${gal.map((src, i) => `<button type="button" class="vcthumb" data-big="${i + (main ? 1 : 0)}" aria-label="Show picture ${i + 1} large"><img class="galthumb" src="${esc(src)}" alt="Picture ${i + 1}"></button>`).join('')}</div>` : ''}
     <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">${e === 'slotcars' && item.paddock ? 'Edit Timing settings' : 'Edit'}</button></div>
     <div class="vcbig" id="vcbig" hidden role="dialog" aria-label="Large picture"><img id="vcbigimg" alt=""><p>Click the picture or press Escape to close it</p></div></div>`;
@@ -85,6 +108,8 @@ function openView(e, item) {
         CAR_STATS.forEach(f => {
           byId('vc' + f.key).textContent = t[f.key];
         });
+        if (d.fastest && d.fastest.trackName)
+          byId('vc_fastest').innerHTML = `${esc(Stats.fmtMs(d.fastest.time))}<small> on ${esc(d.fastest.trackName)}</small>`;
         target.innerHTML = carTracksHtml(d);
       })
       .catch(() => {

@@ -5470,3 +5470,87 @@ html .chrc>b{font-size:15px}
 html .chrc>small{font-size:11.5px}
 html .chrc>span.muted{font-size:12.5px}
 @media (max-width:900px){html .chseason{grid-template-columns:1fr}html .chs-next{align-items:flex-start;text-align:left}html .chstbar #chs-pdf{margin-left:0}}
+/* ==== Record Card (2.4.0, SlotForgeRestyle.md "Record Card"): the card of a slotcar, a driver or a track (Database, a click on a row). The picture beside
+   the name, then the parts as boxes: the statistics as tiles, the service with its meter, the best lap per track and the progress as Race Sheets, the
+   details as a quiet list ==== */
+html dialog:has(.vcard){width:min(760px,96vw)}
+html .vcard{gap:12px}
+html .vchead{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);align-items:center;gap:18px}
+html .vchead>.vcpic{width:100%;margin:0}
+html .vchead>.vcpic .ph{font-size:40px}
+html .vchead-t{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+html .vckind{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text,var(--accent))}
+html #dlg .vchead-t>.vctitle{margin:0;font:italic 700 30px/1.05 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase;text-align:left;overflow-wrap:anywhere}
+html .vchead-t>.svc-due{margin:0}
+html .vcsec{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html #dlg .vcsec>.vcsechead{margin:0 0 10px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+/* the details: a quiet list in columns */
+html .vcsec .vcfields{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 18px}
+html .vcsec .vcfields>div{padding:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent)}
+html .vcsec .vcfields dt{font-size:11.5px}
+html .vcsec .vcfields dd{font-size:14px;font-weight:500}
+/* the statistics: tiles */
+html .vcsec .vcfields.vcstats{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+html .vcsec .vcstats>div{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html .vcsec .vcstats dt{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+html .vcsec .vcstats dd{font:700 22px/1.1 "Barlow Condensed","Segoe UI",sans-serif;overflow-wrap:anywhere}
+html .vcsec .vcstats dd small{display:block;font:500 11.5px "Segoe UI",system-ui,sans-serif;color:var(--muted)}
+/* the service: the laps since the last service against the interval */
+html .vcmeter{position:relative;height:22px;margin:0 0 12px;border-radius:6px;background:color-mix(in srgb,var(--ink) 9%,var(--panel));overflow:hidden}
+html .vcmeter>i{position:absolute;inset:0 auto 0 0;width:var(--p);background:color-mix(in srgb,#3ecf8e 55%,var(--panel))}
+html .vcmeter.due>i{background:color-mix(in srgb,var(--accent) 70%,var(--panel))}
+html .vcmeter>span{position:relative;display:flex;align-items:center;height:100%;padding:0 10px;font:600 11.5px "Roboto Mono",Consolas,monospace;color:var(--ink)}
+html .vcsec-service .svc-note.due{color:var(--accent-text,var(--accent));font-weight:600}
+/* one wide part (the tracks, the progress): its name is the head of the box */
+html .vcsec:is(.vcsec-tracks,.vcsec-progress) .vcfields{display:block}
+html .vcsec:is(.vcsec-tracks,.vcsec-progress) .vcfields>div{padding:0;border:0}
+html .vcsec:is(.vcsec-tracks,.vcsec-progress) .vcfields dt{margin:0 0 10px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .vcsec:is(.vcsec-tracks,.vcsec-progress) .vcfields dd{font-size:13px;font-weight:400}
+/* the best lap per track, here and in the form: a Race Sheet */
+html .svc-tracks{width:100%;min-width:0;border:0;border-collapse:collapse;background:none;font-size:12.5px}
+html .svc-tracks th{padding:6px 10px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left}
+html .svc-tracks td{padding:7px 10px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:none}
+html .svc-tracks tr:last-child td{border-bottom:0}
+html .svc-tracks td:first-child{font-weight:600}
+html .svc-tracks td:not(:first-child){font-family:"Roboto Mono",Consolas,monospace}
+html .svc-tracks td:nth-child(3){color:#c9a6ff;font-weight:700}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .svc-tracks td:nth-child(3){color:#6d28d9}
+/* the progress of a driver */
+html .dp-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 8px}
+html .dp-tile{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html .dp-tile>b{font:700 24px/1 "Barlow Condensed","Segoe UI",sans-serif}
+html .dp-tile>small{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+html .dp-note{margin:0 0 12px;font-size:11.5px}
+html .dp-track{margin:0 0 10px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+html .dp-track:last-child{margin-bottom:0}
+html .dp-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin:0 0 8px}
+html #dlg .dp-head>h5{margin:0;font:italic 700 18px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .dp-pb{margin-left:auto;font-size:12px;color:var(--muted)}
+html .dp-pb>b{font:700 14px "Roboto Mono",Consolas,monospace;color:#c9a6ff}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .dp-pb>b{color:#6d28d9}
+html .dp-head>.muted{font:500 12px "Roboto Mono",Consolas,monospace}
+html .dp-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+html .dp-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:11.5px;font-weight:600;color:var(--muted)}
+html .dp-chip.up{border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));background:color-mix(in srgb,#3ecf8e 12%,var(--panel));color:#3ecf8e}
+html .dp-chip.up::before{content:'▲';font-size:8px}
+html .dp-chip.down{border-color:color-mix(in srgb,#ff8a5c 45%,var(--line));background:color-mix(in srgb,#ff8a5c 10%,var(--panel));color:#ff9b70}
+html .dp-chip.down::before{content:'▼';font-size:8px}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .dp-chip.up{color:#17804f}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .dp-chip.down{color:#b44a18}
+html .dp-change{margin:0 0 8px;font-size:12px;color:var(--muted)}
+html .dp-chart{width:100%;max-width:none;margin:0;border-radius:6px;background:color-mix(in srgb,var(--ink) 4%,transparent)}
+html .dp-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0 0;font-size:11.5px;color:var(--muted)}
+html .dp-legend>span{display:inline-flex;align-items:center;gap:6px}
+html .dp-lb::before,html .dp-la::before{content:'';width:16px;height:0;border-top:2px solid var(--accent)}
+html .dp-la::before{border-top:2px dashed var(--muted)}
+html .dp-legend>.muted{margin-left:auto}
+html .dp-months{margin:10px 0 0}
+html .dp-months>summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
+html .dp-months>summary:hover{color:var(--ink)}
+html .dp-months[open]>summary{margin:0 0 6px}
+html .dp-table{width:100%;border:0;border-collapse:collapse;background:none;font-size:12px}
+html .dp-table th{padding:5px 8px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left}
+html .dp-table td{padding:5px 8px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);background:none}
+html .dp-table td:not(:first-child){font-family:"Roboto Mono",Consolas,monospace}
+@media (max-width:560px){html .vchead{grid-template-columns:1fr}html .vchead>.vcpic{max-width:280px}html .dp-sum{grid-template-columns:repeat(3,minmax(0,1fr))}}
+html .dp-chips+.dp-change{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

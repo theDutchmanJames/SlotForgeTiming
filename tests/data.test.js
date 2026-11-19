@@ -263,6 +263,11 @@ test('driver progress: per track and month, the best, the average of the real pa
   const html = DPV.html(p);
   assert.match(html, /Since Sep 2026: the best lap is 0\.300 s faster, the average is 0\.350 s faster; [\d.]+ points steadier\./);
   assert(html.includes('<svg class="dp-chart"'), 'a chart for two months or more');
+  // 2.4.0 Record Card: the figures as tiles, the trend as chips (better is up), the months folded away
+  assert(html.includes('<span class="dp-tile"><b>8</b><small>clean laps</small></span>'), 'the clean laps as a tile');
+  assert(html.includes('<span class="dp-chip up">Best 0.300 s faster</span>') && html.includes('<span class="dp-chip up">Average 0.350 s faster</span>'), 'the trend as chips');
+  assert(html.includes('<details class="dp-months"><summary>Month by month · 2 months</summary>'), 'the months folded away');
+  assert(html.includes('<p class="dp-legend">') && !DPV.html({ laps: 1, sessions: 1, tracks: [{ name: 'X', best: 5000, laps: 1, months: [{ month: '2026-10', laps: 1, best: 5000, avg: 5000, consistency: null }], change: null }] }).includes('dp-legend'), 'a legend with the chart, none for one month');
   assert.match(DPV.html(null), /No laps yet/);
 });
 

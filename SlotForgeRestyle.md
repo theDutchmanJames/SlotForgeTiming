@@ -52,6 +52,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
 | [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
+| [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1513,6 +1514,30 @@ html .chrc.next{box-shadow:inset 0 3px 0 var(--c-ch)}
 
 The PDF of the standings is unchanged.
 
+## Record Card
+
+The card of a record in the Database (`renderer/database/viewer.js`: openView; `renderer/driverprogress.js`; styles under `.vchead`, `.vcsec`, `.vcstats`,
+`.vcmeter`, `.svc-tracks`, `.dp-`). It opens on a click on a row or a card, to look at; Edit opens the form.
+
+- **The head**: the picture (or the coloured initial) on the left, beside it the kind (*Slotcar*, *Driver*, *Track*) as an accent kicker and the name
+  in Barlow; *Service due* under it when the car is due. On a phone the picture is on top.
+- **The parts are boxes**, each with a kicker: **Statistics** (a slotcar: Mileage, Last Driven, Sessions, Wins, Deslots, Fastest Lap Ever as
+  **tiles**, the figure in Barlow, the track of the fastest lap small under it), **Service** (a **meter** of the laps since the last service against
+  the interval, green, in the accent colour when it is due; then the service fields), **Best lap per track** (a Race Sheet, the best lap in purple),
+  **Details** (the other fields as a quiet list in columns), and the **progress** of a driver last.
+- **The progress of a driver**: the clean laps, sessions and tracks as tiles, then a **card for every track**: its name in Barlow, the best lap in
+  purple and the laps on the right, the trend as **chips** (▲ green: faster or steadier; ▼ orange: slower or less steady), the chart full width with a
+  legend and the months it covers, and the table of the months folded away (*Month by month · 11 months*). The sentence of the trend stays for
+  screen readers.
+
+```css
+html .vchead{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);align-items:center;gap:18px}
+html .vcsec{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html .vcsec .vcstats dd{font:700 22px/1.1 "Barlow Condensed","Segoe UI",sans-serif}
+html .vcmeter>i{width:var(--p);background:color-mix(in srgb,#3ecf8e 55%,var(--panel))}
+html .dp-chip.up{background:color-mix(in srgb,#3ecf8e 12%,var(--panel));color:#3ecf8e}
+```
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1687,3 +1712,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Race Report | New: a saved race as a row with a date tile and the winner, opened as a report (actions, podium, classification, notes, heats) with the lap times as a table |
 | 2026-11 | Heat Board | New: Next up with Start between heats, the heat list as heat cards, the overall result as a Race Sheet, the lanes of a final as tiles in the lane colours |
 | 2026-11 | Title Fight | New: the championship standings with the season as a band, the first three as podium cards, the best score of every round lit, a bar for the points, the rounds as cards |
+| 2026-11 | Record Card | New: the card of a slotcar, a driver or a track; the statistics as tiles, a service meter, the progress of a driver as track cards with trend chips and the months folded away |
