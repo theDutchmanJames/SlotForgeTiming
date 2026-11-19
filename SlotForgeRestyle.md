@@ -52,6 +52,8 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
 | [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
+| [Status Lights](#status-lights) | The three lights of the main menu (Timing, Next race, Sharing) as one button; its drop-down is the check before the start | Main menu, every page |
+| [Setup Sheet](#setup-sheet) | The race setup form: the race in one line with chips, Set and Missing in the rail, six kinds, the tracks as cards, Start and flags, a system and its switch on one row | Race Setup › Edit |
 | [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
@@ -1690,6 +1692,61 @@ html .pg{display:inline-flex;flex-direction:column;min-width:92px;padding:5px 10
 html .pg-bad{--pc:#e5484d;background:color-mix(in srgb,#e5484d 8%,var(--panel))}
 ```
 
+## Status Lights
+
+The three lights of the main menu as one button (`renderer/racecheck.js` builds what they say, `mainbar.js` draws them; styles under `.mb-st`,
+`.mb-status`). Each light is a subject, in this order: **Timing** (the timing hardware), **Next race** (the race setup on Home) and **Sharing** (the
+network, the shared library, the backup). Red: must be put right (for the next race Start race stays off); amber: good to know; green: ready; grey:
+off by choice. The names are in the hover and for a screen reader.
+
+- **The drop-down** (`.mb-status`, under the button, on every page): a section per light with its dot, its title in Barlow (*Next race · Check race*)
+  and a note on the right (*Ready to start · 1 to know*, *Not ready: 2 to fix*, *Not counting laps*, *9 results to send*). Its lines are rows with a
+  round mark (✓ green, i amber, ! red filled) and a button that goes where it is put right (*Choose a car*, *Adjust the plan*, *Choose hardware*,
+  *Test sensors*, *Show QR code*, *See why*). Red lines first, then amber, then green. Along the bottom what is in the database.
+- **Home** has no strip of chips under the start card any more (the start card keeps a 16 px gap to the cards under it). The pill by Start race says
+  how the lanes are and opens the drop-down (*Check ▾*).
+- During a race the first section is *This race*.
+
+```css
+html .mb-st{display:flex;gap:6px;height:34px;padding:0 10px 0 12px;border-radius:999px;border:1px solid var(--line)}
+html .mb-st i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 65%,transparent)}
+html .mb-status{position:fixed;width:min(560px,calc(100vw - 24px));border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+html .mb-status li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;border-radius:9px}
+html .mb-status li.bad{box-shadow:inset 0 0 0 1px color-mix(in srgb,#e5484d 45%,transparent)}
+```
+
+---
+
+## Setup Sheet
+
+The race setup form (`schema.js` racesetups groups and rail, `database.js`, `setupwords.js` rail, `formui.js` kind). Nothing changed in how a setup
+is stored.
+
+- **This race in one line** on top: the sentence of before with chips under it (ready or not, Track Call, the systems that are on in green, the
+  screen and the sound in grey). The explaining lines above it are gone.
+- **The rail**, *This setup*: The race · Heats (only for heats) · Start and flags · Driver swaps (only with teams) · Race systems · Screen and sound;
+  *Only if you need it*: Pits and service · Timing hardware. A section says **Set** (green) when it is filled in or changed and **Missing** (amber)
+  when something it needs is not there; a section at its standard says nothing (every Rail form: the dot is a word now).
+- **The race**: the kind as six cards (Free practice, Qualifying, Race, Heats, Endurance, Time tokens; the Format choice is gone, the switch for a
+  team that swaps is under Heats), the **tracks as cards** (a drawn oval with its lanes in the lane colours, or the track's picture; the name, the
+  lanes, the length; the chosen one lit), the length with **quick picks** (20 · 50 · 100 · 200 laps, 5 · 10 · 15 · 30 minutes), who wins.
+- **Heats** holds how the heats are added up (*Points and finals*).
+- **Start and flags**: *Start lights* (out after at least … at most …), *The first lap and a red flag*, *Track Call* (what the button does, the
+  power under yellow and red, the second-press window) as three parts of one section.
+- **Race systems**: a row per system with **On at the start** right under its choice (the row of switches of before is gone; a system that is hidden
+  on this computer has none).
+
+```css
+html .rsform .rsri .rsdot{width:auto;height:auto;padding:2px 7px;border:0;border-radius:999px;font-size:10.5px;font-weight:700}
+html .rsform .rsri .rsdot.ok{color:#3ecf8e;background:color-mix(in srgb,#3ecf8e 14%,transparent)}
+html .rs-chip{display:inline-flex;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--line)}
+html .rs-tracks{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+html .rs-track.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+html .rs-quick .btn{height:28px;border-radius:999px;font:500 12.5px 'SF Roboto Mono',monospace}
+```
+
+---
+
 ## Race Control
 
 The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
@@ -2012,3 +2069,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Chequered Flag | New: the screens after a race (Race over, a championship race with the title fight as big as the race, the break between heats, Event over) replace the frozen race page; the points of a championship race are awarded on Finalize, with Undo |
 | 2026-11 | Chequered Flag | The screens after a race on the second screen: without buttons, one 16:9 screen zoomed to the window, a line along the bottom; Race Results › After the race chooses it or the Results Wall |
 | 2026-11 | Race Control | New: the bar on top of the race window (state, flag stripe, clock, the controls whatever the layout has, Tools), a track call with Resume racing, Give or Take a lap and a note, the order as a timing tower, the race screen as a monitor (Hide, S, M, L); the default layout has eight lanes and a header row |
+| 2026-11 | Status Lights | New: the lights of the main menu are one button (Timing, Next race, Sharing) with the check before the start in a drop-down; the strip of chips on Home is in it |
+| 2026-11 | Setup Sheet | The race setup form: the race in one line with chips, Set and Missing instead of dots, six kinds, the tracks as cards, quick picks, Start and flags with Track Call together, the heat scoring in Heats, a system and On at the start on one row |

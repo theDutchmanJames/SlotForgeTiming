@@ -96,7 +96,112 @@ const MainBar = (() => {
         return `<span class="mb-light ${st}" title="${esc(c.text)}"><i aria-hidden="true"></i><span>${esc(name)}</span></span>`;
       })
       .join('');
+    // (2.4.0, SlotForgeRestyle.md "Status Lights") the three lights as one button (Timing · Next race · Sharing) with the checks before a race in its
+    // drop-down; without RaceCheck (a test page) the lights of before
+    if (typeof RaceCheck !== 'undefined') {
+      const c = statusNow(list);
+      const btn = RaceCheck.lightsHtml(c, statusOpen);
+      if (el.innerHTML !== btn) el.innerHTML = btn;
+      el.onclick = ev => {
+        ev.stopPropagation();
+        toggleStatus();
+      };
+      if (statusOpen) drawStatus(c);
+      return;
+    }
     if (el.innerHTML !== html) el.innerHTML = html;
+  }
+  // what the lights know: Home's last look at the next race (state.raceCheckInput, written by landing.js), the hardware and the sharing now
+  let statusOpen = false;
+  function statusNow(list) {
+    let full = [];
+    try {
+      full = HomeStats.chips({
+        ...(state.raceCheckChips || {}),
+        hardware: typeof Hardware !== 'undefined' ? Hardware.timingChosen(state.settings) : '',
+        ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected,
+        trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected,
+        arduino: !!(typeof ArduinoBox !== 'undefined' && ArduinoBox.link && ArduinoBox.link.connected),
+        plugin: typeof pt !== 'undefined' && pt.link.connected,
+        pluginName: typeof pt !== 'undefined' && pt.identity && pt.identity.name,
+        parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected,
+        virtual: state.settings.abVirtual === true,
+        netOn: !!state.settings.netOn,
+        libraryWaiting: typeof homeLibraryWaiting !== 'undefined' ? homeLibraryWaiting : 0,
+        backupFailed: typeof homeBackupFailed !== 'undefined' ? homeBackupFailed : false,
+        unused:
+          typeof unusedTimingConnected === 'function' && typeof TIMING_NAMES !== 'undefined'
+            ? unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id)
+            : []
+      });
+    } catch {
+      full = list;
+    }
+    return RaceCheck.build({ ...(state.raceCheckInput || {}), raceOn: typeof raceActive === 'function' && raceActive(), chips: full });
+  }
+  function drawStatus(c) {
+    let box = document.getElementById('mb-status');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'mb-status';
+      box.className = 'mb-status';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-label', 'Status: the next race, the timing and the sharing');
+      document.body.appendChild(box);
+      box.onclick = ev => {
+        ev.stopPropagation();
+        const b = ev.target.closest && ev.target.closest('[data-st-go]');
+        if (b) statusGo(b.dataset.stGo);
+      };
+    }
+    const html = RaceCheck.panelHtml(c);
+    if (box.innerHTML !== html) box.innerHTML = html;
+    const btn = document.getElementById('mb-st');
+    if (btn && btn.getBoundingClientRect) {
+      const r = btn.getBoundingClientRect();
+      box.style.top = Math.round(r.bottom + 8) + 'px';
+      box.style.right = Math.max(8, Math.round(window.innerWidth - r.right - 40)) + 'px';
+    }
+  }
+  function toggleStatus(on) {
+    statusOpen = on === undefined ? !statusOpen : !!on;
+    if (!statusOpen) document.getElementById('mb-status')?.remove();
+    lights();
+  }
+  // a button of the drop-down: the page where it is put right
+  function statusGo(go) {
+    toggleStatus(false);
+    if (typeof state === 'undefined' || typeof render !== 'function') return;
+    if (go === 'home') state.tab = 'home';
+    else if (go === 'race') state.tab = 'race';
+    else if (go === 'setup') {
+      state.tab = 'setup';
+      state.setupSub = 'racesetups';
+    } else if (go === 'sensors') {
+      state.tab = 'home';
+      render();
+      setTimeout(() => document.getElementById('sensortest')?.click(), 400);
+      return;
+    } else {
+      state.tab = 'settings';
+      state.settingsSub = { hardware: 'hardware', connections: 'network', qr: 'network', backup: 'transfer' }[go] || 'general';
+      if (go === 'backup' && typeof folderClosed !== 'undefined') folderClosed.delete('transfer:auto'); // (its folder is open)
+      if (go === 'connections' && typeof connectionsTab !== 'undefined') connectionsTab = 'library';
+      if (go === 'hardware' && typeof unusedTimingConnected === 'function') {
+        const first = unusedTimingConnected(state.settings)[0];
+        if (first) state.hwSub = first;
+      }
+    }
+    render();
+  }
+  // (a click elsewhere, or Escape, closes the drop-down)
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('click', ev => {
+      if (statusOpen && !(ev.target && ev.target.closest && ev.target.closest('#mb-status,#mb-st'))) toggleStatus(false);
+    });
+    document.addEventListener('keydown', ev => {
+      if (statusOpen && ev.key === 'Escape') toggleStatus(false);
+    });
   }
 
   // ---- fitting: when the bar does not fit (a narrow window, or the Race tab of a kept race), it steps down until it does ----
@@ -415,5 +520,5 @@ const MainBar = (() => {
     strip();
     fit();
   }, 500);
-  return { decorate, lights, strip, fit, Find };
+  return { decorate, lights, strip, fit, Find, openStatus: () => toggleStatus(true) };
 })();

@@ -99,17 +99,22 @@
     );
   }
   // the picker of a race setup: what kind of session, one race or heats, and do the teams swap drivers. p: { kinds, formats, swaps: [title, line] } (setupwords.js); now: the answers now
+  // (2.4.0, Setup Sheet) six kinds: Heats and Endurance are kinds of their own (a race in heats, a race with driver swaps); the switch for a team
+  // that swaps drivers is only there for heats. What is stored stays the same (sessionType, enduranceBy).
+  const cardOf = now =>
+    now.kind !== 'race' ? now.kind : now.swaps && now.format !== 'heats' ? 'endurance' : now.format === 'heats' ? 'heats' : 'race';
   function kind(f, v, ctx) {
     const p = ctx.picker,
       now = ctx.parts,
+      at = cardOf(now),
       ic = k => (ctx.icon && p.icons && p.icons[k] ? `<span class="fu-ci">${ctx.icon(p.icons[k])}</span>` : '');
     const card = (attr, id, name, line, on) =>
       `<button type="button" class="fu-card${on ? ' on' : ''}" aria-pressed="${on}" ${attr}="${esc(id)}"><span class="fu-ct">${ic(id)}<b>${esc(name)}</b></span><span class="fu-cd">${esc(line)}</span>${ctx.icon ? `<span class="fu-ck" aria-hidden="true">${ctx.icon('check')}</span>` : ''}</button>`;
     return wrap(
       f,
       'fu-kindfield full',
-      `${question(f, ctx.label)}<div class="fu-cards fu-c4" role="group" aria-labelledby="ql-${esc(f.id)}" data-ctl="kind">${p.kinds.map(k => card('data-kind', k[0], k[1], k[2], now.kind === k[0])).join('')}</div>${hint(f, ctx.hint)}` +
-        `<div class="fu-race" id="fu-race"${now.kind === 'race' ? '' : ' hidden'}><span class="fu-q" id="ql-format">Format <small class="muted">Races only</small></span><div class="fu-cards fu-c2" role="group" aria-labelledby="ql-format" data-ctl="format">${p.formats.map(k => card('data-format', k[0], k[1], k[2], now.format === k[0])).join('')}</div>` +
+      `${question(f, ctx.label)}<div class="fu-cards fu-c${p.kinds.length > 4 ? 3 : 4}" role="group" aria-labelledby="ql-${esc(f.id)}" data-ctl="kind">${p.kinds.map(k => card('data-kind', k[0], k[1], k[2], at === k[0])).join('')}</div>${hint(f, ctx.hint)}` +
+        `<div class="fu-race" id="fu-race"${at === 'heats' ? '' : ' hidden'}>` +
         `<button type="button" role="switch" class="fu-sw${now.swaps ? ' on' : ''}" aria-checked="${now.swaps}" aria-labelledby="ql-swaps" aria-describedby="hn-swaps" data-swaps="1"><span class="fu-tg" aria-hidden="true"></span><span class="fu-swt"><b id="ql-swaps">${esc(p.swaps[0])}</b><span class="muted hint" id="hn-swaps">${esc(p.swaps[1])}</span></span></button></div>${hiddenSelect(f, v)}`
     );
   }
@@ -170,11 +175,11 @@
   // the picker: now = { kind, format, swaps }
   function syncKind(rootEl, byId, now) {
     if (!rootEl || typeof rootEl.querySelectorAll !== 'function') return;
-    Array.from(rootEl.querySelectorAll('[data-kind]')).forEach(b => setOn(b, (b.dataset || {}).kind === now.kind));
+    Array.from(rootEl.querySelectorAll('[data-kind]')).forEach(b => setOn(b, (b.dataset || {}).kind === cardOf(now)));
     Array.from(rootEl.querySelectorAll('[data-format]')).forEach(b => setOn(b, (b.dataset || {}).format === now.format));
     Array.from(rootEl.querySelectorAll('[data-swaps]')).forEach(b => setOn(b, !!now.swaps, 'aria-checked'));
     const race = byId('fu-race');
-    if (race) race.hidden = now.kind !== 'race';
+    if (race) race.hidden = cardOf(now) !== 'heats';
   }
   // the boxes of a list: the numbers of a list as text, the list as text again, the boxes drawn again after a place is added or taken away
   const joinList = list => list.join(', ');

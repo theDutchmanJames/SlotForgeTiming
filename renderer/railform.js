@@ -13,10 +13,11 @@
       .replace(/"/g, '&quot;');
   const ico = (o, name) => (o && typeof o.icon === 'function' ? o.icon(name) : '');
   // what a dot says: the class that colours it, and the words for a hover and for a screen reader
+  // (2.4.0) the dot is a word now: Set, Missing, or nothing for a section that keeps the standard
   const STATES = {
-    ok: ['ok', 'Filled in or changed'],
-    todo: ['todo', 'Something is missing'],
-    plain: ['off', 'Nothing changed from the standard']
+    ok: ['ok', 'Filled in or changed', 'Set'],
+    todo: ['todo', 'Something is missing', 'Missing'],
+    plain: ['off', 'Nothing changed from the standard', '']
   };
   const stateOf = s => STATES[s] || STATES.plain;
 
@@ -85,6 +86,7 @@
       set('rs-dot-', el => {
         el.className = 'rsdot ' + st[0];
         el.title = st[1];
+        el.textContent = st[2] || '';
       });
       set('rs-state-', el => {
         el.textContent = st[1];

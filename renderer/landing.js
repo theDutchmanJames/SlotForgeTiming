@@ -690,32 +690,6 @@ async function renderHome() {
     audioName = audio ? audio.name || '(unnamed)' : '';
   // the timing hardware chip: the hardware that was chosen (App Settings, Timing Hardware), one at a time, and whether it is connected
   const abLink = typeof ArduinoBox !== 'undefined' && ArduinoBox.link ? ArduinoBox.link : null;
-  const chipsNow = more =>
-    HomeStats.chips({
-      hardware: Hardware.timingChosen(state.settings),
-      ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected,
-      trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected,
-      arduino: !!(abLink && abLink.connected),
-      plugin: typeof pt !== 'undefined' && pt.link.connected,
-      pluginName: typeof pt !== 'undefined' && pt.identity?.name,
-      parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected,
-      virtual: state.settings.abVirtual === true,
-      netOn: !!state.settings.netOn,
-      netError: more && more.netError,
-      hasSetup: !!setup,
-      audioName,
-      drivers: drivers.length,
-      cars: cars.length,
-      tracks: tracks.length,
-      unused: typeof unusedTimingConnected === 'function' ? unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id) : [],
-      libraryWaiting: homeLibraryWaiting,
-      backupFailed: homeBackupFailed
-    });
-  // a chip that points at a problem is a button that opens the page where it is put right
-  const chipHtml = c =>
-    c.go
-      ? `<button type="button" class="hm-chip hm-chip-go" data-key="${c.key}" data-go="${esc(c.go)}"${c.state ? ` data-state="${c.state}"` : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</button>`
-      : `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
   const lt = HomeStats.lights(
       rows,
@@ -736,9 +710,50 @@ async function renderHome() {
   const homeMsg = state.homeMsg && Date.now() - (state.homeMsgAt || 0) < 30000 ? state.homeMsg : ''; // (2.4.0: what the race page says when it sends you here, for half a minute: a race whose data was deleted)
   const rowOk = new Map(shown.map((x, k) => [x.i, lt.ok[k]])),
     allReady = !issues.length; // (1.58.0: a tick for every row, and one pill that says whether the race can start: nothing is wrong, and then every row is filled in, because what a row lacks is one of the issues)
+  // (2.4.0, SlotForgeRestyle.md "Status Lights") what Home sees of the next race goes to the lights of the main menu (racecheck.js): their drop-down
+  // is the check before the start, on every page; the pill by Start race opens it
+  {
+    const SYS = [
+      ['fuelRules', 'Fuel'],
+      ['penaltySystem', 'Penalties'],
+      ['damageSystem', 'Damage'],
+      ['safetyCar', 'Safety car'],
+      ['tyreWear', 'Tyre wear'],
+      ['weather', 'Weather'],
+      ['pushSave', 'Push and Save'],
+      ['resourceSystem', 'Resources'],
+      ['multiClass', 'Multi-Class']
+    ];
+    const filled = rows.filter(r => !r.absent && (r.driverId || r.teamId) && (r.carId || byTeam || tokens));
+    state.raceCheckInput = {
+      hasSetup: !!setup,
+      setupName: setup ? setup.name || '' : '',
+      issues: issues.slice(),
+      entries: filled.length,
+      lanes: lanes || 0,
+      trackName: track ? track.name || '' : '',
+      systems: setup
+        ? SYS.filter(([k]) => setup[k])
+            .map(([, n]) => n)
+            .concat(setup.bop === 'on' ? ['Balance of Power'] : [])
+        : [],
+      layoutName: setup ? (layout ? layout.name || 'A layout' : 'Default layout') : '',
+      audioName: setup ? audioName : '',
+      names: filled
+        .map(r => {
+          const d = byTeam ? teamOf(r.teamId) : allDrivers.find(x => x.id === r.driverId);
+          return d ? titleOf(byTeam ? 'teams' : 'drivers', d) : '';
+        })
+        .filter(Boolean)
+        .slice(0, 8)
+        .join(', ')
+    };
+    state.raceCheckChips = { hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length };
+    if (typeof MainBar !== 'undefined' && MainBar.lights) MainBar.lights();
+  }
   const lightsHtml =
     setup && track && lanes && rows.length
-      ? `<div class="hs-status ${allReady ? 'ok' : 'warn'}" role="status"><div class="hm-lights" aria-hidden="true">${shown.map((x, k) => `<i${lt.ok[k] ? ' class="on"' : ''} style="--c:${esc(laneHue(x.i))}"></i>`).join('')}</div><span class="hm-ready">${esc(lt.text)}</span></div>`
+      ? `<button type="button" class="hs-status ${allReady ? 'ok' : 'warn'}" data-open-status title="The check before the start: what is ready, what to know, what to fix"><div class="hm-lights" aria-hidden="true">${shown.map((x, k) => `<i${lt.ok[k] ? ' class="on"' : ''} style="--c:${esc(laneHue(x.i))}"></i>`).join('')}</div><span class="hm-ready">${esc(lt.text)}</span><span class="hs-check">Check ▾</span></button>`
       : '';
   // 1.25.0: Customize, set up like the Leaderboard grid: the little squares (up to 6 columns by 4 rows), a card for every cell, and the settings of the card that is picked
   const HG = HomeGrid,
@@ -868,7 +883,6 @@ async function renderHome() {
       <div class="hm-go">${lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p><div class="row"><button type="button" class="btn primary" id="guideagain">Start the setup guide</button></div>') +
     `</section>
-    <div class="hm-chips" id="hm-chips" role="status">${chipsNow().map(chipHtml).join('')}</div>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))">${otherCells}</div>`;
   // (2.4.0) the avatars of the drivers in the lanes: Home's list of drivers has only their names, so each driver's own picture is read once and kept while the
   // app runs; until then, and for a driver without one, the standard avatar of the lane shows
@@ -891,27 +905,12 @@ async function renderHome() {
     });
   if (typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
   {
-    // the problem chips: a click opens the page where it is put right
-    const chipBox = document.getElementById('hm-chips');
-    if (chipBox)
-      chipBox.onclick = ev => {
-        const b = ev.target.closest ? ev.target.closest('[data-go]') : null;
-        if (!b) return;
-        state.tab = 'settings';
-        if (b.dataset.go === 'hardware') {
-          state.settingsSub = 'hardware';
-          const first = typeof unusedTimingConnected === 'function' ? unusedTimingConnected(state.settings)[0] : null;
-          if (first) state.hwSub = first; // (the page of the hardware the chip is about)
-        }
-        if (b.dataset.go === 'backup') {
-          state.settingsSub = 'transfer';
-          if (typeof folderClosed !== 'undefined') folderClosed.delete('transfer:auto'); // (its folder is open)
-        }
-        if (b.dataset.go === 'connections') {
-          state.settingsSub = 'network';
-          if (typeof connectionsTab !== 'undefined') connectionsTab = 'library';
-        }
-        render();
+    // (2.4.0) the pill by Start race opens the drop-down of the status lights: the check before the start
+    const pill = document.querySelector('[data-open-status]');
+    if (pill)
+      pill.onclick = ev => {
+        ev.stopPropagation();
+        if (typeof MainBar !== 'undefined' && MainBar.openStatus) MainBar.openStatus();
       };
   }
   // the automatic backup (asked after the page is drawn, as below)
@@ -922,8 +921,7 @@ async function renderHome() {
         const failed = !!(st && st.on && st.ok === false);
         if (failed !== homeBackupFailed && draw === homeDraw) {
           homeBackupFailed = failed;
-          const el = document.getElementById('hm-chips');
-          if (el) el.innerHTML = chipsNow().map(chipHtml).join('');
+          if (typeof MainBar !== 'undefined' && MainBar.lights) MainBar.lights(); // (2.4.0: the Sharing light and its drop-down)
         }
       })
       .catch(() => {});
@@ -936,8 +934,7 @@ async function renderHome() {
         const n = r && Array.isArray(r.results) ? r.results.length : 0;
         if (n !== homeLibraryWaiting && draw === homeDraw) {
           homeLibraryWaiting = n;
-          const el = document.getElementById('hm-chips');
-          if (el) el.innerHTML = chipsNow().map(chipHtml).join('');
+          if (typeof MainBar !== 'undefined' && MainBar.lights) MainBar.lights(); // (2.4.0: the Sharing light and its drop-down)
         }
       })
       .catch(() => {});
@@ -1499,9 +1496,10 @@ async function renderHome() {
 
   // ---- the status chips stay true: the Trackmate can be plugged in while Home is open ----
   const setChips = more => {
-    const el = document.getElementById('hm-chips');
-    if (el) el.innerHTML = chipsNow(more).map(chipHtml).join('');
-    return !!el;
+    // (2.4.0: the strip of chips is in the drop-down of the status lights now; a network that could not start is said there)
+    if (more && 'netError' in more) state.raceCheckChips = { ...(state.raceCheckChips || {}), netError: more.netError };
+    if (typeof MainBar !== 'undefined' && MainBar.lights) MainBar.lights();
+    return state.tab === 'home';
   };
   const run = ++homeRun;
   let netError = '';

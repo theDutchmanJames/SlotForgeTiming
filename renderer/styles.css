@@ -6256,3 +6256,74 @@ html .rc-mon .lw.wf-crowded::before{display:none}
 html .rc-bar .rc-menu .rt-tools .btn{text-align:left}
 html .rc-bar .rc-menu label{justify-content:flex-start}
 html #calls.rc-calls{align-items:stretch}
+
+/* ---- 2.4.0 Status Lights (SlotForgeRestyle.md): the three lights of the main menu as one button (Timing · Next race · Sharing), red to fix, amber to
+   know, green ready, grey off; its drop-down holds the check before the start, the timing and the sharing (racecheck.js, mainbar.js). ---- */
+html .mb-st{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 12px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 5%,var(--panel));color:var(--ink);cursor:pointer}
+html .mb-st:hover,html .mb-st[aria-expanded="true"]{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+html .mb-st i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 65%,transparent)}
+html .mb-st i.off{box-shadow:none}
+html .mb-st b{font-size:10px;color:var(--muted);margin-left:2px}
+html .mb-status{position:fixed;z-index:300;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 90px);overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 24px 60px rgba(0,0,0,.45)}
+html .mb-status .mbs-sec{padding:12px 16px;border-top:1px solid var(--line)}
+html .mb-status .mbs-sec:first-child{border-top:0}
+html .mb-status .mbs-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+html .mb-status .mbs-h>i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+html .mb-status .mbs-h b{font:italic 700 16px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .mb-status .mbs-h small{color:var(--muted);font-size:12.5px;margin-left:auto}
+html .mb-status ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+html .mb-status li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 10px;border-radius:9px;background:color-mix(in srgb,var(--ink) 4%,var(--panel));font-size:13.5px}
+html .mb-status li>i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700}
+html .mb-status li.ok>i{background:color-mix(in srgb,#3ecf8e 20%,transparent);color:#3ecf8e}
+html .mb-status li.warn>i{background:color-mix(in srgb,#f2b705 22%,transparent);color:#f2b705}
+html .mb-status li.bad{background:color-mix(in srgb,#e5484d 8%,var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,#e5484d 45%,transparent)}
+html .mb-status li.bad>i{background:#e5484d;color:#fff}
+html .mb-status li.off>i{background:color-mix(in srgb,var(--ink) 12%,transparent);color:var(--muted)}
+html .mb-status li small{display:block;color:var(--muted);font-size:12px}
+html .mb-status li .btn{height:28px;font-size:12.5px;white-space:nowrap}
+html .mb-status .mbs-foot{display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);background:color-mix(in srgb,var(--ink) 3%,var(--panel))}
+html:is([data-theme="light"],[data-theme="ocean"]) .mb-status li.warn>i{color:#8a6400}
+html:is([data-theme="light"],[data-theme="ocean"]) .mb-status li.ok>i{color:#16803f}
+/* Home: the pill by Start race is a button that opens the drop-down; the strip of chips under the start card is in the drop-down now */
+html button.hs-status{cursor:pointer;font:inherit;color:inherit}
+html button.hs-status .hs-check{color:var(--muted);font-size:12.5px;margin-left:4px}
+html #hmc-start{margin-bottom:16px}
+
+/* ---- 2.4.0 Setup Sheet (SlotForgeRestyle.md): the race setup form. The race in one line with chips, tags instead of dots in the rail, the tracks as
+   cards, quick picks for the length, a system and "On at the start" on one row, Heats and Endurance as kinds. ---- */
+html .rsri .rstag{width:auto;height:auto;margin:0 0 0 auto;padding:2px 7px;border:0;border-radius:999px;background:none;font-size:10.5px;font-weight:700;line-height:1.3;white-space:nowrap}
+html .rsri .rstag:empty{display:none}
+html .rsri .rstag.ok{color:#3ecf8e;background:color-mix(in srgb,#3ecf8e 14%,transparent)}
+html .rsri .rstag.todo{color:#f2b705;background:color-mix(in srgb,#f2b705 16%,transparent)}
+html .rsform.sy .rsri .rstag{width:auto;height:auto;margin-top:0;border:0}
+html:is([data-theme="light"],[data-theme="ocean"]) .rsri .rstag.ok{color:#16803f}
+html:is([data-theme="light"],[data-theme="ocean"]) .rsri .rstag.todo{color:#8a6400}
+html .rs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+html .rs-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--ink);background:color-mix(in srgb,var(--panel) 80%,transparent)}
+html .rs-chip i{width:8px;height:8px;border-radius:50%;background:var(--c,#8a93a0)}
+html .ss-race .rssay .rssaytext p{font-size:16px;line-height:1.5}
+html .rs-tracks{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:10px;max-height:260px;overflow:auto;padding:2px}
+html .rs-track{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);text-align:left;cursor:pointer}
+html .rs-track:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+html .rs-track.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+html .rs-track svg,html .rs-track img{width:64px;height:40px;object-fit:cover;border-radius:6px;color:var(--ink)}
+html .rs-track b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .rs-track small{display:block;color:var(--muted);font-size:12px}
+html .ss-race .field[data-key="track"] #f-track-preview{display:none}
+html .rs-quick{display:inline-flex;gap:6px;margin-left:10px;flex-wrap:wrap}
+html .rs-quick .btn{height:28px;min-width:44px;padding:0 10px;border-radius:999px;font:500 12.5px 'SF Roboto Mono',Consolas,monospace}
+html .rs-onstart{display:inline-flex;align-items:center;gap:8px;margin-left:12px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+html .rs-onstart[hidden]{display:none}
+html .rs-onstart .system-switch{min-width:0;height:28px;padding:0 10px}
+html .rs-onstart .system-switch span{display:none}
+html .rsform .rsri .rsdot{width:auto;height:auto;min-width:0;margin:0 0 0 auto;padding:2px 7px;border:0;border-radius:999px;background:none;font-size:10.5px;font-weight:700;line-height:1.3;white-space:nowrap;flex:none}
+html .rsform .rsri .rsdot:empty{display:none}
+html .rsform .rsri .rsdot.ok{color:#3ecf8e;background:color-mix(in srgb,#3ecf8e 14%,transparent)}
+html .rsform .rsri .rsdot.todo{color:#f2b705;background:color-mix(in srgb,#f2b705 16%,transparent)}
+html:is([data-theme="light"],[data-theme="ocean"]) .rsform .rsri .rsdot.ok{color:#16803f}
+html:is([data-theme="light"],[data-theme="ocean"]) .rsform .rsri .rsdot.todo{color:#8a6400}
+html .ss-race .rssay .rseye{display:block!important;margin-bottom:4px}
+html .ss-race .field[data-key="track"]{display:block}
+html .ss-race .field[data-key="track"] .rs-tracks{width:100%}
+html .rs-onstart{margin:6px 0 0;justify-content:flex-end;width:100%}
+html .ss-ctl>.rs-onstart{display:flex}

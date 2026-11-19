@@ -45,7 +45,7 @@ const SystemSheet = (() => {
     if (!say || say.closest('.sn')) return;
     // (on a Race Setup page that has its own Page Note above the editor, the note in the editor only says what the settings do now)
     const twice = !!(form.closest('.setuppage') && document.getElementById('setupnote')) && !form.classList.contains('sy-pop');
-    const words = !twice && typeof SETUP_NOTES !== 'undefined' ? SETUP_NOTES[NOTE[kindOf(form)]] : null;
+    const words = !twice && kindOf(form) !== 'race' && typeof SETUP_NOTES !== 'undefined' ? SETUP_NOTES[NOTE[kindOf(form)]] : null; // (2.4.0: a race setup says itself in one line, Setup Sheet)
     const tile = form.querySelector('#rstile');
     const box = el('div', 'sn sy-note');
     box.append(el('span', 'sn-tile', tile && !twice ? tile.innerHTML : ''));

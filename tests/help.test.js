@@ -22,12 +22,12 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
 
 // ---- 1.40.0: Tyre wear ----
 { const folders = Help.folders(), f = id => plain(folders.find(x => x.id === id).body), tw = f('tyrewear'), schema = require(R + 'schema.js'), W = require(R + 'renderer/widgets.js');
-  say('Tyre Wear help explains its scope, Push & Save ownership and fresh tyres each heat', folders.findIndex(x => x.id === 'tyrewear') > folders.findIndex(x => x.id === 'weather') && ['Rules and Systems','Push & Save controls all pace-related tyre','practice and qualifying only when enabled','never in Time Tokens','Every heat starts on fresh tyres'].every(t => tw.includes(t)));
+  say('Tyre Wear help explains its scope, Push & Save ownership and fresh tyres each heat', folders.findIndex(x => x.id === 'tyrewear') > folders.findIndex(x => x.id === 'weather') && ['Race systems','Push & Save controls all pace-related tyre','practice and qualifying only when enabled','never in Time Tokens','Every heat starts on fresh tyres'].every(t => tw.includes(t)));
   say('Tyre Wear explains lifetime, weather, zero life and combined service work', ['Lasts about','Wear per lap','Wrong tyres','lap times and records are never rewritten','At 0%','Service Stop','fuel and repairs'].every(t => tw.includes(t)));
   say('Tyre Wear and Available Tyres help refers to real widgets and the Tyre Change folder', ['Tyre Wear','Available Tyres','Tyre Change'].every(t => tw.includes(t)) && W.REGISTRY.some(d => d.label === 'Tyre Wear' && d.group === 'Tyres'));
   say('Tyre Wear retains mandatory stops and sets guidance and directs users to Tyre Change', tw.includes('Mandatory stops and tyre sets still apply') && tw.includes('Tyre Change') && schema.tyrewearsystems.fields.some(f => f.key === 'setsMode'));
   say('...the Available Tyres widget it names is real: in the Layout Editor, group Tyres', tw.includes('Available Tyres') && W.REGISTRY.some(d => d.label === 'Available Tyres' && d.group === 'Tyres'));
-  say('Race Setup names Tyre Wear Systems and explains each selected system has a switch', f('setups').includes('Tyre Wear Systems') && f('setups').includes('every selected system has its own switch')); }
+  say('Race Setup names Tyre Wear Systems and explains each chosen system has a switch (2.4.0: On at the start, on its own row)', f('setups').includes('Tyre Wear Systems') && f('setups').includes('every chosen system has its switch') && f('setups').includes('On at the start')); }
 
 // ---- the folders ----
 { say('there are folders in four groups', Help.SECTIONS.length === 4 && folders.length >= 15);
@@ -170,14 +170,14 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
 
 // ---- 1.11.0 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
-  say('Race Setup help uses Rules and Systems and omits retired section names', f('setups').includes('Rules and Systems') && !f('setups').includes('Adjust pads') && !f('setups').includes('Length and result'));
+  say('Race Setup help uses Race systems (2.4.0) and omits retired section names', f('setups').includes('Race systems') && !f('setups').includes('Rules and Systems') && !f('setups').includes('Race Settings') && !f('setups').includes('Adjust pads') && !f('setups').includes('Length and result'));
   { const folders2 = Help.folders(), at = id => folders2.findIndex(x => x.id === id), sw = plain(folders2.find(x => x.id === 'setupwords').body), db = read('renderer/database.js');
     say('1.69.0: a folder Race Setups in words comes after Race Setup and before Session types, and is short', at('setupwords') === at('setups') + 1 && at('types') === at('setupwords') + 1 && sw.length < 1400);
     say('Help names every Race Setup rail section', schema.racesetups.rail.every(r => sw.includes(r.title)));
-    say('Help names the setup overview and its plain-language explanation', ['Table','Comparison rows','Start from a kind','In plain words'].every(k => sw.includes(k)) && ['Practice','Qualifying','Race','Time Tokens'].every(k => sw.includes(k)));
+    say('Help names the setup overview and its plain-language explanation (2.4.0: This race in one line)', ['Table','Comparison rows','Start from a kind','This race in one line'].every(k => sw.includes(k)) && ['Practice','Qualifying','Race','Time Tokens'].every(k => sw.includes(k)) && ['Heats','Endurance'].every(k => plain(folders2.find(x => x.id === 'setups').body).includes(k)));
   }
   { const sw2 = plain(Help.folders().find(x => x.id === 'setupwords').body), rail = schema.racesetups.rail;
-    say('Setup help explains section notes, status dots, navigation and Used by', ['rail','green','amber','open ring','quick summary','click it to jump','Used by','below the rail'].every(w => sw2.includes(w)));
+    say('Setup help explains section notes, the word of a section (Set, Missing), navigation and Used by', ['rail','says Set','Missing','quick summary','click it to jump','Used by','below the rail'].every(w => sw2.includes(w)));
     say('...it names the sections of the rail by their title in the order of the form (the other titles are the groups they hold), and does not talk about Open all and Close all for the form any more', rail.every(r => sw2.includes(r.title)) && rail.map(r => sw2.indexOf(r.title, sw2.indexOf('Click a row'))).every((x, i, a) => i === 0 || x > a[i - 1]) && !/Open all/.test(sw2)); }
   say('Leaderboard help explains the grid and Customization identifies its editor', ['Leaderboard page is a grid','little squares','5 to 8'].every(t => f('live').includes(t)) && f('custom').includes('Live Race Leaderboard grid'));
   say('the Live Race help says how the Race Director page is built: the Calls first, then folders for Penalties, Balance of Power, Damage, Car Failures (1.44.0), Weather and Tyre Change (1.32.0)', f('live').includes('Calls come first') && f('live').includes('then the lane cards (see Lane cards), Weather, Tyre Change and Endurance (brown)'));

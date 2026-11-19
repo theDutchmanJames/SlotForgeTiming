@@ -65,7 +65,7 @@ const Help = (() => {
           id: 'resources',
           title: 'Resource Systems',
           note: 'Tyre sets, repair credits and spare components',
-          body: `<ul><li>Create a profile in <b>Race Setup › Resource Systems</b>, then select it under <b>Rules and Systems</b>. Choose a driver, slotcar or team as owner. Every entry needs that database assignment.</li><li>Choose one race (each heat), the whole event (including finals), or a whole championship. For championship supplies, load the session from its championship on Home. Accounts follow their owner through lane changes; team accounts stay shared through driver swaps.</li><li>The starting tyre set counts. Completed tyre changes use a new set. Resource tyre limits replace Tyre Wear’s set limits when enabled; wear, weather, service time and mandatory stops still apply.</li><li>A completed damage repair uses one repair credit. A completed failure repair uses one repair credit and one component, when those limits are enabled. Components are a generic allowance. Insufficient stock leaves the affected work undone.</li><li>Enable the optional Resource shortage call in Audio Settings. During a race, open <b>Resources</b> for balances, history and signed director adjustments with a reason. After an exhausted tyre stop, grant stock and make another stop. Repair work can continue in the current stop after a grant.</li></ul>`
+          body: `<ul><li>Create a profile in <b>Race Setup › Resource Systems</b>, then select it under <b>Race systems</b>. Choose a driver, slotcar or team as owner. Every entry needs that database assignment.</li><li>Choose one race (each heat), the whole event (including finals), or a whole championship. For championship supplies, load the session from its championship on Home. Accounts follow their owner through lane changes; team accounts stay shared through driver swaps.</li><li>The starting tyre set counts. Completed tyre changes use a new set. Resource tyre limits replace Tyre Wear’s set limits when enabled; wear, weather, service time and mandatory stops still apply.</li><li>A completed damage repair uses one repair credit. A completed failure repair uses one repair credit and one component, when those limits are enabled. Components are a generic allowance. Insufficient stock leaves the affected work undone.</li><li>Enable the optional Resource shortage call in Audio Settings. During a race, open <b>Resources</b> for balances, history and signed director adjustments with a reason. After an exhausted tyre stop, grant stock and make another stop. Repair work can continue in the current stop after a grant.</li></ul>`
         },
         {
           id: 'resourcerecovery',
@@ -77,7 +77,7 @@ const Help = (() => {
           id: 'multiclass',
           title: 'Multi-Class Systems',
           note: 'Entry classes and separate competitions',
-          body: `<ul><li>Create a system in <b>Race Setup › Multi-Class Systems</b>. Add named, coloured classes. Select the system under <b>Race Setup › Rules and Systems</b>.</li><li>In <b>Database → Slotcars → Basics → Race Class</b>, choose or create a label such as GT3 or Prototype, then save the car. Multi-Class setups list all Race Class labels; only classes with labelled slotcars can enter a new driver-assigned system. Select the competing classes and assign each participating driver to one class. Home offers only assigned drivers and matching slotcars; changing the driver clears an incompatible car. Every driver sharing a team/endurance car must be assigned to the same class. Missing assignments or mismatched cars block starting. Existing systems keep their legacy rules until you choose <b>Use driver assignments and matching cars</b> and save.</li><li>Assignments lock at event start, survive lane rotations and driver swaps, and are saved with results. Later database changes do not rewrite history.</li><li>Mixed heats share the track. Separate heats split the existing plan by class, retaining lane assignments; this can add heats and empty lanes. Separate class heats cannot use overall A/B finals.</li><li>One shared race clock and finish rule remain in force. Virtual rivals are comparisons, without official class positions or points.</li></ul>`
+          body: `<ul><li>Create a system in <b>Race Setup › Multi-Class Systems</b>. Add named, coloured classes. Select the system under <b>Race Setup › Race systems</b>.</li><li>In <b>Database → Slotcars → Basics → Race Class</b>, choose or create a label such as GT3 or Prototype, then save the car. Multi-Class setups list all Race Class labels; only classes with labelled slotcars can enter a new driver-assigned system. Select the competing classes and assign each participating driver to one class. Home offers only assigned drivers and matching slotcars; changing the driver clears an incompatible car. Every driver sharing a team/endurance car must be assigned to the same class. Missing assignments or mismatched cars block starting. Existing systems keep their legacy rules until you choose <b>Use driver assignments and matching cars</b> and save.</li><li>Assignments lock at event start, survive lane rotations and driver swaps, and are saved with results. Later database changes do not rewrite history.</li><li>Mixed heats share the track. Separate heats split the existing plan by class, retaining lane assignments; this can add heats and empty lanes. Separate class heats cannot use overall A/B finals.</li><li>One shared race clock and finish rule remain in force. Virtual rivals are comparisons, without official class positions or points.</li></ul>`
         },
         {
           id: 'classlabels',
@@ -292,10 +292,10 @@ const Help = (() => {
           body: `
         <ul>
           <li><b>Race Setups</b> bring together a session's track, format, end rule, systems, screens and audio. The race systems in the side list hold reusable rules; choosing one does not change the others.</li>
-          <li><b>Session</b> chooses Practice, Qualifying, Race or Time Tokens and, for a race, One race, Heats or team swaps. <b>Race Settings</b> makes the track prominent and sets the end, winner, pit-sensor block time, Track Call and red-flag restart.</li>
-          <li><b>Race Settings</b> also controls the start sequence: set the shortest and longest <b>Start Lights Off Timer</b>; the lights then follow the racing flags. <b>First Lap Behaviour</b> either starts timing on the first crossing or counts it as a lap.</li>
-          <li>In <b>Rules and Systems</b>, every selected system has its own switch. Turn it off for this race without losing its saved setup. Balance of Power is last. <b>Service Stop</b> is independent and can be on or off.</li>
-          <li><b>Race UI and Audio</b> chooses the main Timing Page/Race Screen, the Second Display and the Audio Set. <b>Advanced</b> holds timing-hardware options and mirrors the Track Call choice.</li>
+          <li><b>The race</b> chooses the kind (Practice, Qualifying, Race, Heats, Endurance or Time Tokens), the track as a card, the length (with quick picks) and the winner.</li>
+          <li><b>Start and flags</b> holds the start lights (out after at least and at most), the first lap, what happens after a red flag, and Track Call in one place.</li>
+          <li>In <b>Race systems</b>, every chosen system has its switch <b>On at the start</b> on its own row. Turn it off without losing its saved setup. <b>Pits and service</b> has the pit sensor and the Service Stop.</li>
+          <li><b>Screen and sound</b> chooses the main Timing Page/Race Screen, the Second Display and the Audio Set. <b>Timing hardware</b> holds the track power and the Arduino Sketch.</li>
           <li>The side list: <b>Fuel Systems</b>, <b>Penalty Systems</b>, <b>Damage Systems</b>, <b>Safety Car Systems</b>, <b>Tyre Wear Systems</b>, <b>Weather Systems</b>, <b>Push &amp; Save Systems</b>; the Events: Rotation Setups and Championships; then More. A dot marks a system in use.</li>
         </ul>`
         },
@@ -305,9 +305,9 @@ const Help = (() => {
           note: 'Cards, kinds and the sentence in the form',
           body: `
         <ul>
-          <li>Every setup has an <b>In plain words</b> sentence that changes with the settings. The status dot is green when it can start, amber when something essential is missing and an open ring when nothing was changed.</li>
+          <li>Every setup has <b>This race in one line</b>, a sentence with chips that changes with the settings. A section in the rail says <b>Set</b> when it is filled in or changed, and <b>Missing</b> when something essential is missing.</li>
           <li><b>Table</b> and <b>Comparison rows</b> change the overview. Cards show how the session ends, who wins and square icons for linked Race Systems. Highlighted means on; dimmed means off. Hover for the system name and state. Switching updates the saved setup, not an active race. <b>Start from a kind</b> opens Practice, Qualifying, Race or Time Tokens already chosen.</li>
-          <li>The left rail opens each section: Session, Heats, Race Settings, Driver swaps, Rules and Systems, Service Stop, Race UI and Audio and Advanced. The note beside each row is a quick summary; click it to jump there.</li>
+          <li>The left rail opens each section: The race, Heats, Start and flags, Driver swaps, Race systems, Screen and sound, Pits and service and Timing hardware. The note beside each row is a quick summary; click it to jump there.</li>
           <li>Buttons and cards choose a small set of options; switches turn one rule on or off. <b>Used by</b>, below the rail, lists championships that use the setup. Older setups stay compatible.</li>
         </ul>`
         },
@@ -510,9 +510,9 @@ const Help = (() => {
         <ul>
           <li>Press <b>Space</b> (or Start). The five lights come on one by one, then go out after a random time between the shortest and longest <b>Start Lights Off Timer</b> values. The race starts as the lights go out.</li>
           <li>Lights follow the racing flags: green while racing, yellow under yellow and red under a red flag.</li>
-          <li><b>Red Flag Restart Behaviour</b> is either Start immediately or Countdown Timer. A red-flag interruption marks the affected lap invalid, so it cannot make a fastest lap or record.</li>
-          <li><b>First Lap Behaviour</b> either starts timing on the first crossing (Formation Lap) or lets the first trigger count as a lap.</li>
-          <li>Track power and the Track Call button follow the behaviour chosen in Race Settings.</li>
+          <li><b>After a red flag</b> is either Start immediately or Countdown Timer. A red-flag interruption marks the affected lap invalid, so it cannot make a fastest lap or record.</li>
+          <li><b>The first lap</b> either starts timing on the first crossing (Formation Lap) or lets the first trigger count as a lap.</li>
+          <li>Track power and the Track Call button follow the behaviour chosen in Start and flags.</li>
         </ul>`
         },
         {
@@ -554,7 +554,7 @@ const Help = (() => {
           <li><b>Penalty points</b> use the selected system’s consequence table: added time, deducted scoring laps, mandatory pit stops or a combination. The highest reached level sets the consequence.; <b>Disqualification and automatic points</b> controls limits and empty-tank points.</li>
           <li><b>Special penalties</b> are named buttons that add points and/or time, deduct scoring laps or require a pit stop. Older saved Drivethrough and Stop-and-Go rules retain their original behavior.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>
-          <li><b>Safety Car target lap time</b> is set in Safety Car Systems. A full lap under yellow that is too fast is called out, marked in lap review and can cost penalty points. Race Settings chooses Track Call behavior; the retired Yellow flag setup fields are ignored.</li>
+          <li><b>Safety Car target lap time</b> is set in Safety Car Systems. A full lap under yellow that is too fast is called out, marked in lap review and can cost penalty points. Start and flags chooses Track Call behavior; the retired Yellow flag setup fields are ignored.</li>
           <li>The Trackmate <b>Trackcall</b> button can raise the flags and switch the track power. You choose how in the race setup.</li>
         </ul>`
         },
@@ -578,7 +578,7 @@ const Help = (() => {
         <ul>
           <li>Choose a <b>Fuel System</b> in the race setup. Set the tank, fuel per lap and refuel speed; the form estimates the empty-to-full refuel time. New systems use fixed fuel per lap before race effects. App Settings chooses the current Push & Save benchmark; a Fuel System’s Track/Manual reference is for legacy Push & Save only.</li>
           <li>Choose what an empty tank does: warn, stop counting until refuelled or retire. It can also award penalty points.</li>
-          <li>A <b>pit stop</b> starts after the Pit Stop sensor block time in Race Settings. The tank fills while the car is there. Fuel is optional: pit stops work without it.</li>
+          <li>A <b>pit stop</b> starts after the Pit Stop sensor block time in Pits and service. The tank fills while the car is there. Fuel is optional: pit stops work without it.</li>
           <li>Fuel use itself is steady. Push &amp; Save is the optional system that makes faster laps use more and slower laps use less.</li>
           <li>The <b>Fuel</b> and <b>Pitstop time</b> widgets show the state; the Leaderboard has a Fuel left column. Fuel bars start green when full and gradually turn yellow, then red as fuel runs low, independently of the app theme. The widget's warning and critical thresholds and colours set the transition points (25% yellow and 10% red by default). Number and picture modes keep their own presentation.</li>
         </ul>`
@@ -639,7 +639,7 @@ const Help = (() => {
           note: 'Tyres that wear out, and the pit stop that changes them',
           body: `
         <ul>
-          <li>A <b>Tyre Wear System</b> takes tyre life from 100% to 0%. Choose it in Rules and Systems. It works in races, heats and Endurance; practice and qualifying only when enabled; never in Time Tokens. Every heat starts on fresh tyres.</li>
+          <li>A <b>Tyre Wear System</b> takes tyre life from 100% to 0%. Choose it in Race systems. It works in races, heats and Endurance; practice and qualifying only when enabled; never in Time Tokens. Every heat starts on fresh tyres.</li>
           <li>Each compound shows <b>Wear per lap</b> and <b>Lasts about</b> at normal pace, before race modifiers. Set a lifespan or fine-tune the wear directly.</li>
           <li>Push &amp; Save controls all pace-related tyre savings and extra wear for new races. Enable its tyre effect in the race setup. Tyre Wear supplies base wear, weather effects and optional temperature; it no longer adds a second pace multiplier. Previously saved races keep their starting rules.</li>
           <li>Weather compares the correct and wrong tyre with a clear graph. Wrong tyres can require a pit, add points or hinder the car; lap times and records are never rewritten.</li>
@@ -671,8 +671,8 @@ const Help = (() => {
           note: 'The yellow flag as a Safety Car',
           body: `
         <ul>
-          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles the Yellow-flag race rules. Choose one in the <b>Rules and Systems</b> section of a race setup.</li>
-          <li>The Safety Car is out <b>while the yellow flag is up</b>: the yellow button, a Track Call configured as Yellow in <b>Race Setup → Race Settings</b>, and a call from a lane all bring it out. There is no button of its own. Yellow again, or the red flag, ends it.</li>
+          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles the Yellow-flag race rules. Choose one in the <b>Race systems</b> section of a race setup.</li>
+          <li>The Safety Car is out <b>while the yellow flag is up</b>: the yellow button, a Track Call configured as Yellow in <b>Race Setup → Start and flags</b>, and a call from a lane all bring it out. There is no button of its own. Yellow again, or the red flag, ends it.</li>
           <li><b>Lap times</b>: a full lap behind the Safety Car must be slower than the limit. A lap that is too fast is called out and gets penalty points (they need a penalty system). A lap that began before the Safety Car came out does not count.</li>
           <li><b>Pit stops</b>: refuelling, a repair and changing tyres take a number of percent less time for a car that comes in while the Safety Car is out. Driver swaps and penalties served in the pits are not shorter.</li>
           <li>The flag widget and the yellow button say <b>Safety Car</b>, and the race log says when it came out and went in. The cars do not close up behind it (not yet).</li>
@@ -1311,7 +1311,7 @@ const Help = (() => {
           title: 'Plugin race rules',
           note: 'Frozen calculations and competition bonuses',
           body: `<ul>
-        <li>Install, configure and start a trusted rule plugin in <b>App Settings → Plugins</b>. Select it in <b>Race Setup → Rules and Systems → Plugin race rules</b>. None keeps the built-in rules. Time Token Sessions do not support these plugins.</li>
+        <li>Install, configure and start a trusted rule plugin in <b>App Settings → Plugins</b>. Select it in <b>Race Setup → Race systems → Plugin race rules</b>. None keeps the built-in rules. Time Token Sessions do not support these plugins.</li>
         <li>Before racing, SlotForge validates and freezes the plugin's rule plan and settings. It can modify fuel use and tyre wear, add time for valid laps and award competition-point bonuses. Existing system switches still apply. No plugin process is called at each sensor crossing.</li>
         <li>Raw lap times and records remain unchanged. Rule time is separate; the finalize page shows it. Invalidating or removing a lap removes its rule-time consequence, but does not refund historical fuel or tyre use.</li>
         <li>Bonuses add to heat/class or championship scoring, following eligibility and sprint/team rules. They do not replace the ordinary race winner rules.</li>

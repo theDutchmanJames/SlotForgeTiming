@@ -41,7 +41,8 @@ ok('...it is in the rail, below the rows', (() => { const h = R.shell({ ...base,
 
 // ---- the dots ----
 ok('three states: green (filled in or changed), amber (something is missing), an open ring (nothing changed), each with words; an unknown state is a ring', R.stateOf('ok')[0] === 'ok' && R.stateOf('todo')[0] === 'todo' && R.stateOf('plain')[0] === 'off' && R.stateOf('nonsense')[0] === 'off' && R.stateOf(undefined)[0] === 'off'
-  && R.STATES.ok[1] === 'Filled in or changed' && R.STATES.todo[1] === 'Something is missing' && R.STATES.plain[1] === 'Nothing changed from the standard');
+  && R.STATES.ok[1] === 'Filled in or changed' && R.STATES.todo[1] === 'Something is missing' && R.STATES.plain[1] === 'Nothing changed from the standard'
+  && R.STATES.ok[2] === 'Set' && R.STATES.todo[2] === 'Missing' && R.STATES.plain[2] === ''); // (2.4.0: the dot is a word now)
 
 // ---- drawing the notes and the dots into the form ----
 const mkEl = () => { const el = { textContent: '', className: '', title: '', hidden: false, attrs: {}, on: false, classList: { toggle: (c, f) => { if (c === 'on') el.on = !!f; } }, setAttribute: (k, v) => { el.attrs[k] = v; }, removeAttribute: k => { delete el.attrs[k]; } }; return el; };
@@ -51,7 +52,8 @@ const info = {}; IDS.forEach(id => { info[id] = { rail: 'note ' + id, row: 'Row 
 R.sync(byId, info, null, 'heats');
 ok('the note goes into the rail, the longer line into the closed section, and the dot gets its colour and its words (hover and screen reader)', IDS.every(id => els['rs-note-' + id].textContent === 'note ' + id && els['rs-row-' + id].textContent === 'Row ' + id)
   && els['rs-dot-session'].className === 'rsdot ok' && els['rs-dot-session'].title === 'Filled in or changed' && els['rs-state-session'].textContent === 'Filled in or changed'
-  && els['rs-dot-heats'].className === 'rsdot todo' && els['rs-state-heats'].textContent === 'Something is missing' && els['rs-dot-length'].className === 'rsdot off' && els['rs-dot-length'].title === 'Nothing changed from the standard');
+  && els['rs-dot-heats'].className === 'rsdot todo' && els['rs-state-heats'].textContent === 'Something is missing' && els['rs-dot-length'].className === 'rsdot off' && els['rs-dot-length'].title === 'Nothing changed from the standard'
+  && els['rs-dot-session'].textContent === 'Set' && els['rs-dot-heats'].textContent === 'Missing' && els['rs-dot-length'].textContent === ''); // (2.4.0: and the word in the dot: Set, Missing, or nothing)
 ok('...the row of the current section is marked (on, aria-current), and only that one', els['rs-rail-heats'].on === true && els['rs-rail-heats'].attrs['aria-current'] === 'true' && IDS.filter(id => id !== 'heats').every(id => els['rs-rail-' + id].on === false && !('aria-current' in els['rs-rail-' + id].attrs)));
 R.sync(byId, info, null, 'length');
 ok('...and the mark moves with the current section', els['rs-rail-length'].on === true && els['rs-rail-heats'].on === false && !('aria-current' in els['rs-rail-heats'].attrs) && els['rs-rail-length'].attrs['aria-current'] === 'true');
@@ -63,10 +65,13 @@ ok('a form that has no rail (or only some of the elements, or nothing at all) is
 
 // ---- the rail of the schema and the pictures ----
 { const rail = schema.racesetups.rail, gids = schema.racesetups.groups.map(g => g.id);
-  ok('the schema has eight sections including Service Stop, in form order, each with a title, question, icon and groups', rail.map(r => r.id).join() === 'session,heats,length,endurance,rules,service,screens,advanced' && rail.every(r => r.title && r.ask && r.icon && Icons.PATHS[r.icon] && Array.isArray(r.groups) && r.groups.length) && rail.filter(r => r.optional).map(r => r.id).join() === 'advanced' && rail.filter(r => r.open).map(r => r.id).join() === 'session,heats,length');
-  ok('...all nine groups belong to exactly one section, so every setting is drawn once', gids.length === 9 && rail.flatMap(r => r.groups).sort().join() === gids.slice().sort().join() && schema.racesetups.fields.every(f => gids.includes(f.group)));
-  ok('...Advanced holds Trackmate and the SlotForge box, in that order', rail.find(r => r.id === 'advanced').groups.join() === 'trackmate,box' && !rail.find(r => r.id === 'session').groups.includes('yellow'));
-  ok('...every question of a section ends with a full stop or a question mark, and no two sections have the same title', rail.every(r => /[.?]$/.test(r.ask)) && new Set(rail.map(r => r.title)).size === rail.length); }
+  // (2.4.0, Setup Sheet) The race, Heats, Start and flags, Driver swaps, Race systems, Screen and sound; Pits and service and Timing hardware only if you need them
+  ok('the schema has eight sections, in form order, each with a title, question, icon and groups; Pits and service and Timing hardware are optional', rail.map(r => r.id).join() === 'race,heats,start,endurance,rules,screens,service,advanced' && rail.every(r => r.title && r.ask && r.icon && Icons.PATHS[r.icon] && Array.isArray(r.groups) && r.groups.length) && rail.filter(r => r.optional).map(r => r.id).join() === 'service,advanced' && rail.filter(r => r.open).map(r => r.id).join() === 'race,heats,start'
+    && rail.map(r => r.title).join() === 'The race,Heats,Start and flags,Driver swaps,Race systems,Screen and sound,Pits and service,Timing hardware');
+  ok('...all thirteen groups belong to exactly one section, so every setting is drawn once', gids.length === 13 && rail.flatMap(r => r.groups).sort().join() === gids.slice().sort().join() && schema.racesetups.fields.every(f => gids.includes(f.group)));
+  ok('...Advanced holds Trackmate and the SlotForge box, in that order; The race holds the session and its length, Heats the heats and their scoring, Start and flags the lights, the start and the Track Call', rail.find(r => r.id === 'advanced').groups.join() === 'trackmate,box' && !rail.find(r => r.id === 'race').groups.includes('yellow')
+    && rail.find(r => r.id === 'race').groups.join() === 'session,length' && rail.find(r => r.id === 'heats').groups.join() === 'heats,scoring' && rail.find(r => r.id === 'start').groups.join() === 'lights,start,call');
+  ok('...every question of a section ends with a question mark (2.4.0: a section may also say what it holds, as a line), and no two sections have the same title', rail.every(r => /[.?]$/.test(r.ask) || !/^(What|Who|When|Which|How|Can|Is|Do|Does)\b/.test(r.ask)) && new Set(rail.map(r => r.title)).size === rail.length); }
 
 // ---- 1.73.0: the forms of the penalty and damage systems ----
 { const sys = R.shell({ ...base, eyebrow: 'Edit penalty system', cls: 'setupform ss-pen', navLabel: 'The sections of this penalty system', caption: 'This system', save: 'Save penalty system', used: ['Club race 10 laps'], usedIcon: 'racesetups', usedNone: 'x',

@@ -348,14 +348,24 @@
       ['practice', 'Free practice', 'Everyone drives. Ranked by fastest lap.'],
       ['qualifying', 'Qualifying', 'Ranked by fastest lap. The result can seed the heats.'],
       ['race', 'Race', 'Laps and time decide the winner.'],
+      ['heats', 'Heats', 'Turns on every lane, the heats added up.'],
+      ['endurance', 'Endurance', 'Teams swap drivers in the pits.'],
       ['tokens', 'Time tokens', 'Not a race. You sell track time per lane.']
     ],
     formats: [
       ['one', 'One race', 'All cars start together and there is one result.'],
       ['heats', 'Heats', 'A series of races. Drivers take turns and the heats are added up.']
     ],
-    swaps: ['Teams swap drivers in the pits', 'An endurance race: the drivers of a team take turns in the same car.'],
-    icons: { practice: 'car', qualifying: 'timing', race: 'racesetups', tokens: 'tokens', one: 'arrow', heats: 'layers' }
+    swaps: ['Teams swap drivers in the pits', 'Heats for teams: the drivers of a team take turns in the same car.'],
+    icons: {
+      practice: 'car',
+      qualifying: 'timing',
+      race: 'racesetups',
+      heats: 'layers',
+      endurance: 'rotation',
+      tokens: 'tokens',
+      one: 'arrow'
+    }
   };
   const UNITS = ['laps', 'time', 'distance'];
   // the three answers of a setup (or of the values of the form): { kind, format, swaps }; format is '' and swaps false for a kind that is not a race
@@ -382,8 +392,15 @@
     s = s || {};
     change = change || {};
     const now = parts(s);
+    // (2.4.0) the six cards: Race is one race, Heats a race in heats (a team that swaps keeps its switch), Endurance a race with driver swaps
+    if (change.kind === 'race' && now.kind === 'race' && change.format === undefined && change.swaps === undefined)
+      change = { kind: 'race', format: 'one', swaps: false };
+    else if (change.kind === 'heats')
+      change = { kind: 'race', format: 'heats', swaps: now.kind === 'race' && now.format === 'heats' && now.swaps };
+    else if (change.kind === 'endurance') change = { kind: 'race', format: 'one', swaps: true };
+    else if (change.kind === 'race' && now.kind !== 'race') change = { kind: 'race', format: 'one', swaps: false };
     let p = { ...now, ...change };
-    if (change.kind === 'race' && now.kind !== 'race') {
+    if (change.kind === 'race' && now.kind !== 'race' && change.format === undefined) {
       const m = memory || {};
       p = { kind: 'race', format: m.format === 'heats' ? 'heats' : 'one', swaps: !!m.swaps };
     }
@@ -631,6 +648,50 @@
         row: cap(here.map(a => a[2]).join(', ') + '. ' + (did.length ? `Changed: ${did.map(a => a[2]).join(', ')}.` : 'Nothing changed.')),
         state: did.length ? 'ok' : 'plain'
       };
+    }
+    // (2.4.0, Setup Sheet) the sections of the rail now: The race (the session and its length), Heats (with how they are added up), Start and flags
+    // (the lights, the first lap, a red flag, Track Call). Session and Race Settings stay in the answer for whoever reads them.
+    {
+      const join = (a, b) => [a, b].filter(Boolean).join(' · ');
+      const heatScore = heated ? out.length : null;
+      const st = s => (s === 'todo' ? 'todo' : 'ok');
+      out.race = {
+        rail: join(out.session.rail, heated ? '' : out.length.rail.replace(/ · lights [^·]*$/, '')),
+        row: cap([out.session.row, heated ? '' : out.length.row.replace(/, lights out after.*$/, '')].filter(Boolean).join('; ')),
+        state: out.session.state === 'todo' || (!heated && out.length.state === 'todo') ? 'todo' : st(out.session.state)
+      };
+      if (heated)
+        out.heats = {
+          rail: join(out.heats.rail, heatScore.rail),
+          row: cap([out.heats.row, heatScore.row].filter(Boolean).join('; ')),
+          state: out.heats.state === 'todo' || heatScore.state === 'todo' ? 'todo' : 'ok'
+        };
+      const lo = pos(s.lightsMin),
+        hi = pos(s.lightsMax),
+        span = lo && hi ? (lo === hi ? `${lo}` : `${lo}–${hi}`) : lo || hi || '';
+      const call =
+        { yellowred: 'yellow, then red', yellow: 'yellow', red: 'red', power: 'track power off', none: 'off' }[
+          s.trackCallAction || 'yellowred'
+        ] || 'yellow, then red';
+      const did = changed([
+        'lightsMin',
+        'lightsMax',
+        'firstLap',
+        'redFlagSeconds',
+        'restartAfterRed',
+        'trackCallAction',
+        'trackCallYellowPower',
+        'trackCallRedPower',
+        'trackcallWindow'
+      ]);
+      out.start =
+        t === 'tokens'
+          ? make([], [], 'plain')
+          : make(
+              cleanParts([span ? `Lights ${span} s` : '', `Track Call ${call}`]),
+              cleanParts([span ? `lights out after ${span} seconds` : '', `Track Call: ${call}`]),
+              did.length ? 'ok' : 'plain'
+            );
     }
     return out;
   }

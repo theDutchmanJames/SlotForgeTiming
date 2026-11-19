@@ -440,18 +440,27 @@ module.exports = {
     imageFrom: 'track',
     // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
     groups: [
-      { id: 'session', title: 'Session', note: 'Name, kind of session and track', open: true },
+      { id: 'session', title: 'Session', note: 'Name, kind of session and track', open: true, bare: true },
+      { id: 'length', title: 'Length', note: 'When the race is over, and who wins', open: true },
       { id: 'heats', title: 'Heats', note: 'Who races, how the heats are planned and when they start', open: true },
-      { id: 'length', title: 'Race Settings', note: 'Race length, winner, starts, pit entry and the Track Call button', open: true },
+      { id: 'scoring', title: 'Points and finals', note: 'How the heats are added up, and the finals after them', open: true },
+      { id: 'lights', title: 'Start lights', note: 'All five on, then out after a random wait between these two times', open: true },
+      {
+        id: 'start',
+        title: 'The first lap and a red flag',
+        note: 'What the first lap counts as, and what happens when the race is stopped',
+        open: true
+      },
+      { id: 'call', title: 'Track Call', note: 'What happens when a driver presses the call button, and the track power then', open: true },
       {
         id: 'endurance',
         title: 'Driver swaps',
         note: 'When a team swaps drivers in the pits, who steps in, and what a swap that is not made costs'
       },
-      { id: 'service', title: 'Service Stop', note: 'An optional timed stop for working on the car, even without any race systems' },
-      { id: 'rules', title: 'Rules and Systems', note: 'Choose the systems for this race, then turn each one on or off' },
-      { id: 'screens', title: 'Race UI and Audio', note: 'Timing Page layouts and the Audio Set' },
-      { id: 'trackmate', title: 'Timing hardware', note: 'Track power at the start; Track Call is set in Race Settings' },
+      { id: 'service', title: 'Pits and service', note: 'When a car is in the pits, and an optional timed stop for working on it' },
+      { id: 'rules', title: 'Race systems', note: 'A system for each part, and whether it is on at the start' },
+      { id: 'screens', title: 'Screen and sound', note: 'Timing Page layouts and the Audio Set' },
+      { id: 'trackmate', title: 'Timing hardware', note: 'Track power at the start; Track Call is set in Start and flags' },
       {
         id: 'box',
         title: 'Arduino Sketch',
@@ -462,24 +471,51 @@ module.exports = {
     // timing hardware and the SlotForge box). ask: what the section answers, shown while it is open; icon: the picture on its row; open: open when the form opens;
     // optional: it is listed under "Only if you need it". Nothing here changes where a setting is stored: a setting still says which group it is in.
     rail: [
-      { id: 'session', title: 'Session', ask: 'What are you setting up?', icon: 'racesetups', open: true, groups: ['session'] },
-      { id: 'heats', title: 'Heats', ask: 'Who races, and when?', icon: 'layers', open: true, groups: ['heats'] },
       {
-        id: 'length',
-        title: 'Race Settings',
-        ask: 'How does this race run, start and respond to Track Call?',
+        id: 'race',
+        title: 'The race',
+        ask: 'What kind of race, where, and how long?',
+        icon: 'racesetups',
+        open: true,
+        groups: ['session', 'length']
+      },
+      {
+        id: 'heats',
+        title: 'Heats',
+        ask: 'Who races together, and how are the heats added up?',
+        icon: 'layers',
+        open: true,
+        groups: ['heats', 'scoring']
+      },
+      {
+        id: 'start',
+        title: 'Start and flags',
+        ask: 'How does the race start, and what do a red flag and Track Call do?',
         icon: 'board',
         open: true,
-        groups: ['length']
+        groups: ['lights', 'start', 'call']
       },
       { id: 'endurance', title: 'Driver swaps', ask: 'When do the drivers of a team swap?', icon: 'rotation', groups: ['endurance'] },
-      { id: 'rules', title: 'Rules and Systems', ask: 'Which systems are selected and enabled?', icon: 'shield', groups: ['rules'] },
-      { id: 'service', title: 'Service Stop', ask: 'Can the car be removed for service?', icon: 'sliders', groups: ['service'] },
-      { id: 'screens', title: 'Race UI and Audio', ask: 'What do the race screens show and say?', icon: 'screen', groups: ['screens'] },
+      {
+        id: 'rules',
+        title: 'Race systems',
+        ask: 'Which systems does this race use, and are they on at the start?',
+        icon: 'shield',
+        groups: ['rules']
+      },
+      { id: 'screens', title: 'Screen and sound', ask: 'What do the race screens show and say?', icon: 'screen', groups: ['screens'] },
+      {
+        id: 'service',
+        title: 'Pits and service',
+        ask: 'When is a car in the pits, and can it be worked on?',
+        icon: 'sliders',
+        optional: true,
+        groups: ['service']
+      },
       {
         id: 'advanced',
-        title: 'Advanced',
-        ask: 'Timing hardware and the Arduino Sketch.',
+        title: 'Timing hardware',
+        ask: 'Track power and the Arduino Sketch.',
         icon: 'sliders',
         optional: true,
         groups: ['trackmate', 'box']
@@ -504,7 +540,7 @@ module.exports = {
           ['endurance', 'Endurance Race'],
           ['tokens', 'Time Token Session']
         ],
-        hint: 'A Time Token Session is not a race: each lane is switched on with paid time and turns red when the time is up (its settings are in Race Setup > Time Tokens). With Heats and swaps, every heat is a race with driver swaps of its own; the drivers who start a heat are chosen as in a heat race with teams.'
+        hint: 'Each kind shows only its own settings. Heats and Endurance are races too: in heats, or with teams that swap drivers.'
       },
       {
         key: 'track',
@@ -513,7 +549,7 @@ module.exports = {
         type: 'ref',
         ref: 'tracks',
         featured: true,
-        hint: 'The track decides how many lanes there are. Its lane count is shown right below your choice.'
+        hint: 'Its lanes are the lanes of the race.'
       },
       {
         key: 'rotation',
@@ -816,7 +852,7 @@ module.exports = {
       },
       {
         key: 'resultBy',
-        group: 'length',
+        group: 'scoring',
         label: 'The overall winner is',
         ui: 'cards',
         offer: ['points', 'laps', 'time'],
@@ -832,7 +868,7 @@ module.exports = {
       },
       {
         key: 'resultByTime',
-        group: 'length',
+        group: 'scoring',
         label: 'The overall winner is',
         ui: 'cards',
         offer: ['points', 'lapstime', 'laps'],
@@ -852,7 +888,7 @@ module.exports = {
       },
       {
         key: 'unfinished',
-        group: 'length',
+        group: 'scoring',
         label: 'A heat that is not finished',
         type: 'select',
         default: 'below',
@@ -865,7 +901,7 @@ module.exports = {
       },
       {
         key: 'points',
-        group: 'length',
+        group: 'scoring',
         label: 'Points per position',
         ui: 'boxes',
         type: 'numberlist',
@@ -878,7 +914,7 @@ module.exports = {
       },
       {
         key: 'fastestBonus',
-        group: 'length',
+        group: 'scoring',
         label: 'Bonus points for the fastest lap of a heat',
         type: 'number',
         default: 0,
@@ -891,7 +927,7 @@ module.exports = {
       },
       {
         key: 'countBy',
-        group: 'length',
+        group: 'scoring',
         label: 'How the heats are added up',
         ui: 'seg',
         type: 'select',
@@ -906,7 +942,7 @@ module.exports = {
       },
       {
         key: 'bestHeats',
-        group: 'length',
+        group: 'scoring',
         label: 'Heats that count',
         type: 'number',
         default: 2,
@@ -916,7 +952,7 @@ module.exports = {
       },
       {
         key: 'dropWorst',
-        group: 'length',
+        group: 'scoring',
         label: 'Drop the worst heat',
         ask: 'Drop the worst heat of every driver',
         ui: 'switch',
@@ -932,7 +968,7 @@ module.exports = {
       },
       {
         key: 'tieBreak',
-        group: 'length',
+        group: 'scoring',
         label: 'A tie is decided by',
         type: 'select',
         default: 'default',
@@ -947,7 +983,7 @@ module.exports = {
       },
       {
         key: 'finals',
-        group: 'length',
+        group: 'scoring',
         label: 'Finals after the heats',
         ui: 'seg',
         type: 'select',
@@ -962,7 +998,7 @@ module.exports = {
       },
       {
         key: 'finalMode',
-        group: 'length',
+        group: 'scoring',
         label: 'What the finals decide',
         type: 'select',
         default: 'places',
@@ -975,7 +1011,7 @@ module.exports = {
       },
       {
         key: 'finalLaps',
-        group: 'length',
+        group: 'scoring',
         label: 'Laps in a final (0 = as many as a heat)',
         type: 'number',
         default: 0,
@@ -985,7 +1021,7 @@ module.exports = {
       },
       {
         key: 'finalDuration',
-        group: 'length',
+        group: 'scoring',
         label: 'Duration of a final in minutes (0 = as long as a heat)',
         type: 'number',
         default: 0,
@@ -995,7 +1031,7 @@ module.exports = {
       },
       {
         key: 'finalDistance',
-        group: 'length',
+        group: 'scoring',
         label: 'Distance of a final (metres, 0 = the same as a heat)',
         labelFt: 'Distance of a final (feet, 0 = the same as a heat)',
         unit: 'm',
@@ -1303,26 +1339,26 @@ module.exports = {
       },
       {
         key: 'lightsMin',
-        group: 'length',
-        label: 'Start Lights Off Timer — shortest before off (seconds)',
+        group: 'lights',
+        label: 'Out after at least (seconds)',
         type: 'number',
         default: 1,
         showIf: RACING,
-        hint: 'The lights always follow the racing flags after the start: green while racing, yellow under Yellow and red under Red.'
+        hint: 'After the start the lights follow the flags: green, yellow, red.'
       },
       {
         key: 'lightsMax',
-        group: 'length',
-        label: 'Start Lights Off Timer — longest before off (seconds)',
+        group: 'lights',
+        label: 'Out after at most (seconds)',
         type: 'number',
         default: 5,
         showIf: RACING,
-        hint: 'The App picks a random wait between the shortest and longest values every time the start lights run.'
+        hint: 'A new random wait between the two, every start.'
       },
       {
         key: 'redFlagSeconds',
-        group: 'length',
-        label: 'Red Flag Protection — add result time per car (seconds)',
+        group: 'start',
+        label: 'Time added per car after a red flag (seconds)',
         type: 'number',
         default: 0,
         min: 0,
@@ -1332,8 +1368,8 @@ module.exports = {
       },
       {
         key: 'restartAfterRed',
-        group: 'length',
-        label: 'Red Flag Restart Behaviour',
+        group: 'start',
+        label: 'After a red flag',
         type: 'select',
         default: 'countdown',
         options: [
@@ -1344,8 +1380,8 @@ module.exports = {
       },
       {
         key: 'firstLap',
-        group: 'length',
-        label: 'First Lap Behaviour',
+        group: 'start',
+        label: 'The first lap',
         type: 'select',
         default: 'skip',
         options: [
@@ -1356,7 +1392,7 @@ module.exports = {
       },
       {
         key: 'pitHold',
-        group: 'length',
+        group: 'service',
         label: 'Sensor must be blocked for this long to start a pit stop (seconds)',
         type: 'number',
         default: 2,
@@ -1366,8 +1402,8 @@ module.exports = {
       },
       {
         key: 'trackCallAction',
-        group: 'length',
-        label: 'Track Call Button Behaviour',
+        group: 'call',
+        label: 'When a driver presses the call button',
         type: 'select',
         default: 'yellowred',
         options: [
@@ -1381,7 +1417,7 @@ module.exports = {
       },
       {
         key: 'trackCallYellowPower',
-        group: 'length',
+        group: 'call',
         label: 'Track power during Yellow',
         ui: 'switch',
         on: 'on',
@@ -1395,7 +1431,7 @@ module.exports = {
       },
       {
         key: 'trackCallRedPower',
-        group: 'length',
+        group: 'call',
         label: 'Track power during Red',
         ui: 'switch',
         on: 'on',
@@ -1409,7 +1445,7 @@ module.exports = {
       },
       {
         key: 'trackcallWindow',
-        group: 'length',
+        group: 'call',
         label: 'Yellow then Red — second-press window (seconds)',
         type: 'number',
         default: 3,

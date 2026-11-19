@@ -41,7 +41,9 @@ the Race Director as folders (App Settings) next to the Lane Desk.
 - The default layout has 6 lanes, while the app supports 8.
 - **Ideas:** a fixed control strip, a clear race-state banner, a full Race Director decision dialog.
 
-### 3. Race Setup form and start checks · Remake
+### 3. Race Setup form and start checks · Remake · **Done (2.4.0, "Setup Sheet" and "Status Lights")**
+The race in one line, the sections regrouped (The race, Heats with its scoring, Start and flags with Track Call together, Race systems with On at the
+start per row), six kinds, the tracks as cards; the check before the start is the drop-down of the status lights, on every page.
 - About 100 fields. "Race Settings" holds 36 of them, mixing length, heat scoring, start lights, red flag, pit hold and
   track call (schema.js around 600-1380). Heat scoring is not in Heats.
 - The session type mixes format and kind (race, heats, endurance, tokens). The engine still knows a `timed` type that is

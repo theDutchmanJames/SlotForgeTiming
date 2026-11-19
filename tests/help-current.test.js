@@ -19,9 +19,10 @@ assert(words('charteditor').includes('Charts → Race Chart') && words('chartedi
 assert(words('chartoptions').includes('red-flag') && words('chartoptions').includes('second display') && words('chartoptions').includes('display-only'), 'chart Help explains eligibility, shared designs and display-only behavior');
 assert(/median/i.test(words('calculations')) && /track target/i.test(words('calculations')) && /weighted/i.test(words('calculations')) && /trimmed/i.test(words('calculations')), 'Calculations explains the selectable benchmarks, including new average methods');
 assert(words('servicestop').includes('Penalty time always adds afterward') && words('servicestop').includes('Release car'), 'Service Stop explains its timer and release flow');
-assert(words('setups').includes('Race Settings') && words('setups').includes('Start Lights Off Timer') && words('setups').includes('Race UI and Audio'), 'Race Setup Help follows the current page structure');
-assert(words('setupwords').includes('In plain words') && words('setupwords').includes('Service Stop') && words('setupwords').includes('Used by'), 'the setup rail and its summary are explained');
-assert(words('start').includes('Red Flag Restart Behaviour') && words('start').includes('First Lap Behaviour'), 'starting Help uses the current controls');
+// (2.4.0, Setup Sheet: The race, Start and flags, Race systems, Screen and sound; the summary is This race in one line)
+assert(words('setups').includes('Start and flags') && words('setups').includes('start lights') && words('setups').includes('Screen and sound') && words('setups').includes('Race systems'), 'Race Setup Help follows the current page structure');
+assert(words('setupwords').includes('This race in one line') && words('setupwords').includes('Pits and service') && words('setupwords').includes('Used by'), 'the setup rail and its summary are explained');
+assert(words('start').includes('After a red flag') && words('start').includes('The first lap'), 'starting Help uses the current controls');
 assert(words('screen').includes("Director's Final Check") && words('screen').includes('Victory Spotlight'), 'the finished-race flow is explained');
 assert(words('fuel').includes('empty-to-full') && words('fuel').includes('Push & Save'), 'Fuel Help explains the revised pace hand-off');
 assert(words('tyrewear').includes('Push & Save') && words('tyrewear').includes('no longer adds a second pace multiplier') && words('tyrewear').includes('Lasts about'), 'Tyre Wear Help explains pace-based wear and the simpler tyre editor');

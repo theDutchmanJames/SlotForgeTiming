@@ -308,6 +308,30 @@ function openForm(e, item, preset) {
       draft[x.setup] = getValue(x.setup);
     });
     el.innerHTML = RaceSystems.setupHtml(draft);
+    // (2.4.0, Setup Sheet) one row per system: its switch "On at the start" goes next to the system that is chosen, so one row says both (the row of
+    // switches under them is then empty and hidden; Balance of Power is a switch itself)
+    if (!el.querySelectorAll || typeof el.appendChild !== 'function' || !dlg.querySelector) return;
+    [...el.querySelectorAll('[data-system-key]')].forEach(b => {
+      const item = RaceSystems.ITEMS.find(x => x.key === b.dataset.systemKey),
+        row = item ? dlg.querySelector(`.field[data-key="${item.setup}"]`) : null;
+      // (a system that is hidden on this computer, or not chosen, has nothing to switch: its switch goes)
+      if (!row || row.hidden || (row.closest && row.closest('[hidden]'))) {
+        if (b.disabled) b.remove();
+        return;
+      }
+      let slot = row.querySelector('.rs-onstart');
+      if (!slot) {
+        slot = document.createElement('span');
+        slot.className = 'rs-onstart';
+        (row.querySelector('.ss-ctl') || row).appendChild(slot);
+      }
+      slot.hidden = !getValue(item.setup) || (item.key === 'bop' && getValue('bop') !== 'on');
+      slot.innerHTML = '<span>On at the start</span>';
+      slot.appendChild(b);
+    });
+    const left = el.querySelectorAll('[data-system-key]').length;
+    const host = dlg.querySelector('.field[data-key="disabledSystems"]');
+    if (host) host.hidden = !left;
   };
   const drawTrackPreview = () => {
     if (e !== 'racesetups') return;
@@ -316,6 +340,7 @@ function openForm(e, item, preset) {
     const track = (state.refs.tracks || []).find(x => x.id === getValue('track'));
     if (!track) {
       box.innerHTML = `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span><p><b>Choose a track</b><small>The lane count and track picture will appear here.</small></p>`;
+      drawTrackCards();
       return;
     }
     const lanes = Number(track.lanes) > 0 ? `${track.lanes} ${Number(track.lanes) === 1 ? 'lane' : 'lanes'}` : 'Lane count not set';
@@ -323,6 +348,50 @@ function openForm(e, item, preset) {
       ? `<img src="${esc(track.image)}" alt="">`
       : `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span>`;
     box.innerHTML = `${pic}<p><b>${esc(track.name || 'Unnamed track')}</b><small>${esc(lanes)}${track.length ? ` · ${esc(Distance.text(track.length, dUnit()))}` : ''}</small></p>`;
+    drawTrackCards();
+  };
+  // (2.4.0, Setup Sheet) the tracks as cards under the choice: the picture (or a drawn oval with its lanes), the name, the lanes and the length; the
+  // chosen one is lit. A click chooses it (the list stays, for a keyboard and a screen reader).
+  const drawTrackCards = () => {
+    if (e !== 'racesetups') return;
+    const row = dlg.querySelector('.field[data-key="track"]');
+    if (!row || typeof row.appendChild !== 'function' || typeof document === 'undefined') return;
+    let grid = row.querySelector('.rs-tracks');
+    if (!grid) {
+      grid = document.createElement('div');
+      grid.className = 'rs-tracks';
+      grid.setAttribute('role', 'group');
+      grid.setAttribute('aria-label', 'Tracks');
+      row.appendChild(grid);
+    }
+    const now = getValue('track'),
+      LC = ['#e5484d', '#3b82f6', '#f5c211', '#3ecf8e'];
+    const oval = n =>
+      `<svg viewBox="0 0 64 40" aria-hidden="true"><rect x="3" y="3" width="58" height="34" rx="17" fill="none" stroke="currentColor" stroke-opacity=".22" stroke-width="6"/>${Array.from({ length: Math.min(4, Math.max(1, Number(n) || 1)) }, (_, k) => `<rect x="${3 + k * 1.6}" y="${3 + k * 1.6}" width="${58 - k * 3.2}" height="${34 - k * 3.2}" rx="${17 - k * 1.6}" fill="none" stroke="${LC[k]}" stroke-width="1"/>`).join('')}</svg>`;
+    const html = (state.refs.tracks || [])
+      .map(t => {
+        const n = Number(t.lanes) > 0 ? Number(t.lanes) : 0;
+        return `<button type="button" class="rs-track${t.id === now ? ' on' : ''}" data-trackpick="${esc(t.id)}" aria-pressed="${t.id === now}">${t.image ? `<img src="${esc(t.image)}" alt="">` : oval(n)}<span><b>${esc(t.name || 'Unnamed track')}</b><small>${n ? `${n} ${n === 1 ? 'lane' : 'lanes'}` : 'lanes not set'}${t.length ? ' · ' + esc(Distance.text(t.length, dUnit())) : ''}</small></span></button>`;
+      })
+      .join('');
+    if (grid.innerHTML !== html) grid.innerHTML = html;
+  };
+  // (2.4.0, Setup Sheet) quick picks for the length: a few common numbers of laps and minutes beside their field
+  const drawQuickPicks = () => {
+    if (e !== 'racesetups') return;
+    [
+      ['laps', [20, 50, 100, 200]],
+      ['duration', [5, 10, 15, 30]]
+    ].forEach(([key, list]) => {
+      const row = dlg.querySelector(`.field[data-key="${key}"]`);
+      if (!row || typeof row.appendChild !== 'function' || !row.querySelector || row.querySelector('.rs-quick')) return;
+      const q = document.createElement('span');
+      q.className = 'rs-quick';
+      q.setAttribute('role', 'group');
+      q.setAttribute('aria-label', 'Quick picks');
+      q.innerHTML = list.map(n => `<button type="button" class="btn" data-quick="${n}" data-quick-key="${key}">${n}</button>`).join('');
+      row.appendChild(q);
+    });
   };
   // Fuel Systems can borrow the deliberately entered reference lap from a Track. Keep the
   // selected Track and its current value visible together so a missing reference is obvious.
@@ -469,6 +538,7 @@ function openForm(e, item, preset) {
   const sayDraw = () => {
     drawSystemSwitches();
     drawTrackPreview();
+    drawQuickPicks();
     drawTrackCallSummary();
     drawFuelTrackPreview();
     drawSafetyTrackPreview();
@@ -504,7 +574,25 @@ function openForm(e, item, preset) {
     if (tile) tile.innerHTML = Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
     const bar = byId('rs-strip');
     if (bar) bar.innerHTML = RailForm.strip(d.strip); // (the bar of the levels of a damage system)
-    box.innerHTML = `<span class="rsic rssayic">${Icons.svg('say', { size: 20, stroke: 1.7 })}</span><div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
+    // (2.4.0, SlotForgeRestyle.md "Setup Sheet") a race setup in one line, with chips: ready or not, Track Call, the systems, the screens and the sound
+    const sheetChips = () => {
+      if (e !== 'racesetups' || typeof SetupWords.rail !== 'function') return '';
+      const r = SetupWords.rail(v, rctx),
+        chip = (text, c) => `<span class="rs-chip" style="--c:${c || '#8a93a0'}"><i aria-hidden="true"></i>${esc(text)}</span>`;
+      return `<div class="rs-chips">${[
+        chip(d.ready.ok ? 'Ready to race' : d.ready.text, d.ready.ok ? '#3ecf8e' : '#f2b705'),
+        r.start && r.start.rail ? chip(r.start.rail.split(' · ').pop(), '#f5c518') : '',
+        ...String((r.rules && r.rules.rail) || '')
+          .split(' · ')
+          .filter(Boolean)
+          .map(x => chip(x, /off$|No systems/.test(x) ? '' : '#3ecf8e')),
+        ...String((r.screens && r.screens.rail) || '')
+          .split(' · ')
+          .filter(Boolean)
+          .map(x => chip(x, ''))
+      ].join('')}</div>`;
+    };
+    box.innerHTML = `<span class="rsic rssayic">${Icons.svg(e === 'racesetups' ? tileName(v) : 'say', { size: 20, stroke: 1.7 })}</span><div class="rssaytext"><span class="rseye">${e === 'racesetups' ? 'This race in one line' : 'In plain words'}</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p>${sheetChips()}</div>`;
     drawFuelMath(v);
     railDraw(v, rctx, d.notes);
   };
@@ -671,6 +759,15 @@ function openForm(e, item, preset) {
     }
     if (d.systemKey && typeof RaceSystems !== 'undefined') {
       setValues({ disabledSystems: RaceSystems.toggle(getValue('disabledSystems'), d.systemKey, d.systemOn === '1') });
+      return;
+    }
+    // (2.4.0, Setup Sheet) a track card, and the quick picks of the length (laps, minutes)
+    if (d.trackpick !== undefined) {
+      setValues({ track: d.trackpick });
+      return;
+    }
+    if (d.quick !== undefined && d.quickKey) {
+      setValues({ [d.quickKey]: d.quick });
       return;
     }
     if (d.pick) {

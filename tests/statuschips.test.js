@@ -26,11 +26,18 @@ test('races that could not reach the shared library are counted in a chip that o
   assert.equal(HS.chips({ ...base, libraryWaiting: 0 }).find(x => x.key === 'library'), undefined);
 });
 
-test('Home passes both and makes such chips buttons', () => {
+// (2.4.0, Status Lights) the chips are in the drop-down of the status lights of the main menu now: mainbar.js passes both, racecheck.js makes them buttons
+test('the status lights pass both and make such chips buttons that open the page where they are put right', () => {
   const { code, has } = require('./source.cjs'),
-    landing = code('renderer/landing.js');
-  assert(has(landing, 'libraryWaiting: homeLibraryWaiting'));
-  assert(has(landing, "unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id)"));
-  assert(has(landing, 'class="hm-chip hm-chip-go"'));
-  assert(has(landing, "if (b.dataset.go === 'connections') {"));
+    mainbar = code('renderer/mainbar.js'),
+    RC = require('../renderer/racecheck.js');
+  assert(has(mainbar, "libraryWaiting: typeof homeLibraryWaiting !== 'undefined' ? homeLibraryWaiting : 0"));
+  assert(has(mainbar, 'unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id)'));
+  assert(has(mainbar, "if (go === 'connections' && typeof connectionsTab !== 'undefined') connectionsTab = 'library';"));
+  const c = RC.build({ chips: HS.chips({ ...base, unused: ['DS Electronics'], libraryWaiting: 2 }) }),
+    html = RC.panelHtml(c);
+  assert(html.includes('DS Electronics is connected but not counting laps'));
+  assert(html.includes('2 results waiting for the shared library'));
+  assert(html.includes('data-st-go="hardware"'));
+  assert(html.includes('data-st-go="connections"'));
 });

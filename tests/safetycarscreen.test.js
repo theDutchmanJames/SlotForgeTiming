@@ -69,9 +69,9 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     say('a race setup has a Safety car system field in the rules: a choice of the systems, "No safety car" to begin with', f && f.group === 'rules' && f.type === 'ref' && f.ref === 'safetycarsystems' && f.blank === 'No safety car' && f.hint.includes('It replaces the Yellow flag settings'));
     say('...it is asked for every kind of racing and not for a Time Token Session', ['race', 'heats', 'endurance', 'practice', 'qualifying'].every(t => shown(f, { sessionType: t })) && !shown(f, { sessionType: 'tokens' }));
     const keys = F.map(x => x.key);
-    say('the Safety Car selector precedes Tyre Wear, while the pit sensor is in Race Settings', keys.indexOf('safetyCar') + 1 === keys.indexOf('tyreWear') && by('pitHold').group === 'length');
-    say('the retired Yellow flag fields are absent; Race Settings owns the Track Call', !by('yellowTarget') && !by('yellowPoints') && by('trackCallAction').group === 'length');
-    say('Safety Car stays in Rules and Systems; there is no retired Yellow flag group', run('state.schema.racesetups.groups').some(g => g.id === 'rules' && g.title === 'Rules and Systems') && !run('state.schema.racesetups.groups').some(g => g.id === 'yellow')); }
+    say('the Safety Car selector precedes Tyre Wear, while the pit sensor is in Pits and service (2.4.0)', keys.indexOf('safetyCar') + 1 === keys.indexOf('tyreWear') && by('pitHold').group === 'service');
+    say('the retired Yellow flag fields are absent; the Track Call group (in Start and flags) owns the Track Call', !by('yellowTarget') && !by('yellowPoints') && by('trackCallAction').group === 'call');
+    say('Safety Car stays in Race systems; there is no retired Yellow flag group', run('state.schema.racesetups.groups').some(g => g.id === 'rules' && g.title === 'Race systems') && !run('state.schema.racesetups.groups').some(g => g.id === 'yellow')); }
 
   // ---------- the form ----------
   run("openForm('safetycarsystems', null)"); await wait(30);
