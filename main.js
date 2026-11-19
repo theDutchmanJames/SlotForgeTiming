@@ -1485,34 +1485,83 @@ function registerSettingsAndNetHandlers() {
     return netPairing();
   });
 }
-// the check for a newer release on GitHub
+// the check for a newer release on GitHub (2.4.0: the update check of every SlotForge app, update-check.cjs, as in docs/update-check-handoff.md):
+// once, about 5 seconds after the start; a newer version opens a window with What's new, Skip and Download (into Downloads, checked, never run)
+let updateCheck = null,
+  updateTimer = null;
 function startUpdateCheck() {
-  // Is there a newer release on GitHub? Notify only (update-check.js): the page shows it and links to the release page.
   {
-    const file = path.join(app.getPath('userData'), 'update-check.json');
-    const updates = require('./update-check').createUpdateChecker({
-      currentVersion: require('./package.json').version,
-      fetch: (...a) => fetch(...a),
-      store: { read: () => JSON.parse(fs.readFileSync(file, 'utf8')), write: v => Database.writeAtomic(file, JSON.stringify(v)) }
+    const { UpdateCheck } = require('./update-check.cjs');
+    const profile = app.getPath('userData'),
+      automated = !!(process.env.SF_UI_QA_RUN_ID || process.env.SLOTFORGE_UI_TESTS);
+    // (the update check of Timing before 2.4.0 kept its own answer in the same file, and its switch in the settings: an older answer is read as
+    // nothing, and a switch that was off stays off)
+    let fresh = true;
+    try {
+      fresh = JSON.parse(fs.readFileSync(path.join(profile, 'update-check.json'), 'utf8'))?.version !== 1;
+    } catch {
+      fresh = true;
+    }
+    updateCheck = new UpdateCheck({
+      profile,
+      current: require('./package.json').version, // (not app.getVersion(): a copy started through another script reports Electron's own)
+      homepage: require('./package.json').homepage,
+      appName: 'Timing',
+      artifactPrefix: 'SlotForgeTiming',
+      userAgent: 'SlotForge-Timing',
+      fetch: (url, init) => require('electron').net.fetch(url, init),
+      // a development copy, an automated run and SF_NO_UPDATE_CHECK only check when asked
+      automatic: app.isPackaged && !automated && !process.env.SF_NO_UPDATE_CHECK && !process.env.SLOTFORGE_NO_UPDATE_CHECK,
+      edition: {
+        platform: process.platform,
+        arch: process.arch,
+        portable: !!process.env.PORTABLE_EXECUTABLE_FILE,
+        appImage: !!process.env.APPIMAGE
+      },
+      downloads: app.getPath('downloads'),
+      onChange: () => {
+        if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('update:changed');
+      }
     });
-    const tell = s => {
-      if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('update:status', s);
-      return s;
-    };
-    const allowed = () => lifecycle.settings().updateCheck !== false && !process.env.SF_UI_QA_RUN_ID && !process.env.SF_NO_UPDATE_CHECK;
-    ipcMain.handle('update:status', () => ({ ...updates.status(), enabled: allowed() }));
-    ipcMain.handle('update:check', async () => ({ ...tell(await updates.check(true)), enabled: allowed() }));
-    ipcMain.handle('update:open', async () => {
-      const s = updates.status(),
-        url = s.latest?.url || require('./update-check').PAGE;
-      if (!url.startsWith(require('./update-check').PAGE)) throw Error('Not a release page of SlotForge Timing.');
-      await require('electron').shell.openExternal(url);
-      return true;
+    if (fresh && lifecycle.settings().updateCheck === false) {
+      try {
+        updateCheck.setEnabled(false);
+      } catch {
+        /* the switch stays as the new check has it: Settings shows it */
+      }
+    }
+    updateTimer = setTimeout(() => {
+      if (!startupClosing) void updateCheck.startupCheck();
+    }, 5 * 1000);
+    updateTimer.unref?.();
+    ipcMain.handle('update:action', async (e, action, payload) => {
+      // only the app's own page in the main window may ask
+      if (!mainWin || mainWin.isDestroyed() || e.sender !== mainWin.webContents || e.senderFrame !== e.sender.mainFrame)
+        return { error: 'Unknown page.' };
+      try {
+        if (action === 'status') return { ok: true, value: updateCheck.status() };
+        if (action === 'check') return { ok: true, value: await updateCheck.check() };
+        if (action === 'enable') return { ok: true, value: updateCheck.setEnabled(payload?.enabled) };
+        if (action === 'skip') return { ok: true, value: updateCheck.skip(payload?.version) };
+        if (action === 'download') {
+          // not awaited: the progress and the result reach the window through update:changed
+          updateCheck.startDownload().catch(() => {});
+          return { ok: true, value: updateCheck.status() };
+        }
+        if (action === 'cancel') return { ok: true, value: updateCheck.cancelDownload() };
+        if (action === 'show') {
+          require('electron').shell.showItemInFolder(updateCheck.downloadedFile());
+          return { ok: true, value: { shown: true } };
+        }
+        if (action === 'open') {
+          await require('electron').shell.openExternal(updateCheck.releaseUrl());
+          return { ok: true, value: { opened: true } };
+        }
+        throw Error('Unknown update action.');
+      } catch (error) {
+        return { error: error.message, code: error.code };
+      }
     });
-    // the first check waits until the app has settled; never more than once in 12 hours (also over restarts)
-    setTimeout(() => {
-      if (!startupClosing && allowed()) updates.check(false).then(tell, () => {});
-    }, 15000).unref?.();
     // Save diagnostics: one text file for a bug report (diagnostics.js leaves out passwords, names, pictures and the user's folder name)
     ipcMain.handle('diagnostics:save', async e => {
       const when = new Date(),
@@ -1564,7 +1613,7 @@ function startUpdateCheck() {
           sharedLibrary ? { ...(await sharedLibrary.status()), deliveryError: sharedLibrary.deliveryError || '' } : { available: false }
         ),
         plugins: await safe(async () => (pluginHost?.list ? await pluginHost.list() : 'not available')),
-        update: await safe(() => updates.status()),
+        update: await safe(() => updateCheck.status()),
         settings: lifecycle.settings(),
         errors: errorLog.lines()
       };
@@ -1693,6 +1742,8 @@ app.on('before-quit', e => {
   if (shutdown.ready || !gotLock) return;
   e.preventDefault();
   startupClosing = true;
+  if (updateTimer) clearTimeout(updateTimer);
+  updateCheck?.stop(); // (a check or a download in progress is abandoned)
   appWork.stop();
   // Hardware safety is immediate, independent of potentially slow storage.
   parallel?.shutdown();

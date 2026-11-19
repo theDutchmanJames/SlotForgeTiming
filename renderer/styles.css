@@ -5868,3 +5868,27 @@ html .rt-folders:not(.rd-on) table.boptable td{padding:6px 12px;border:0;border-
 html .rt-folders:not(.rd-on) table.boptable tr:last-child td{border-bottom:0}
 html .rt-folders:not(.rd-on) table.boptable td:first-child{width:40px;font:700 15px "Barlow Condensed","Segoe UI",sans-serif}
 html .rt-folders:not(.rd-on) table.boptable select{height:30px}
+/* ==== Update window (2.4.0): the update check of every SlotForge app (update-ui.js, update-window.css as Circuit has them, see
+   docs/update-check-handoff.md). The few SlotForge Restyle basics it sits on that Timing names differently: the focus and success colours, the
+   numbers font, the dialog heading and actions rows, the quiet ✕ button, and the Updates section in App Settings › General ==== */
+html{--ui-focus:#4c9aff;--ui-success:#3ecf8e;--font-numbers:"Roboto Mono",Consolas,monospace}
+html dialog.update-dialog .dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+html dialog.update-dialog .dialog-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--line)}
+html .btn.quiet{min-width:34px;padding:0 8px;border-color:transparent;background:transparent;color:var(--muted);justify-content:center}
+html .btn.quiet:hover{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+html dialog.update-dialog .update-facts{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html #updatehost{display:block;margin:0;padding:0;border:0}
+html #view #settingsbox #updatehost .update-card>h2:not(.x):not(.y){margin:0 0 8px;font:600 10.5px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #updatehost .update-card>.update-body>.ss-note{margin:10px 2px 0;font-size:12.5px;color:var(--muted)}
+html #updatehost .update-card>.update-body>.ss-note.warn{color:#f0b04a}
+html #updatesay:empty{display:none}
+html #updatesay{margin:8px 2px 14px;font-size:12.5px}
+html #updatesay.error{color:#ff6b70}
+html dialog.update-dialog .update-progress progress{-webkit-appearance:none;appearance:none;height:8px;border:0;border-radius:4px;background:color-mix(in srgb,var(--ink) 12%,var(--panel));overflow:hidden}
+html dialog.update-dialog .update-progress progress::-webkit-progress-bar{background:color-mix(in srgb,var(--ink) 12%,var(--panel));border-radius:4px}
+html dialog.update-dialog .update-progress progress::-webkit-progress-value{background:var(--accent);border-radius:4px}
+/* (Update window) the pills of Settings › Updates: Circuit names them good and needs, Timing's Settings Sheet ok and warn */
+html .ss-pill.good{background:color-mix(in srgb,#3ecf8e 14%,var(--panel))}
+html .ss-pill.good::before{background:#3ecf8e}
+html .ss-pill.needs{background:color-mix(in srgb,#f2b705 14%,var(--panel))}
+html .ss-pill.needs::before{background:#f2b705}

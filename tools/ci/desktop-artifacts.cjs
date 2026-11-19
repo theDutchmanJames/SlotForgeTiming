@@ -4,9 +4,10 @@ const root=path.resolve(__dirname,'../..');
 function names(version,platform){
   if(!/^\d+\.\d+\.\d+$/.test(version))throw Error('Expected a three-part release version');
   switch(platform){
-    case 'win32':return [`SlotForge Timing-${version}-Portable.exe`,`SlotForge Timing-${version}-Setup.exe`];
-    case 'linux':return [`SlotForgeTiming-${version}.AppImage`,`SlotForgeTiming-${version}.deb`];
-    case 'darwin':return [`SlotForgeTiming-${version}-mac.dmg`,`SlotForgeTiming-${version}-mac.zip`];
+    // (2.4.0) the names the update check of every SlotForge app looks for (update-check.cjs): <prefix>-<version>-<kind>-<arch>.<ext>
+    case 'win32':return [`SlotForgeTiming-${version}-Portable-x64.exe`,`SlotForgeTiming-${version}-Setup-x64.exe`];
+    case 'linux':return [`SlotForgeTiming-${version}-linux-x86_64.AppImage`,`SlotForgeTiming-${version}-linux-amd64.deb`];
+    case 'darwin':return [`SlotForgeTiming-${version}-mac-universal.dmg`,`SlotForgeTiming-${version}-mac-universal.zip`];
     default:throw Error('Unsupported desktop platform');
   }
 }

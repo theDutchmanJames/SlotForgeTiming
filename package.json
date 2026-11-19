@@ -133,6 +133,7 @@
     "files": [
       "package.json",
       "*.js",
+      "update-check.cjs",
       "LICENSE",
       "build/icon.png",
       "vendor/**",
@@ -158,11 +159,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "artifactName": "${productName}-${version}-Setup.${ext}"
+      "artifactName": "SlotForgeTiming-${version}-Setup-${arch}.${ext}"
     },
     "portable": {
       "splashImage": "build/startup-splash.bmp",
-      "artifactName": "${productName}-${version}-Portable.${ext}"
+      "artifactName": "SlotForgeTiming-${version}-Portable-${arch}.${ext}"
     },
     "linux": {
       "target": [
@@ -172,7 +173,7 @@
       "category": "Utility",
       "synopsis": "Slot car lap timer and lap counter",
       "maintainer": "James <thedutchmanjames@gmail.com>",
-      "artifactName": "SlotForgeTiming-${version}.${ext}"
+      "artifactName": "SlotForgeTiming-${version}-linux-${arch}.${ext}"
     },
     "mac": {
       "target": [
@@ -191,7 +192,7 @@
       ],
       "category": "public.app-category.utilities",
       "icon": "build/icon.png",
-      "artifactName": "SlotForgeTiming-${version}-mac.${ext}"
+      "artifactName": "SlotForgeTiming-${version}-mac-${arch}.${ext}"
     },
     "asarUnpack": [
       "native/parallel/*.exe"

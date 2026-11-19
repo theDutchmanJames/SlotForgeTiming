@@ -292,6 +292,7 @@ module.exports = [
   ['lint.test.js', 'plain'],
   ['format.test.js', 'plain'],
   ['updates-diagnostics.test.js', 'node-test'],
+  ['update-check.test.cjs', 'node-test'],
   ['statuschips.test.js', 'node-test'],
   ['dialogs.test.js', 'node-test'],
   ['racenight.test.js', 'node-test'],

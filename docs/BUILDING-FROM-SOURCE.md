@@ -14,7 +14,7 @@ For new or inexperienced users, **Quick Build is the recommended way to make a p
 4. **Find the app folder.** Open the extracted folders until you can see **package.json**, **build-windows.bat** and **build-windows-quick.bat** together. GitHub downloads usually name this folder **SlotForgeTiming-main**; a separate source ZIP may contain **SlotForgeTiming**.
 5. **Double-click build-windows-quick.bat.** Keep the build window open. The first run needs an internet connection to download dependencies; it can take several minutes. Quick Build skips the automated checks. If a filename's extension is hidden, Windows may show it as **build-windows-quick** with type **Windows Batch File**.
 6. **Open the dist folder.** A successful build opens it automatically. You can also open **dist** yourself inside the app folder.
-7. **Try Portable first.** In **dist**, double-click **SlotForge Timing-2.0.0-Portable.exe**. If you are happy and want to use the app long term, run **SlotForge Timing-2.0.0-Setup.exe**.
+7. **Try Portable first.** In **dist**, double-click **SlotForgeTiming-x.y.z-Portable-x64.exe**. If you are happy and want to use the app long term, run **SlotForgeTiming-x.y.z-Setup-x64.exe**.
 
 **What does Quick Build skip?** It skips `npm test`, the automated test suite. It still installs missing build dependencies and compiles/packages the app. The normal **build-windows.bat** runs the checks before building; developers and anyone validating changes can use that file instead.
 

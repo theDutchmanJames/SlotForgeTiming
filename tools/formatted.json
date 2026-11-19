@@ -255,7 +255,6 @@
     "renderer/tyrewidgets.js",
     "renderer/uiscale.js",
     "renderer/undo.js",
-    "renderer/updatenotice.js",
     "renderer/viewset.js",
     "renderer/virtualrival.js",
     "renderer/virtualrivalui.js",
@@ -345,7 +344,6 @@
     "tools/run-tests.cjs",
     "tools/settings-index/generate.cjs",
     "transfer.js",
-    "update-check.js",
     "voicereport.js",
     "work-gate.js"
   ]

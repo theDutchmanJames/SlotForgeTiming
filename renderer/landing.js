@@ -838,7 +838,6 @@ async function renderHome() {
       <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p></div></div>
     ${customHtml()}
     ${resumeHtml}
-    <div id="hm-update" hidden></div>
     <div id="hm-detect" hidden></div>
     <section class="card hm-start" id="hmc-start">` +
     (setups.length
@@ -869,7 +868,6 @@ async function renderHome() {
     `</section>
     <div class="hm-chips" id="hm-chips" role="status">${chipsNow().map(chipHtml).join('')}</div>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))">${otherCells}</div>`;
-  if (typeof UpdateNotice !== 'undefined') UpdateNotice.mountHome(document.getElementById('hm-update')); // (a newer release on GitHub, if any)
   // (2.4.0) the avatars of the drivers in the lanes: Home's list of drivers has only their names, so each driver's own picture is read once and kept while the
   // app runs; until then, and for a driver without one, the standard avatar of the lane shows
   if (api.getRecord && typeof document !== 'undefined' && document.querySelectorAll)

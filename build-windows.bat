@@ -4,8 +4,8 @@ cd /d "%~dp0"
 title SlotForge Timing - make the Windows programs
 echo.
 echo  This makes the files you can share:
-echo    dist\SlotForge Timing-x.y.z-Setup.exe     (installs the app, with a desktop shortcut)
-echo    dist\SlotForge Timing-x.y.z-Portable.exe  (runs by double-clicking, nothing is installed)
+echo    dist\SlotForgeTiming-x.y.z-Setup-x64.exe     (installs the app, with a desktop shortcut)
+echo    dist\SlotForgeTiming-x.y.z-Portable-x64.exe  (runs by double-clicking, nothing is installed)
 echo  It needs Node.js (https://nodejs.org) and an internet connection the first time. It takes a few minutes.
 echo  To skip the check of the app (the slow step), use build-windows-quick.bat instead.
 echo.

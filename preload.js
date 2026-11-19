@@ -295,15 +295,14 @@ contextBridge.exposeInMainWorld('api', {
   getResume: () => call('resume:get'),
   saveResume: snap => call('resume:save', snap),
   clearResume: () => call('resume:clear'),
-  // a newer release on GitHub (notify only): its status, Check now, open its release page, and news when a check finishes
-  updateStatus: () => call('update:status'),
-  updateCheck: () => call('update:check'),
-  updateOpen: () => call('update:open'),
-  diagnosticsSave: () => call('diagnostics:save'), // one text file for a bug report (App Settings > General)
-  onUpdateStatus: f => {
-    ipcRenderer.removeAllListeners('update:status');
-    ipcRenderer.on('update:status', (_e, s) => f(s));
+  // (2.4.0) the update check of every SlotForge app (update-ui.js: App Settings › General › Updates and the update window); resolves to
+  // { ok, value } or { error }. One listener at a time: Settings is drawn again and again, and each time starts the update interface anew.
+  updateCheck: (action, payload) => call('update:action', String(action), payload),
+  onUpdateChange: callback => {
+    ipcRenderer.removeAllListeners('update:changed');
+    ipcRenderer.on('update:changed', () => callback());
   },
+  diagnosticsSave: () => call('diagnostics:save'), // one text file for a bug report (App Settings > General)
   // the running race, shared with the Live Race window
   liveStatic: s => ipcRenderer.send('live:static', s),
   livePush: d => ipcRenderer.send('live:push', d),

@@ -48,7 +48,7 @@ const GeneralPage = (() => {
       storage: [...box.querySelectorAll('.row strong')].some(x => /^SQLite database/.test(String(x.textContent || '').trim()))
         ? 'SQLite'
         : 'JSON', // (2.4.0: the name of the database, not any mention of SQLite)
-      updates: get('updcheck') && get('updcheck').checked ? 'checks for updates' : 'update checks off'
+      updates: 'new versions and help'
     };
     const page = el('div', 'gs');
     const rail = el(
@@ -325,19 +325,11 @@ const GeneralPage = (() => {
     }
     // Updates and help
     {
-      const uf = fieldOf('updcheck');
-      group(sections.updates, 'Updates', '', [
-        R(
-          'Check for a newer version',
-          'When the app starts, at most twice a day. Nothing is sent, nothing installs itself.',
-          ctl('updcheck'),
-          {
-            hint: uf ? [...uf.querySelectorAll(':scope > .hint')].slice(0, 1) : [],
-            cls: 'ss-switchrow'
-          }
-        ),
-        R('Now', '', [get('updstatus'), get('updopen'), get('updnow')].filter(Boolean))
-      ]);
+      // (2.4.0) the Updates section of the update check (update-ui.js draws it in this box) and the line of its messages
+      ['updatehost', 'updatesay']
+        .map(get)
+        .filter(Boolean)
+        .forEach(x => sections.updates.append(x));
       group(sections.updates, 'Help', '', [
         R(
           'Diagnostics',

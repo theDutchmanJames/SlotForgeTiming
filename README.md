@@ -209,16 +209,16 @@ Open the **[latest release](https://github.com/theDutchmanJames/SlotForgeTiming/
 
 | Your computer | Choose this download |
 | --- | --- |
-| **Windows · Intel/AMD 64-bit** | **Portable.exe** to try the app, or **Setup.exe** to install it for regular use. |
+| **Windows · Intel/AMD 64-bit** | **Portable-x64.exe** to try the app, or **Setup-x64.exe** to install it for regular use. |
 | **macOS** | Use a Mac DMG or ZIP only when listed in that release's assets. **mac-x64** supports Intel; **universal** supports Intel and Apple Silicon. Check the release notes for the build provided. |
 | **Linux · Debian/Ubuntu-based, Intel/AMD 64-bit** | **.deb**, opened with your package installer. |
 | **Linux · other compatible distributions, Intel/AMD 64-bit** | **.AppImage**, with permission to execute enabled. |
 
 ### Windows: try Portable, then install if you like it
 
-1. Download the file ending in **Portable.exe**. If supplied inside a ZIP, extract it first.
+1. Download the file ending in **Portable-x64.exe**. If supplied inside a ZIP, extract it first.
 2. Double-click it and explore Timing without installing. Choose **None** under Timing Hardware, or use the Arduino virtual box to try simulated inputs.
-3. If you like the app and want to use it long term, download **Setup.exe**, run it and follow the installation wizard. Use the installed shortcut for everyday racing.
+3. If you like the app and want to use it long term, download **Setup-x64.exe**, run it and follow the installation wizard. Use the installed shortcut for everyday racing.
 
 Windows downloads are unsigned. If Windows displays a security prompt, check that the file came from this repository before choosing any option to run it. Hardware may require its own drivers or libraries.
 

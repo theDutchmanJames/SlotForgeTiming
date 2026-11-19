@@ -60,6 +60,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Review Sheet](#review-sheet) | Historical Review: the race as a head, the notice as a callout, the drivers tagged, Submit in the foot, the decisions as pills | Results and Records (a Paddock race) |
 | [Performance Gauges](#performance-gauges) | The Performance line as a row of small gauges, each with a health colour | Race tab (App Settings › General, Performance line) |
 | [Race Report PDF](#race-report-pdf) | The race on paper: page one as clubs post a race, then a page for every driver with the lap chart of Scrutineering; Colour or Monochrome | Results and Records › Export to PDF |
+| [Update Window](#update-window) | A newer version: the window with What's new, Skip and Download, and the Updates section in App Settings | Every SlotForge app (as Circuit has it) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1749,6 +1750,20 @@ kicker, the title in Barlow, the date tile, the wordmark) and the checkered stri
   follow the race live).
 - **App Settings › General › Units › PDF prints**: Colour or Monochrome for every print (the same choice as *Print in* of Export to PDF).
 
+## Update Window
+
+The update check of every SlotForge app, copied as it is from Circuit (`update-check.cjs`, `renderer/update-ui.js`, `renderer/update-window.css`; how it
+works and what it may never do: `docs/update-check-handoff.md`). Once at the start, a newer version opens a [Workshop Window](#workshop-window):
+*UPDATE AVAILABLE* as a trail, **Timing 2.4.0** in Barlow, a lead with an accent line (*You have version 2.3.0*), *What's new* (at most six lines from
+the release notes), a sheet of *Your copy*, *Released* and *Download* (the file of this copy and its size), then **Skip this version** and **Download**
+on the right. Downloading shows a bar in the accent colour and Cancel; when it is done, a green line *Saved in Downloads* with how to install this
+copy, Close and **Show in folder**. Nothing is run or installed. **App Settings › General › Updates and help › Updates**: a Settings Sheet with this
+version, the newest version as a pill (green: the latest; amber: a new one), last checked, Check when Timing starts (packaged copies), Check now, and
+a button for the window when there is a new version; its messages in a line under it.
+
+Timing adds only the basics Circuit's window sits on that it names differently (the dialog heading and actions rows, the quiet ✕ button, the
+focus and success colours, the numbers font, the pills good and needs), in `styles.css` under "Update window".
+
 ## Parc Fermé
 
 Choosing a car (`renderer/paddockbrowser.js`, **Browse cars** on Home). A [Workshop Window](#workshop-window) with a **sticky head** (eyebrow
@@ -1912,3 +1927,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Race Report PDF | New: the race PDF in the look of SlotForge: page one with the podium, race notes, laps per lane and the race lap by lap; a page for every driver with the lap chart, per lane, through the race, the spread and the lap sheet; Colour or Monochrome |
 | 2026-11 | Race Report PDF | The heat list, the championship standings, the racing rules and the QR code in the same look; PDF prints: Colour or Monochrome in App Settings |
 | 2026-11 | Start Lights, Workshop Window, Race Report, Lane Desk | The last screens: the startup window with start lights, the Circuit file as a drop card, the record tables fit, an empty Results and Records as a card, the race folders with the Lane Desk off |
+| 2026-11 | Update Window | New: the update check of every SlotForge app (from Circuit): the window with What's new, Skip and Download, Settings › Updates; the notice on Home is gone |

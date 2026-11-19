@@ -10,8 +10,8 @@
 #   add --no-pause to not wait for Enter at the end
 #
 # What it makes in "dist":
-#   SlotForgeTiming-x.y.z.AppImage   runs by itself on most Linux systems, nothing to install
-#   SlotForgeTiming-x.y.z.deb        for Debian, Ubuntu, Mint and the like: sudo apt install ./SlotForgeTiming-x.y.z.deb
+#   SlotForgeTiming-x.y.z-linux-x86_64.AppImage   runs by itself on most Linux systems, nothing to install (arm64 on ARM)
+#   SlotForgeTiming-x.y.z-linux-amd64.deb         for Debian, Ubuntu, Mint and the like: sudo apt install ./SlotForgeTiming-x.y.z-linux-amd64.deb
 # "Install" here means: the AppImage is copied to ~/.local/share/slotforge-timing and a menu entry (and a desktop
 # shortcut, when there is a Desktop folder) is made. It needs no password and touches nothing outside your home folder.
 #
@@ -170,8 +170,8 @@ main() {
 
   say ""
   say " This makes the files you can share:"
-  say "   dist/SlotForgeTiming-x.y.z.AppImage   (runs by itself, nothing to install)"
-  say "   dist/SlotForgeTiming-x.y.z.deb        (for Debian, Ubuntu, Mint and the like)"
+  say "   dist/SlotForgeTiming-x.y.z-linux-x86_64.AppImage   (runs by itself, nothing to install)"
+  say "   dist/SlotForgeTiming-x.y.z-linux-amd64.deb         (for Debian, Ubuntu, Mint and the like)"
   say " It needs Node.js (https://nodejs.org) and an internet connection the first time. It takes a few minutes."
   say ""
 
@@ -211,10 +211,15 @@ main() {
   fi
   say ""
   say " Step 3 of 3: making the programs..."
-  appimage="$ROOT/dist/SlotForgeTiming-$version.AppImage"
-  deb="$ROOT/dist/SlotForgeTiming-$version.deb"
-  rm -f "$appimage" "$deb"
+  # (the names carry the architecture: x86_64 or arm64 for the AppImage, amd64 or arm64 for the .deb)
+  built() {
+    appimage="$(ls "$ROOT"/dist/SlotForgeTiming-"$version"-linux-*.AppImage 2>/dev/null | head -n 1)"
+    deb="$(ls "$ROOT"/dist/SlotForgeTiming-"$version"-linux-*.deb 2>/dev/null | head -n 1)"
+    [ -n "$appimage" ] || appimage="$ROOT/dist/SlotForgeTiming-$version-linux.AppImage"
+  }
+  rm -f "$ROOT"/dist/SlotForgeTiming-"$version"-linux-*.AppImage "$ROOT"/dist/SlotForgeTiming-"$version"-linux-*.deb
   if ! npm run dist:linux; then
+    built
     # the .deb needs one more helper to be downloaded; the AppImage is the one that matters
     if [ -f "$appimage" ]; then
       say ""
@@ -223,6 +228,7 @@ main() {
       fail "Something went wrong, see the messages above."
     fi
   fi
+  built
   [ -f "$appimage" ] || fail "The build finished but $appimage is not there. See the messages above."
   chmod +x "$appimage"
 

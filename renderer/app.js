@@ -552,6 +552,19 @@ const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'perf
 const applyUiScale = () => {
   if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale));
 };
+// (2.4.0) the update check (update-ui.js): the name of the app in its words, what an update keeps, and where its messages go: the line under
+// Updates in App Settings; elsewhere only an error, as a message window
+const UPDATE_UI = {
+  appName: 'Timing',
+  keeps: 'your races, drivers and cars stay where they are',
+  say: (message, isError) => {
+    const line = document.getElementById('updatesay');
+    if (line && line.isConnected) {
+      line.textContent = message;
+      line.classList.toggle('error', !!isError);
+    } else if (isError && typeof Dialog !== 'undefined') Dialog.alert(message);
+  }
+};
 async function renderGeneralSettings(box) {
   const S = state.settings,
     path = await api.dbPath(),
@@ -684,11 +697,8 @@ async function renderGeneralSettings(box) {
     sf(
       'updates',
       'Updates and diagnostics',
-      S.updateCheck === false ? 'update checks are off' : 'checks GitHub for a newer version',
-      `<div class="field" style="max-width:640px"><label class="inline"><input id="updcheck" type="checkbox"${S.updateCheck === false ? '' : ' checked'}> Check for a newer version when the app starts</label>
-      <span class="muted hint">At most twice a day the app asks GitHub which version is the newest, and Home says so when there is a newer one, with a link to its download page. Nothing about you or your club is sent, and nothing is downloaded or installed by itself.</span>
-      <div class="row"><button type="button" class="btn" id="updnow">Check now</button><button type="button" class="btn" id="updopen" hidden>Open the download page</button></div>
-      <p class="muted" id="updstatus" role="status"></p></div>
+      'new versions, a file for bug reports',
+      `<div class="field" id="updatehost"></div><p class="muted" id="updatesay" role="status"></p>
       <div class="field" style="max-width:640px"><label>Diagnostics</label>
       <span class="muted hint">Saves one text file that helps with a bug report: the app and system versions, the timing hardware and connections, the storage, the settings (without passwords, names or pictures) and recent errors. Look it over before you send it to anyone.</span>
       <div class="row"><button type="button" class="btn" id="diagsave">Save diagnostics…</button></div><p class="muted" id="diagmsg" role="status"></p>
@@ -724,30 +734,8 @@ async function renderGeneralSettings(box) {
     $('bgsave').closest('.field').querySelector('.hint').textContent =
       'SQLite always writes through a background worker. This legacy JSON setting does not apply.';
   }
-  // Updates and diagnostics
-  if ($('updcheck') && api.updateStatus) {
-    const show = s => {
-      $('updstatus').textContent = typeof UpdateNotice !== 'undefined' ? UpdateNotice.statusText(s) : '';
-      $('updopen').hidden = !(s && s.available);
-    };
-    api.updateStatus().then(show, () => {});
-    $('updcheck').onchange = async ev => {
-      state.settings = await api.setSettings({ updateCheck: ev.target.checked });
-      show(await api.updateStatus());
-    };
-    $('updnow').onclick = async () => {
-      $('updnow').disabled = true;
-      $('updstatus').textContent = 'Checking…';
-      try {
-        show(await api.updateCheck());
-      } catch (error) {
-        $('updstatus').textContent = 'Could not check: ' + error.message;
-      } finally {
-        $('updnow').disabled = false;
-      }
-    };
-    $('updopen').onclick = () => api.updateOpen().catch(() => {});
-  }
+  // (2.4.0) Updates: the update check of every SlotForge app (update-ui.js), its section in this page
+  if ($('updatehost') && typeof UpdateUI !== 'undefined') UpdateUI.start({ settings: $('updatehost'), ...UPDATE_UI });
   if ($('guiderun'))
     $('guiderun').onclick = async () => {
       state.settings = await api.setSettings({ setupGuide: { step: 0 } });
@@ -1413,7 +1401,7 @@ function bootFailed(e) {
     if (api.setZoom) api.setZoom(1);
     return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)
   }
-  if (typeof UpdateNotice !== 'undefined') UpdateNotice.listen(); // (a check for a newer release that finishes later shows on Home)
+  if (typeof UpdateUI !== 'undefined') UpdateUI.start(UPDATE_UI); // (2.4.0: a newer version opens a window by itself, once at the start)
   if (api.onUnsavedQuery) api.onUnsavedQuery(() => (typeof unsavedDrafts === 'function' ? unsavedDrafts() : [])); // (closing the window asks first when an editor has unsaved changes)
   if (typeof ppInit === 'function') ppInit();
   if (typeof ptInit === 'function') ptInit();
