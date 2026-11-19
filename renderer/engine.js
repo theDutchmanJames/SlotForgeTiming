@@ -2667,6 +2667,15 @@
       return true; // (every crossing after it comes that much sooner; the time before the first crossing, when the first lap is skipped, stays in the total)
     };
 
+    // (2.4.0) a lap taken out of the records only goes back in (the review after the race: Back in the records)
+    R.restoreLap = (i, n) => {
+      const c = R.cars[i];
+      if (!c || !c.removed.includes(n)) return false;
+      ensurePaceEligibility(c);
+      c.removed = c.removed.filter(x => x !== n);
+      rebuildPace(c);
+      return true;
+    };
     // the time of the pit stop in progress (or the last one): { live, ms } or null
     R.pitTime = (i, t) => {
       const c = R.cars[i];

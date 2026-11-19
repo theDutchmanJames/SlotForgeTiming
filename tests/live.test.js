@@ -1297,12 +1297,12 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     for (let k = 0; k < 14 && phase() === 'running'; k++) { await wait(60); key('1'); key('2'); }
     await until(() => phase() === 'review');
     const rvh = (op, o = {}) => E('review').onclick({ target: { closest: () => ({ dataset: { rv: op, ...o } }) } });
-    say('a heat decided on points: the review shows the championship points of the places (10 and 8)', phase() === 'review' && E('review').innerHTML.includes('Championship points') && E('review').innerHTML.includes('>10</strong>') && E('review').innerHTML.includes('>8</strong>'));
+    say('a heat decided on points: the review shows the championship points of the places (10 and 8)', phase() === 'review' && E('review').innerHTML.includes('<span>Points</span><b>10</b>') && E('review').innerHTML.includes('<span>Points</span><b>8</b>'));
     const second = run('live.engine().standings()[1].index'), nm = run(`live.engine().cars[${second}].driverName`);
     rvh('adjopen', { car: String(second) });
     say('...and the panel has a championship points pad (green)', E('review').innerHTML.includes('data-pad="champ"') && E('review').innerHTML.includes(`data-rv="adjust" data-car="${second}"`));
     rvh('adjust', { car: String(second), padDo: 'champ', v: '5', sign: '1' });
-    say('Add 5 points to the driver in second place: the review shows 13 and what was adjusted', run(`live.engine().cars[${second}].adjPoints`) === 5 && E('review').innerHTML.includes('>13</strong>') && E('review').innerHTML.includes('adjusted: +5 pts'));
+    say('Add 5 points to the driver in second place: the review shows 13 and what was adjusted', run(`live.engine().cars[${second}].adjPoints`) === 5 && E('review').innerHTML.includes('<span>Points</span><b>13</b>') && E('review').innerHTML.includes('adjusted: +5 pts'));
     rvh('adjust', { car: String(second), padDo: 'time', v: '5', sign: '1' });
     say('...and 5 seconds on his time: the review says +5 s', run(`live.engine().cars[${second}].adjMs`) === 5000 && E('review').innerHTML.includes('adjusted: +5 s, +5 pts'));
     const host5 = document.createElement('div'); await run('LiveView.mount')(host5, {}); run('LiveView.go')('director');

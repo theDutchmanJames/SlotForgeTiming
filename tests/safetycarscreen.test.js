@@ -144,7 +144,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   key('s'); await until(() => phase() === 'review', 3000); await wait(60);
   say('Stop opens the review after the race', phase() === 'review' && E('review').hidden === false);
   if (!E('review').innerHTML.includes('rv-laps')) { await E('review').onclick({ target: { closest: () => ({ dataset: { rv: 'laps', car: '0' } }) } }); await wait(100); } // (the lap list of a lane stays open from the lap review during the race)
-  say('the lap list of the review marks the lap that was too fast as faster than the Safety Car limit (once)', E('review').innerHTML.split('class="rv-lap').filter(x => x.includes('faster than the Safety Car limit')).length === 1 && !E('review').innerHTML.includes('faster than the yellow flag target'));
+  say('the lap list of the review marks the lap that was too fast as faster than the Safety Car limit (once)', E('review').innerHTML.split('class="rx-row').filter(x => x.includes('Faster than the Safety Car')).length === 1 && !E('review').innerHTML.includes('Faster than the yellow target'));
   run('state.autoFinalize = true'); await E('review').onclick({ target: { closest: () => ({ dataset: { rv: 'finalize' } }) } }); await until(() => phase() === 'finished', 3000); await wait(100); ctx.Sound.stop(); spoken.length = 0;
 
   // a race with the plain yellow flag says Yellow flag in all those places

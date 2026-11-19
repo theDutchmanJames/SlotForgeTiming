@@ -4945,3 +4945,148 @@ html .rdeck .rd-calls .lv-calls li.muted{font-size:12px}
   html .rdeck .lc-bar,html .rdeck .lc-log{margin:0}
 }
 html body.app-shell>header>#tabs .mb-light.wait i{background:#f2b705}
+/* ==== Scrutineering 2 (2.4.0): Finalize race results as a classification of slim rows (a tiny lap chart in each) and a lap explorer for one driver:
+   a chart of every lap, the figures, filters, stints, several laps marked at once. Lap kinds have one colour each, in the charts and in the list. ==== */
+html .race-finish{max-width:1480px}
+html .race-finish .rfinish-grid.rf-list{display:flex;flex-direction:column;gap:6px}
+html .race-finish .rf-list>.rfinish-card{--c:var(--muted);padding:0;border:1px solid var(--line);border-left:4px solid var(--c);border-top:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html .race-finish .rf-list>.rfinish-card.winner{border-top:1px solid var(--line);border-left-color:var(--c);box-shadow:inset 0 0 0 1px color-mix(in srgb,#d4a400 40%,transparent)}
+html .race-finish .rf-list>.rfinish-card.picked{border-color:color-mix(in srgb,var(--c) 60%,var(--line));background:color-mix(in srgb,var(--c) 6%,var(--panel))}
+html .race-finish .rf-list>.rfinish-card.dq{opacity:.8}
+html .race-finish .rf-row{display:grid;grid-template-columns:32px minmax(160px,1.4fr) minmax(120px,1fr) repeat(var(--rf-n,4),minmax(74px,auto)) auto;align-items:center;gap:6px 16px;padding:9px 12px}
+html .race-finish .rf-list:has(.rf-num:nth-of-type(5)) .rf-row{--rf-n:5}
+html .race-finish .rf-row>.rfinish-place{width:30px;height:30px}
+html .race-finish .rf-who{display:flex;flex-direction:column;min-width:0}
+html .race-finish .rf-who>strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .race-finish .rf-who>span{font-size:12px}
+html .race-finish .rf-who .rfinish-state{font:600 11px "Segoe UI",system-ui,sans-serif;letter-spacing:.04em;text-transform:none;color:var(--muted)}
+html .race-finish .rfinish-card.winner .rf-who .rfinish-state{color:#d4a400}
+html .race-finish .rf-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+html .race-finish .rf-chip{padding:1px 7px;border-radius:9px;border:1px solid var(--line);font-size:11px;color:var(--muted);white-space:nowrap}
+html .race-finish .rf-chip.bad{border-color:color-mix(in srgb,#e5484d 55%,var(--line));color:#ff8a8e}
+html .race-finish .rf-chip.sus{border-color:color-mix(in srgb,#b07cff 60%,var(--line));color:#c9a6ff}
+html .race-finish .rf-chip.warn{border-color:color-mix(in srgb,#f2b705 60%,var(--line));color:#f2b705}
+html .race-finish .rf-spark{display:block;width:100%;height:36px;padding:2px 4px;border:1px solid transparent;border-radius:6px;background:color-mix(in srgb,var(--bg) 55%,transparent);cursor:pointer}
+html .race-finish .rf-spark:hover{border-color:var(--line)}
+html .race-finish .rf-spark:focus-visible{outline:2px solid #4c9aff;outline-offset:1px}
+html .race-finish .rf-sparkline{display:block;width:100%;height:100%}
+html .race-finish .rf-num{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+html .race-finish .rf-num>span{font:600 9.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .race-finish .rf-num>b{font:600 14px "Roboto Mono",Consolas,monospace;white-space:nowrap}
+html .race-finish .rf-num>small{font:500 11px "Roboto Mono",Consolas,monospace;color:var(--muted);white-space:nowrap}
+html .race-finish .rf-row>.rfinish-actions{justify-content:flex-end;flex-wrap:wrap;gap:4px}
+html .race-finish .rf-row>.rfinish-actions .btn.on{background:color-mix(in srgb,var(--c) 26%,var(--panel));border-color:color-mix(in srgb,var(--c) 55%,var(--line))}
+html .race-finish .rf-notes{padding:0 12px 10px 52px}
+html .race-finish .rf-notes .rfinish-alert{margin:0 0 6px}
+html .race-finish .rfinish-card>.rfinish-detail{margin:0 12px 12px 52px}
+@media (max-width:1180px){
+  html .race-finish .rf-row{grid-template-columns:32px minmax(0,1fr) repeat(var(--rf-n,4),auto);grid-auto-flow:row dense}
+  html .race-finish .rf-spark{grid-column:2 / -1;order:5}
+  html .race-finish .rf-row>.rfinish-actions{grid-column:1 / -1;justify-content:flex-start}
+}
+/* the colours of a lap: in the charts (fill) and in the list (a mark at the left) */
+html .race-finish{--rx-ok:color-mix(in srgb,var(--ink) 42%,var(--panel));--rx-best:#b07cff;--rx-pit:#f08a24;--rx-flag:#f2b705;--rx-sus:#d16bff;--rx-bad:#e5484d;--rx-out:color-mix(in srgb,var(--ink) 18%,var(--panel))}
+html .race-finish svg rect{fill:var(--rx-ok)}
+html .race-finish svg rect.rx-best{fill:var(--rx-best)}
+html .race-finish svg rect.rx-k-pit{fill:var(--rx-pit)}
+html .race-finish svg rect.rx-k-flag{fill:var(--rx-flag)}
+html .race-finish svg rect.rx-k-sus{fill:var(--rx-sus)}
+html .race-finish svg rect.rx-k-bad{fill:var(--rx-bad)}
+html .race-finish svg rect.rx-k-out{fill:var(--rx-out)}
+html .race-finish svg rect.rx-cut{opacity:.75}
+html .race-finish svg .rx-med{stroke:color-mix(in srgb,var(--ink) 55%,transparent);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+/* the lap explorer */
+html .race-finish .rx-hint{margin:14px 0 0;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;font-size:13px;color:var(--muted)}
+html .race-finish .rx{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+html .race-finish .rx-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+html .race-finish .rx-who{flex:1 1 auto;min-width:0}
+html .race-finish .rx-who>.btn{display:inline-flex;align-items:center;gap:7px}
+html .race-finish .rx-who>.btn>i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+html .race-finish .rx-nav{display:inline-flex;gap:4px}
+html .race-finish .rx-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;border-bottom:1px solid var(--line)}
+html .race-finish .rx-stats>div{display:flex;flex-direction:column;gap:1px;padding:9px 14px;border-right:1px solid var(--line)}
+html .race-finish .rx-stats>div:last-child{border-right:0}
+html .race-finish .rx-stats span{font:600 9.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .race-finish .rx-stats b{font:600 16px "Roboto Mono",Consolas,monospace}
+html .race-finish .rx-stats small{font-size:11px;color:var(--muted)}
+html .race-finish .rx-chartbox{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+html .race-finish .rx-chart{display:block;width:100%;height:120px}
+html .race-finish .rx-chart rect{cursor:pointer}
+html .race-finish .rx-chart rect:hover{opacity:.75}
+html .race-finish .rx-chart rect.rx-on{stroke:var(--ink);stroke-width:2;vector-effect:non-scaling-stroke}
+html .race-finish .rx-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-size:11.5px;color:var(--muted)}
+html .race-finish .rx-legend>span{display:inline-flex;align-items:center;gap:5px}
+html .race-finish .rx-legend>span::before{content:'';width:9px;height:9px;border-radius:2px;background:var(--rx-ok)}
+html .race-finish .rx-legend>.rx-best::before{background:var(--rx-best)}
+html .race-finish .rx-legend>.rx-k-pit::before{background:var(--rx-pit)}
+html .race-finish .rx-legend>.rx-k-flag::before{background:var(--rx-flag)}
+html .race-finish .rx-legend>.rx-k-sus::before{background:var(--rx-sus)}
+html .race-finish .rx-legend>.rx-k-bad::before{background:var(--rx-bad)}
+html .race-finish .rx-legend>.rx-k-out::before{background:var(--rx-out)}
+html .race-finish .rx-legend>.rx-medl::before{height:0;border-top:1px dashed var(--ink);border-radius:0;background:none}
+html .race-finish .rx-legend>.rx-tip{margin-left:auto}
+html .race-finish .rx-legend>.rx-tip::before{display:none}
+html .race-finish .rx-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 12px;border-bottom:1px solid var(--line)}
+html .race-finish .rx-tools .seg .btn em{margin-left:4px;font:500 11px "Roboto Mono",Consolas,monospace;font-style:normal;color:var(--muted)}
+html .race-finish .rx-bulk{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-left:auto}
+html .race-finish .rx-bulk.on{padding:3px 4px 3px 10px;border-radius:8px;background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+html .race-finish .rx-bulk>b{font-size:12.5px}
+html .race-finish .rx-scroll{max-height:min(62vh,640px);overflow:auto}
+html .race-finish .rx-table{width:100%;border-collapse:collapse;font-size:12.5px}
+html .race-finish .rx-table thead th{position:sticky;top:0;z-index:1;padding:7px 10px;background:var(--panel);border-bottom:1px solid var(--line);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap}
+html .race-finish .rx-table td{padding:4px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);vertical-align:middle}
+html .race-finish .rx-row{box-shadow:inset 3px 0 0 var(--rx-ok)}
+html .race-finish .rx-row.rx-best{box-shadow:inset 3px 0 0 var(--rx-best)}
+html .race-finish .rx-row.rx-k-pit{box-shadow:inset 3px 0 0 var(--rx-pit)}
+html .race-finish .rx-row.rx-k-flag{box-shadow:inset 3px 0 0 var(--rx-flag)}
+html .race-finish .rx-row.rx-k-sus{box-shadow:inset 3px 0 0 var(--rx-sus);background:color-mix(in srgb,var(--rx-sus) 7%,transparent)}
+html .race-finish .rx-row.rx-k-bad{box-shadow:inset 3px 0 0 var(--rx-bad);background:color-mix(in srgb,var(--rx-bad) 7%,transparent)}
+html .race-finish .rx-row.rx-k-out{box-shadow:inset 3px 0 0 var(--rx-out);opacity:.7}
+html .race-finish .rx-row:hover td{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+html .race-finish .rx-row.rx-picked td{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+html .race-finish .rx-row.rx-on td{background:color-mix(in srgb,#4c9aff 14%,transparent)}
+html .race-finish .rx-ck{width:28px}
+html .race-finish .rx-ck input{margin:0}
+html .race-finish .rx-n{width:44px;font:500 12px "Roboto Mono",Consolas,monospace;color:var(--muted)}
+html .race-finish .rx-t{width:84px;font:600 13px "Roboto Mono",Consolas,monospace}
+html .race-finish .rx-row.rx-k-bad .rx-t,html .race-finish .rx-row.rx-k-out .rx-t{text-decoration:line-through;color:var(--muted)}
+html .race-finish .rx-d{width:72px;font:500 12px "Roboto Mono",Consolas,monospace;color:var(--muted)}
+html .race-finish .rx-d b{font:600 11px "Segoe UI",system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--rx-best)}
+html .race-finish .rx-bar{width:120px}
+html .race-finish .rx-bar>i{display:block;height:5px;min-width:2px;border-radius:3px;background:color-mix(in srgb,var(--ink) 30%,var(--panel))}
+html .race-finish .rx-row.rx-best .rx-bar>i{background:var(--rx-best)}
+html .race-finish .rx-tags{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:26px}
+html .race-finish .rx-tag{padding:1px 7px;border-radius:9px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+html .race-finish .rx-tag-red,html .race-finish .rx-tag-bad{background:color-mix(in srgb,var(--rx-bad) 18%,transparent);color:#ff8a8e}
+html .race-finish .rx-tag-pit{background:color-mix(in srgb,var(--rx-pit) 18%,transparent);color:#ffb06a}
+html .race-finish .rx-tag-flag{background:color-mix(in srgb,var(--rx-flag) 16%,transparent);color:#f2c94c}
+html .race-finish .rx-tag-sus{background:color-mix(in srgb,var(--rx-sus) 18%,transparent);color:#e0a6ff}
+html .race-finish .rx-pace{font-size:11px;color:var(--muted)}
+html .race-finish .rx-acts{text-align:right;white-space:nowrap}
+html .race-finish .rx-acts .btn{min-height:26px;height:26px;margin-left:4px;padding:0 9px;border:1px solid var(--line);background:transparent;font-size:12px}
+html .race-finish .rx-acts .rv-del{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;font-size:12px}
+html .race-finish .rx-stint td{padding:6px 10px;background:color-mix(in srgb,var(--bg) 50%,var(--panel));font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .race-finish{--rx-best:#7c3aed;--rx-sus:#a21caf}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .race-finish :is(.rx-tag-red,.rx-tag-bad){color:#b4232a}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .race-finish .rx-tag-pit{color:#a85a12}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .race-finish .rx-tag-flag{color:#8a6a00}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .race-finish .rx-tag-sus{color:#86198f}
+@media (max-width:900px){
+  html .race-finish .rx-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  html .race-finish .rx-bar,html .race-finish .rx-table th:nth-child(5){display:none}
+  html .race-finish .rx-acts{white-space:normal}
+}
+html .race-finish .rx .seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 60%,var(--panel))}
+html .race-finish .rx .seg>.btn{min-height:28px;height:28px;padding:0 11px;border:0;border-radius:7px;background:transparent;box-shadow:none;transform:none;color:var(--muted);font:500 12.5px "Segoe UI",system-ui,sans-serif}
+html .race-finish .rx .seg>.btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+html .race-finish .rx .seg>.btn.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);font-weight:600}
+html .race-finish .rx .rx-nav>.btn{min-height:28px;height:28px;padding:0 10px;font-size:12.5px;box-shadow:none;transform:none}
+html .race-finish .rx .rx-nav>.btn.icon{width:28px;padding:0;font-size:16px}
+html .race-finish .rx .rx-bulk .btn{min-height:28px;height:28px;padding:0 10px;font-size:12.5px;box-shadow:none;transform:none}
+html .race-finish .rx-tags{display:table-cell}
+html .race-finish .rx-tags>div{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:26px}
+html .race-finish .rx-stats small .rx-warn{font-style:normal;color:#e0a6ff}
+html .race-finish .rx-row.rx-best .rx-t{color:var(--rx-best)}
+html .race-finish svg rect.rx-col{fill:var(--rx-sus);opacity:.16;pointer-events:none}
+html .race-finish svg rect.rx-col-bad{fill:var(--rx-bad)}
+html .race-finish svg rect.rx-col-out{fill:var(--ink);opacity:.06}

@@ -253,6 +253,7 @@ module.exports = [
   ['audit240.test.js', 'node-test'],
   ['libraryresults.test.js', 'node-test'],
   ['racedeck.test.js', 'node-test'],
+  ['finishdesk.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],
   ['distancescreen.test.js', 'plain'],
   ['damagescreen.test.js', 'plain'],

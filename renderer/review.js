@@ -1,7 +1,7 @@
 // The end-of-race review: after the chequered flag the Race Director checks the result, corrects it and then presses Finalize.
 // html() draws the review from an engine (the race's own, or a viewer's copy); apply() carries out one correction on the real engine.
 const Review = (() => {
-  const ui = { open: new Set(), openStints: new Set(), adjust: new Set(), del: null }; // what is unfolded on screen (not part of the race)
+  const ui = { open: new Set(), openStints: new Set(), adjust: new Set(), del: null, filter: 'all', checked: new Set(), focus: null }; // what is unfolded on screen (not part of the race)
   const fmt = ms => RaceEngine.fmtTime(ms);
   const secs = ms => `${Number.isInteger(ms / 1000) ? ms / 1000 : (ms / 1000).toFixed(1)} s`;
 
@@ -151,46 +151,252 @@ const Review = (() => {
       <div class="row"><button class="btn primary" data-rv="finalize">Finalize results</button> <button class="btn danger" data-rv="discard" title="Nothing from this race is saved in the database">Delete all data</button></div>`;
   }
 
-  // The main computer gets a proper finishing desk, rather than the long table at
-  // the bottom of the race controls.  It deliberately uses the very same commands
-  // as html(): this is only a clearer presentation of the authoritative review.
+  // The main computer gets a proper finishing desk (2.4.0, SlotForgeRestyle.md "Scrutineering"): the classification as slim rows, each with a tiny chart of
+  // its laps (a strange lap shows at a glance), and a lap explorer for the driver that is picked: a chart of every lap (a click goes to it), the figures,
+  // filters (marked, suspect, flags, pit), the stints, and several laps marked at once. It uses the very same commands as html(): only the presentation differs.
+  const median = list => {
+    const a = list.filter(Number.isFinite).sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = a.length >> 1;
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  };
+  const sign = ms => (ms > 0 ? '+' : ms < 0 ? '−' : '±') + (Math.abs(ms) / 1000).toFixed(3);
+  // what a lap is: its kind (for the colour) and its tags (for the words). med: the median of the clean laps of the car
+  function lapFacts(c, n, med, sc) {
+    const t = c.laps[n],
+      inv = c.invalid.includes(n),
+      rem = c.removed.includes(n),
+      red = (c.redLaps || []).includes(n),
+      resumed = (c.resumedLaps || []).includes(n),
+      pit = (c.pitLaps || []).includes(n),
+      slow = !!(c.bad || [])[n],
+      yellow = (c.yellowFast || []).includes(n);
+    // suspect: a lap that no pit stop, flag or pause explains, far from the usual lap (a crossing counted twice, or one missed)
+    const short = !!med && !red && !resumed && t < med * 0.6,
+      long = !!med && !red && !resumed && !pit && t > med * 1.75;
+    const tags = [];
+    if (red) tags.push(['red', 'Red flag']);
+    if (resumed) tags.push(['flag', 'After a pause']);
+    if (pit) tags.push(['pit', 'Pit']);
+    if (slow) tags.push(['flag', 'Too slow']);
+    if (yellow) tags.push(['flag', sc ? 'Faster than the Safety Car' : 'Faster than the yellow target']);
+    if (short) tags.push(['sus', 'Very short: counted twice?']);
+    if (long) tags.push(['sus', `About ${Math.round(t / med)} laps: a crossing missed?`]);
+    if (inv) tags.push(['bad', 'Invalid']);
+    if (rem) tags.push(['bad', 'Not in the records']);
+    const kind = rem ? 'out' : inv || red ? 'bad' : short || long ? 'sus' : pit ? 'pit' : slow || yellow || resumed ? 'flag' : 'ok';
+    return { t, inv, rem, red, pit, short, long, tags, kind, flagged: kind !== 'ok' };
+  }
+  const cleanMedian = c =>
+    median(c.laps.filter((t, k) => !c.invalid.includes(k) && !c.removed.includes(k) && !(c.redLaps || []).includes(k)));
+  // one bar per lap, its height the lap time: the tiny chart of a row of the classification, and the big one of the explorer
+  function lapChart(c, o) {
+    const n = c.laps.length;
+    if (!n) return '';
+    const med = o.med,
+      facts = c.laps.map((_, k) => lapFacts(c, k, med, o.sc)),
+      // (the scale is that of the clean laps: a lap counted twice, a pit stop or a missed crossing does not flatten the others, it runs into the top)
+      clean = c.laps.filter((t, k) => facts[k].kind === 'ok' || facts[k].kind === 'flag'),
+      base = clean.length ? clean : c.laps,
+      sorted = [...base].sort((x, y) => x - y),
+      q = f => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))],
+      lo = Math.max(0, q(0.02) * 0.97),
+      hi = Math.max(lo + 1, q(0.98) * 1.04, (med || 0) * 1.12);
+    const H = o.h || 40,
+      gap = n <= 60 ? 0.22 : n <= 160 ? 0.12 : 0;
+    const bars = c.laps
+      .map((t, k) => {
+        const f = facts[k],
+          h = Math.max(1.5, ((Math.min(t, hi) - lo) / (hi - lo)) * (H - 2)),
+          best = c.best === t && f.kind === 'ok' ? ' rx-best' : '',
+          on = o.focus === k ? ' rx-on' : '';
+        const col = ['sus', 'bad', 'out'].includes(f.kind)
+          ? `<rect class="rx-col rx-col-${f.kind}" x="${k}" y="0" width="1" height="${H}"/>`
+          : ''; // (a lap to look at: a faint column behind its bar, also when the bar is tiny)
+        return `${col}<rect class="rx-k-${f.kind}${best}${on}${t > hi ? ' rx-cut' : ''}" x="${k + gap / 2}" y="${(H - h).toFixed(2)}" width="${1 - gap}" height="${h.toFixed(2)}"${o.click ? ` data-rv="rxjump" data-car="${o.car}" data-lap="${k}"` : ''}><title>Lap ${k + 1}: ${fmt(t)}${f.tags.length ? ' · ' + f.tags.map(x => x[1]).join(', ') : ''}</title></rect>`;
+      })
+      .join('');
+    const y = v => (H - ((v - lo) / (hi - lo)) * (H - 2)).toFixed(2),
+      ml = med && med > lo && med < hi ? `<line class="rx-med" x1="0" x2="${n}" y1="${y(med)}" y2="${y(med)}"/>` : '';
+    return `<svg class="${o.cls}" viewBox="0 0 ${n} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(o.label || 'Lap times')}">${bars}${ml}</svg>`;
+  }
+  function explorerHtml(eng, i, o) {
+    const c = eng.cars[i];
+    if (!c) return '';
+    const n = c.laps.length,
+      med = cleanMedian(c),
+      sc = !!eng.safetyCar,
+      facts = c.laps.map((_, k) => lapFacts(c, k, med, sc));
+    const clean = c.laps.filter((t, k) => facts[k].kind === 'ok' || facts[k].kind === 'flag'),
+      avg = clean.length ? clean.reduce((a, b) => a + b, 0) / clean.length : null,
+      sd = clean.length > 1 ? Math.sqrt(clean.reduce((a, b) => a + (b - avg) ** 2, 0) / (clean.length - 1)) : null,
+      hasBest = c.best !== null && c.best !== undefined,
+      bestAt = hasBest ? c.laps.findIndex((t, k) => t === c.best && !facts[k].inv && !facts[k].rem) : -1,
+      bestSus = bestAt >= 0 && (facts[bestAt].short || facts[bestAt].long),
+      // (the best lap counted as such is a lap counted twice: the gaps are measured from the best lap that is not suspect)
+      ref = (() => {
+        const ok = c.laps.filter((t, k) => facts[k].kind === 'ok' || facts[k].kind === 'flag');
+        return ok.length ? Math.min(...ok) : hasBest ? c.best : null;
+      })();
+    const is = {
+      all: () => true,
+      marked: f => f.inv || f.rem,
+      sus: f => f.short || f.long,
+      flags: f => f.flagged,
+      pit: f => f.pit
+    };
+    const counts = Object.fromEntries(Object.entries(is).map(([k, fn]) => [k, facts.filter(fn).length]));
+    const filter = is[ui.filter] ? ui.filter : 'all',
+      shown = facts.map((f, k) => k).filter(k => is[filter](facts[k]));
+    const picked = [...ui.checked].filter(k => k >= 0 && k < n);
+    const seg = [
+      ['all', 'All'],
+      ['marked', 'Marked'],
+      ['sus', 'Suspect'],
+      ['flags', 'Flags'],
+      ['pit', 'Pit']
+    ]
+      .filter(([k]) => k === 'all' || counts[k] || filter === k)
+      .map(
+        ([k, label]) =>
+          `<button type="button" class="btn${filter === k ? ' on' : ''}" data-rv="rxfilter" data-f="${k}" aria-pressed="${filter === k}">${label} <em>${counts[k]}</em></button>`
+      )
+      .join('');
+    // the drivers in the order of the classification, to go from one to the next
+    const st = eng.standings(),
+      at = Math.max(
+        0,
+        st.findIndex(x => x.index === i)
+      ),
+      color = o.color || (() => 'var(--muted)');
+    const who = st
+      .map(
+        x =>
+          `<button type="button" class="btn${x.index === i ? ' on' : ''}" data-rv="laps" data-excl="1" data-car="${x.index}" aria-pressed="${x.index === i}" style="--c:${esc(color(x.car.lane))}"><i></i>${esc(x.car.driverName)}</button>`
+      )
+      .join('');
+    const stints = c.en && Array.isArray(c.en.stints) && c.en.stints.length > 1 ? c.en.stints : null,
+      nameOf = d => ((c.roster || []).find(r => r.id === d) || {}).name || '';
+    const rows = shown
+      .map(k => {
+        const f = facts[k],
+          dBest = ref === null ? null : f.t - ref,
+          span = med && ref !== null ? Math.max(0, Math.min(1, (f.t - ref) / Math.max(1, med * 0.4))) : 0;
+        const sAt = stints ? stints.findIndex(x => x.l0 === k) : -1,
+          head =
+            sAt >= 0 && filter === 'all'
+              ? `<tr class="rx-stint"><td colspan="7">Stint ${sAt + 1}${nameOf(stints[sAt].d) ? ` · ${esc(nameOf(stints[sAt].d))}` : ''} · from lap ${k + 1}</td></tr>`
+              : '';
+        const acts =
+          ui.del === `${i}:${k}`
+            ? `<span class="rv-del">Remove lap ${k + 1}: <button class="btn sm" data-rv="removelap" data-car="${i}" data-lap="${k}" data-recalc="0">From the records only</button> <button class="btn sm danger" data-rv="removelap" data-car="${i}" data-lap="${k}" data-recalc="1">From the race too (recalculate)</button> <button class="btn sm" data-rv="delcancel">Cancel</button></span>`
+            : `${f.red ? '' : `<button class="btn sm" data-rv="invalid" data-car="${i}" data-lap="${k}" data-on="${f.inv ? 0 : 1}">${f.inv ? 'Mark valid' : 'Mark invalid'}</button>`}${f.rem ? `<button class="btn sm" data-rv="restorelap" data-car="${i}" data-lap="${k}">Back in the records</button>` : `<button class="btn sm" data-rv="deltry" data-car="${i}" data-lap="${k}">Delete…</button>`}`;
+        const pace = paceTag(c, k);
+        return `${head}<tr class="rx-row rx-k-${f.kind}${k === bestAt && !bestSus ? ' rx-best' : ''}${ui.checked.has(k) ? ' rx-picked' : ''}${ui.focus === k ? ' rx-on' : ''}" data-rx-lap="${k}">
+          <td class="rx-ck"><input type="checkbox" data-rv="rxpick" data-car="${i}" data-lap="${k}" aria-label="Pick lap ${k + 1}"${ui.checked.has(k) ? ' checked' : ''}></td>
+          <td class="rx-n">${k + 1}</td><td class="rx-t">${fmt(f.t)}</td>
+          <td class="rx-d">${k === bestAt && !bestSus ? '<b>best</b>' : dBest === null ? '' : sign(dBest)}</td>
+          <td class="rx-bar"><i style="width:${Math.round(span * 100)}%"></i></td>
+          <td class="rx-tags"><div>${f.tags.map(([k2, w]) => `<span class="rx-tag rx-tag-${k2}">${esc(w)}</span>`).join('')}${pace ? `<span class="rx-pace">${esc(pace)}</span>` : ''}</div></td>
+          <td class="rx-acts">${acts}</td></tr>`;
+      })
+      .join('');
+    const stat = (label, v, sub) => `<div><span>${label}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+    const prev = st[(at - 1 + st.length) % st.length].index,
+      next = st[(at + 1) % st.length].index;
+    return `<section class="rx" data-rx="${i}" aria-label="Laps of ${esc(c.driverName)}">
+      <header class="rx-head"><div class="rx-who seg" role="group" aria-label="Driver">${who}</div>
+        <span class="rx-nav">${st.length > 1 ? `<button type="button" class="btn icon sm" data-rv="laps" data-excl="1" data-car="${prev}" aria-label="The driver before" title="The driver before">‹</button><button type="button" class="btn icon sm" data-rv="laps" data-excl="1" data-car="${next}" aria-label="The next driver" title="The next driver">›</button>` : ''}<button type="button" class="btn sm ghost" data-rv="laps" data-excl="1" data-car="${i}" aria-expanded="true">Close</button></span></header>
+      <div class="rx-stats">${stat('Laps', n)}${stat('Best', hasBest ? fmt(c.best) : '–', bestAt >= 0 ? `lap ${bestAt + 1}${bestSus ? ' · <em class="rx-warn">suspect: it goes in the records</em>' : ''}` : '')}${stat('Median', med ? fmt(Math.round(med)) : '–')}${stat('Average', avg ? fmt(Math.round(avg)) : '–', 'clean laps')}${stat('Consistency', sd ? '±' + (sd / 1000).toFixed(3) : '–', 'spread of clean laps')}${stat('Marked', counts.marked, counts.sus ? `${counts.sus} suspect` : '')}</div>
+      <div class="rx-chartbox">${lapChart(c, { cls: 'rx-chart', h: 100, med, sc, click: true, car: i, focus: ui.focus, label: `Lap times of ${c.driverName}: a bar for every lap` })}
+        <p class="rx-legend"><span class="rx-k-ok">Clean</span><span class="rx-best">Best</span><span class="rx-k-pit">Pit</span><span class="rx-k-flag">Flag</span><span class="rx-k-sus">Suspect</span><span class="rx-k-bad">Invalid</span><span class="rx-k-out">Not in the records</span><span class="rx-medl">Median</span><span class="rx-tip">A bar shows its lap in the list.</span></p></div>
+      <div class="rx-tools"><span class="seg" role="group" aria-label="Show">${seg}</span>
+        <span class="rx-bulk${picked.length ? ' on' : ''}">${picked.length ? `<b>${picked.length} picked</b><button type="button" class="btn sm" data-rv="rxbulk" data-car="${i}" data-do="invalid">Mark invalid</button><button type="button" class="btn sm" data-rv="rxbulk" data-car="${i}" data-do="valid">Mark valid</button><button type="button" class="btn sm" data-rv="rxbulk" data-car="${i}" data-do="records">Take out of the records</button><button type="button" class="btn sm ghost" data-rv="rxpicknone">Clear</button>` : `<button type="button" class="btn sm ghost" data-rv="rxpickall" data-car="${i}" data-laps="${shown.join(',')}"${shown.length ? '' : ' disabled'}>Pick the ${shown.length} shown</button>`}</span></div>
+      <div class="rx-scroll" data-rx-scroll="${i}"><table class="rx-table"><thead><tr><th class="rx-ck"></th><th>Lap</th><th>Time</th><th>To best</th><th></th><th>What happened</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="7" class="muted">No laps${filter === 'all' ? '' : ' of this kind'}</td></tr>`}</tbody></table></div>
+    </section>`;
+  }
   function finishHtml(eng, o = {}) {
     const st = eng.standings(),
       on = eng.penalty && eng.penalty.on,
       canAdjust = eng.type === 'race' || eng.type === 'timed',
-      champ = canAdjust && !!o.champ && !!o.champ.on;
+      champ = canAdjust && !!o.champ && !!o.champ.on,
+      color = o.color || (() => 'var(--muted)');
     const wins = x =>
       Stats.isWinner({ sessionType: eng.type }, { pos: x.pos, dq: x.car.dq, retired: x.car.retired, laps: eng.lapsOf(x.car) });
-    const card = x => {
+    const lead = st[0] && st[0].car,
+      timeOf = c => (eng.timeOf ? eng.timeOf(c) : c.total + eng.penMs(c) + (c.adjMs || 0)),
+      leadLaps = lead ? eng.lapsOf(lead) : 0;
+    const pick = [...ui.open].filter(k => eng.cars[k]).pop(); // (the driver whose laps are open: one at a time on this desk)
+    const row = x => {
       const c = x.car,
         i = x.index,
-        open = ui.open.has(i),
         adjOpen = canAdjust && ui.adjust.has(i),
-        pen = eng.penMs(c),
-        total = eng.timeOf ? eng.timeOf(c) : c.total + pen + (c.adjMs || 0);
-      const redCount = (c.redLaps || []).filter(n => !c.removed.includes(n)).length;
+        total = timeOf(c),
+        open = pick === i,
+        med = cleanMedian(c);
+      const redCount = (c.redLaps || []).filter(n => !c.removed.includes(n)).length,
+        marked = new Set([...c.invalid, ...c.removed]).size,
+        sus = c.laps.filter((t, k) => {
+          const f = lapFacts(c, k, med, !!eng.safetyCar);
+          return f.short || f.long;
+        }).length;
       const state = c.dq ? 'Disqualified' : c.retired ? 'Out' : wins(x) ? 'Winner' : `Position ${x.pos}`;
-      const redNotice = redCount
-        ? `<p class="rfinish-alert"><strong>Red-flag interruption</strong> · ${redCount} ${redCount === 1 ? 'lap is' : 'laps are'} invalid and excluded from records.</p>`
-        : '';
+      const behind = leadLaps - eng.lapsOf(c),
+        gap =
+          x.pos === 1 || c.dq || !lead
+            ? ''
+            : behind > 0
+              ? `+${behind} ${behind === 1 ? 'lap' : 'laps'}`
+              : '+' + fmt(Math.max(0, total - timeOf(lead)));
       const pending = c.pending
         .map(
           (p, k) =>
-            `<div class="rfinish-pending">⚠ <strong>${esc(p.name)}</strong> was not served. Add <input type="number" min="0" step="any" class="rv-sec" data-rvt="${i}:${k}" value="${p.unserved}" aria-label="Seconds to add for ${esc(p.name)}"> s <button class="btn" data-rv="addtime" data-car="${i}" data-k="${k}">Add time</button>${c.dq ? '' : ` <button class="btn danger" data-rv="dq" data-car="${i}" data-k="${k}">Disqualify</button>`} <button class="btn" data-rv="forgive" data-car="${i}" data-k="${k}">Forgive</button></div>`
+            `<div class="rfinish-pending">⚠ <strong>${esc(p.name)}</strong> was not served. Add <input type="number" min="0" step="any" class="rv-sec" data-rvt="${i}:${k}" value="${p.unserved}" aria-label="Seconds to add for ${esc(p.name)}"> s <button class="btn sm" data-rv="addtime" data-car="${i}" data-k="${k}">Add time</button>${c.dq ? '' : ` <button class="btn sm danger" data-rv="dq" data-car="${i}" data-k="${k}">Disqualify</button>`} <button class="btn sm" data-rv="forgive" data-car="${i}" data-k="${k}">Forgive</button></div>`
         )
         .join('');
-      const sector = sectorRowHtml(eng, c, i, 0);
       const adjusted = Stats.adjustedText({ adjMs: c.adjMs, adjLaps: c.adjLaps, adjPoints: c.adjPoints });
-      return `<article class="rfinish-card${wins(x) ? ' winner' : ''}${c.dq ? ' dq' : ''}">
-        <div class="rfinish-cardhead"><span class="rfinish-place">${c.dq ? 'DQ' : x.pos}</span><div><strong>${wins(x) ? Icons.trophy({ size: 20 }) + ' ' : ''}${esc(c.driverName)}</strong><span class="muted">Lane ${c.lane + 1}${c.carName ? ` · ${esc(c.carName)}` : ''}</span></div><span class="rfinish-state">${esc(state)}</span></div>
-        ${redNotice}${eng.cfg?.rulePlugin ? `<p class="rfinish-alert"><strong>${esc(eng.cfg.rulePlugin.name)}</strong> · rule time +${fmt(eng.pluginTimeOf(c))} · competition bonus ${eng.pluginPointsOf(c, x.pos)} pts. Invalidated laps lose their rule-time consequence; fuel and tyre use remain historical.</p>` : ''}<div class="rfinish-stats"><div><span>Laps</span><strong>${eng.lapsOf(c)}</strong></div><div><span>Total</span><strong>${c.dq ? 'DQ' : fmt(total)}</strong></div><div><span>Best legal lap</span><strong>${c.best === null || c.best === undefined ? '–' : fmt(c.best)}</strong></div>${champ ? `<div><span>Championship points</span><strong>${((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0) + (eng.pluginPointsOf?.(c, x.pos) || 0)}</strong></div>` : ''}${on ? `<div><span>Penalties</span><strong>${c.points || 0} pts</strong></div>` : ''}</div>
-        ${adjusted ? `<p class="muted">adjusted: ${esc(adjusted)}</p>` : ''}${sector}${pending}<div class="rfinish-actions">${on && c.points ? `<button class="btn" data-rv="nullify" data-car="${i}">Clear points</button>` : ''}${on && c.undoPoints ? `<button class="btn" data-rv="restorepoints" data-car="${i}">Restore points</button>` : ''}${c.dq ? `<button class="btn" data-rv="undq" data-car="${i}">Reinstate driver</button>` : `<button class="btn danger" data-rv="dq" data-car="${i}">Disqualify driver</button>`}${canAdjust ? `<button class="btn" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}">${adjOpen ? 'Hide adjustments' : 'Adjust result'}</button>` : ''}<button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Review laps'}${redCount ? ` (${redCount} red-flag ${redCount === 1 ? 'lap' : 'laps'})` : ''}</button></div>
-        ${adjOpen ? `<div class="rfinish-detail">${adjustHtml(c, i, { champ, settings: o.settings })}</div>` : ''}${open ? `<div class="rfinish-detail"><h4>Laps</h4>${lapListHtml(c, i, false, null, !!eng.safetyCar)}</div>` : ''}
+      const chips = [
+        adjusted ? `<span class="rf-chip">adjusted: ${esc(adjusted)}</span>` : '',
+        marked ? `<span class="rf-chip bad">${marked} marked</span>` : '',
+        sus ? `<span class="rf-chip sus">${sus} suspect</span>` : '',
+        c.pending.length ? `<span class="rf-chip warn">${c.pending.length} not served</span>` : ''
+      ].join('');
+      const notes = `${redCount ? `<p class="rfinish-alert"><strong>Red-flag interruption</strong> · ${redCount} ${redCount === 1 ? 'lap is' : 'laps are'} invalid and excluded from records.</p>` : ''}${eng.cfg?.rulePlugin ? `<p class="rfinish-alert"><strong>${esc(eng.cfg.rulePlugin.name)}</strong> · rule time +${fmt(eng.pluginTimeOf(c))} · competition bonus ${eng.pluginPointsOf(c, x.pos)} pts. Invalidated laps lose their rule-time consequence; fuel and tyre use remain historical.</p>` : ''}${sectorRowHtml(eng, c, i, 0)}${pending}`;
+      const num = (label, v, sub) => `<div class="rf-num"><span>${label}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+      return `<article class="rfinish-card${wins(x) ? ' winner' : ''}${c.dq ? ' dq' : ''}${open ? ' picked' : ''}" role="listitem" style="--c:${esc(color(c.lane))}">
+        <div class="rf-row">
+          <span class="rfinish-place">${c.dq ? 'DQ' : x.pos}</span>
+          <div class="rf-who"><strong>${wins(x) ? Icons.trophy({ size: 16 }) + ' ' : ''}${esc(c.driverName)}</strong><span class="muted">Lane ${c.lane + 1}${c.carName ? ` · ${esc(c.carName)}` : ''} · <b class="rfinish-state">${esc(state)}</b></span>${chips ? `<span class="rf-chips">${chips}</span>` : ''}</div>
+          <button type="button" class="rf-spark" data-rv="laps" data-excl="1" data-car="${i}" title="The laps of ${esc(c.driverName)}" aria-label="Open the laps of ${esc(c.driverName)}">${lapChart(c, { cls: 'rf-sparkline', h: 32, med, sc: !!eng.safetyCar, label: `Laps of ${c.driverName}` })}</button>
+          ${num('Laps', eng.lapsOf(c), c.adjLaps ? `${c.laps.length} driven` : '')}${num('Total', c.dq ? 'DQ' : fmt(total), gap)}${num('Best lap', c.best === null || c.best === undefined ? '–' : fmt(c.best))}${champ ? num('Points', ((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0) + (eng.pluginPointsOf?.(c, x.pos) || 0)) : ''}${on ? num('Penalties', `${c.points || 0} pts`) : ''}
+          <div class="rfinish-actions"><button class="btn sm${open ? ' on' : ''}" data-rv="laps" data-excl="1" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Review laps'}${redCount ? ` (${redCount} red-flag ${redCount === 1 ? 'lap' : 'laps'})` : ''}</button>${canAdjust ? `<button class="btn sm" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}">${adjOpen ? 'Hide adjustments' : 'Adjust result'}</button>` : ''}${on && c.points ? `<button class="btn sm" data-rv="nullify" data-car="${i}">Clear points</button>` : ''}${on && c.undoPoints ? `<button class="btn sm" data-rv="restorepoints" data-car="${i}">Restore points</button>` : ''}${c.dq ? `<button class="btn sm" data-rv="undq" data-car="${i}">Reinstate driver</button>` : `<button class="btn sm danger" data-rv="dq" data-car="${i}">Disqualify driver</button>`}</div>
+        </div>
+        ${notes ? `<div class="rf-notes">${notes}</div>` : ''}${adjOpen ? `<div class="rfinish-detail">${adjustHtml(c, i, { champ, settings: o.settings })}</div>` : ''}
       </article>`;
     };
     const pending = st.reduce((n, x) => n + x.car.pending.length, 0),
       invalid = eng.cars.reduce((n, c) => n + new Set([...c.invalid, ...c.removed]).size, 0);
-    return `<section class="rfinish"><header class="rfinish-head"><div><p class="eyebrow">DIRECTOR'S FINAL CHECK</p><h2>Finalize race results</h2><p class="muted">Review the classification, laps and penalties. Nothing is saved until you finalize.</p></div><div class="rfinish-headactions"><span class="rfinish-check">${invalid ? `${invalid} lap${invalid === 1 ? '' : 's'} marked` : 'All laps checked'}${pending ? ` · ${pending} penalty${pending === 1 ? '' : 'ies'} waiting` : ''}</span><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></div></header><div class="rfinish-grid">${st.map(card).join('')}</div><footer class="rfinish-foot"><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></footer></section>`;
+    const explorer =
+      pick === undefined
+        ? '<p class="rx-hint">Pick a driver, or the little chart of their laps, to go through every lap: a chart of all laps, filters for marked and suspect laps, and several laps marked at once.</p>'
+        : explorerHtml(eng, pick, { color });
+    return `<section class="rfinish"><header class="rfinish-head"><div><p class="eyebrow">DIRECTOR'S FINAL CHECK</p><h2>Finalize race results</h2><p class="muted">Review the classification, laps and penalties. Nothing is saved until you finalize.</p></div><div class="rfinish-headactions"><span class="rfinish-check">${invalid ? `${invalid} lap${invalid === 1 ? '' : 's'} marked` : 'All laps checked'}${pending ? ` · ${pending} penalty${pending === 1 ? '' : 'ies'} waiting` : ''}</span><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></div></header>
+      <div class="rfinish-grid rf-list" role="list" aria-label="Classification">${st.map(row).join('')}</div>${explorer}<footer class="rfinish-foot"><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></footer></section>`;
+  }
+  // The review page is drawn again after every change: the lap list keeps where it was scrolled to, and a lap picked in the chart comes into view.
+  function render(root, h) {
+    const keep = {};
+    if (root.querySelectorAll) root.querySelectorAll('[data-rx-scroll]').forEach(el => (keep[el.dataset.rxScroll] = el.scrollTop));
+    root.innerHTML = h;
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('[data-rx-scroll]').forEach(el => {
+      if (keep[el.dataset.rxScroll] !== undefined) el.scrollTop = keep[el.dataset.rxScroll];
+    });
+    if (ui.focus !== null && ui.focus !== undefined) {
+      const r = root.querySelector(`[data-rx-lap="${ui.focus}"]`),
+        box = r && r.closest('[data-rx-scroll]');
+      if (r && box) box.scrollTop = r.offsetTop - box.clientHeight / 2;
+    }
   }
 
   // During the race (any session type): the laps of every car, to mark a lap invalid or take it out. The review after the race stays as it is.
@@ -314,8 +520,51 @@ const Review = (() => {
       if (op === 'laps') {
         const set = sid === undefined ? ui.open : ui.openStints,
           key = sid === undefined ? car : sid;
-        if (set.has(key)) set.delete(key);
+        if (d.excl === '1') {
+          // (the finishing desk: the laps of one driver at a time; the driver buttons of the explorer always open, the others open and close)
+          const was = set.has(key);
+          set.clear();
+          if (!was || (b.closest && b.closest('.rx-who,.rx-nav'))) set.add(key);
+          ui.checked.clear();
+          ui.focus = null;
+          ui.del = null;
+        } else if (set.has(key)) set.delete(key);
         else set.add(key);
+        return redraw();
+      }
+      if (op === 'rxfilter') {
+        ui.filter = d.f;
+        return redraw();
+      }
+      if (op === 'rxpick') {
+        const k = Number(d.lap);
+        if (ui.checked.has(k)) ui.checked.delete(k);
+        else ui.checked.add(k);
+        return redraw();
+      }
+      if (op === 'rxpickall') {
+        String(d.laps || '')
+          .split(',')
+          .filter(x => x !== '')
+          .forEach(x => ui.checked.add(Number(x)));
+        return redraw();
+      }
+      if (op === 'rxpicknone') {
+        ui.checked.clear();
+        return redraw();
+      }
+      if (op === 'rxjump') {
+        ui.filter = 'all';
+        ui.focus = Number(d.lap);
+        return redraw();
+      }
+      if (op === 'rxbulk') {
+        // several laps at once: the same command as for one lap, for every lap that was picked
+        const laps = [...ui.checked].sort((x, y) => x - y);
+        ui.checked.clear();
+        for (const lap of laps)
+          if (d.do === 'records') send({ op: 'removelap', car, lap, recalc: false });
+          else send({ op: 'invalid', car, lap, on: d.do === 'invalid' });
         return redraw();
       }
       if (op === 'deltry') {
@@ -352,6 +601,9 @@ const Review = (() => {
     ui.openStints.clear();
     ui.adjust.clear();
     ui.del = null;
+    ui.filter = 'all';
+    ui.checked.clear();
+    ui.focus = null;
   }
 
   // one correction on the real engine; true when something changed
@@ -377,6 +629,8 @@ const Review = (() => {
         return eng.setInvalid(c.car, c.lap, !!c.on);
       case 'removelap':
         return eng.removeLap(c.car, c.lap, !!c.recalc);
+      case 'restorelap':
+        return !!eng.restoreLap && eng.restoreLap(c.car, c.lap);
       case 'sector':
         return Number.isInteger(c.car) && eng.setSector(c.car, c.sector);
       case 'sectormove':
@@ -384,6 +638,6 @@ const Review = (() => {
     }
     return false;
   }
-  return { html, finishHtml, lapsHtml, stintsHtml, bind, apply, reset, boughtText, ui };
+  return { html, finishHtml, lapsHtml, stintsHtml, bind, apply, reset, render, boughtText, ui, lapFacts, median };
 })();
 if (typeof module !== 'undefined') module.exports = Review;

@@ -47,7 +47,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
 | [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
-| [Scrutineering](#scrutineering) | Finalize race results: a card per driver, the laps as a slim scrolling list, quiet Adjust pads | After the race |
+| [Scrutineering](#scrutineering) | Finalize race results: the classification as slim rows with a tiny lap chart, a lap explorer with a chart, filters, suspect laps and several laps at once | After the race |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1391,18 +1391,29 @@ html .rd-sheet .twnote{padding:3px 0 3px 10px;border-left:2px solid color-mix(in
 
 ## Scrutineering
 
-Finalize race results, after the race (`renderer/review.js` in `.race-finish`). The head as a Page Note with a Barlow title and its two actions
-(Finalize results filled red, Delete all data red text). A card per driver: the place in a small tile (gold for the winner, with a 3px gold top
-stripe instead of a gold frame), the numbers (laps, total, best lap, penalties) in Roboto Mono between two thin lines, the actions as small
-buttons. **The laps** are a slim list (32px rows: number, time in mono, what happened in that lap in one grey line, then Mark invalid and
-Delete… as small outline buttons at the right); a long race scrolls inside the card (480px). **Adjust the result** has a small-capitals title and
-the pads as small steppers: + tinted in the colour of its kind (time orange, laps purple), − neutral, the amounts in mono.
+Finalize race results, after the race (`renderer/review.js` finishHtml, styles under `.race-finish`). Two parts:
+
+- **The classification**: a slim row per driver (an `article.rfinish-card` with a 4px left edge in the lane colour; the winner with a thin gold ring
+  and the place tile in gold). Left the place and the driver (car, lane, Winner / Position / Out / Disqualified, chips for *adjusted*, *n marked*,
+  *n suspect*, *n not served*), then a **tiny lap chart** (one bar per lap, a click opens the laps), then Laps, Total (with the gap to the leader
+  under it), Best lap, Points and Penalties in Roboto Mono, and the actions as small buttons. Alerts (red flag, unserved penalties, sectors) and the
+  Adjust pads open under the row.
+- **The lap explorer** for one driver at a time: a Gear Selector with the drivers (a dot in their lane colour) and ‹ ›; six figures (Laps, Best,
+  Median, Average, Consistency, Marked); a **chart** of every lap (120px, a click goes to the lap in the list, the median dashed, the scale that of
+  the clean laps so a pit stop or a missed crossing runs into the top); filters with counts (All, Marked, Suspect, Flags, Pit); several laps picked
+  with a tick box and marked at once (Mark invalid, Mark valid, Take out of the records); the list in a scrolling box with a sticky head that keeps
+  where it was after every change; stint rows in an Endurance race.
+- **One colour per kind of lap**, the same in the charts and as the 3px mark at the left of a row: clean grey, best purple, pit orange, flag amber,
+  suspect magenta, invalid red, not in the records dim. A suspect, invalid or removed lap also gets a faint full-height column in the chart.
+- **Suspect** (found by the screen, nothing is changed by itself): a lap shorter than 0.6 × the median (*counted twice?*) or longer than 1.75 × the
+  median without a pit stop, flag or pause (*about 2 laps: a crossing missed?*). When the best lap is suspect the figures say it goes in the records.
 
 ```css
-html .race-finish .rfinish-card.winner{border-top:3px solid #d4a400;box-shadow:none}
-html .race-finish .rv-laps{max-height:480px;overflow:auto;border-top:1px solid var(--line)}
-html .race-finish .rv-lap{display:flex;align-items:center;gap:8px;min-height:32px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent)}
-html .race-finish .rv-pads .pad-plus{background:color-mix(in srgb,var(--pc) 24%,var(--panel));color:var(--ink)}
+html .race-finish .rf-row{display:grid;grid-template-columns:32px minmax(160px,1.4fr) minmax(120px,1fr) repeat(4,minmax(74px,auto)) auto;gap:6px 16px}
+html .race-finish .rf-list>.rfinish-card{border:1px solid var(--line);border-left:4px solid var(--c);border-radius:10px}
+html .race-finish{--rx-ok:color-mix(in srgb,var(--ink) 42%,var(--panel));--rx-best:#b07cff;--rx-pit:#f08a24;--rx-flag:#f2b705;--rx-sus:#d16bff;--rx-bad:#e5484d}
+html .race-finish .rx-row.rx-k-sus{box-shadow:inset 3px 0 0 var(--rx-sus);background:color-mix(in srgb,var(--rx-sus) 7%,transparent)}
+html .race-finish .rx-table thead th{position:sticky;top:0;font:600 10px "Segoe UI";letter-spacing:.12em;text-transform:uppercase}
 ```
 
 ## Live Desk
@@ -1571,3 +1582,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Race Sheet | New: the tables of a race in small capitals and mono, the notes as a grey line, the tyre correction as one compact box |
 | 2026-11 | Scrutineering | New: Finalize race results with a gold stripe for the winner, slim lap rows with small buttons, quiet Adjust pads |
 | 2026-11 | Pit Wall | The shared library's light shows the results waiting to be sent in amber with their number ("1 to send"), never as a red "Library" |
+| 2026-11 | Scrutineering | Reimagined: the classification as slim rows with a lap chart each, and a lap explorer (chart of every lap, figures, filters, suspect laps, several laps at once, back in the records); one colour per kind of lap |

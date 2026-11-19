@@ -1944,12 +1944,12 @@ async function renderRace() {
               tokens.closedList().filter(x => x.laps.length),
               { failed: live.tkFailed }
             )
-          : Review.finishHtml(eng, { champ: champOf(), settings: state.settings }) +
+          : Review.finishHtml(eng, { champ: champOf(), settings: state.settings, color: l => HomeStats.laneColor(layout, l) }) +
             (mc ? MultiClass.resultsHtml(eng.classStandings(), mc) : '') +
             (eng.rivals?.length ? VirtualRival.historyHtml({ virtualRivals: VirtualRival.summary(eng, false) }) : '');
         if (h !== live.rvHtml) {
           live.rvHtml = h;
-          ui('review').innerHTML = h;
+          Review.render(ui('review'), h); // (2.4.0: the lap list keeps where it was scrolled to)
         }
       } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) {
