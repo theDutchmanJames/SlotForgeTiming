@@ -8,7 +8,10 @@ Verdicts: **Remake** · **Rework** (a smaller remake of one part) · **Fine**.
 
 ## Tier 1: the biggest wins
 
-### 1. After the race: single race, heats and championships (the flow) · Remake
+### 1. After the race: single race, heats and championships (the flow) · Remake · **Done (2.4.0, "Chequered Flag")**
+Race over, a championship race with the title fight, the break between heats and Event over replace the frozen race page; points are awarded on
+Finalize with Undo; Race again, Go to round N; Delete all data goes Home. Still open from this item: re-run or skip a heat, a no-show or substitute,
+correcting a result after Finalize (with Results and Records, #8).
 This is a flow across several screens, not one screen.
 - **Single race.** Finalize runs `closeReview()` (renderer/race.js:2532), which brings back the race page: frozen widgets,
   the director desk, Stop greyed out. The only sign that it is over is a status line (race.js:2968). The page has no results,

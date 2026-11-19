@@ -733,6 +733,7 @@ async function renderHome() {
         : 'Choose a human driver and car, or a Virtual Rival and its replay.';
   const rowSaid = new Set(Object.values(rowMsgs)),
     otherIssues = issues.filter(x => !rowSaid.has(x)); // (the list under the rows keeps what is not about one row)
+  const homeMsg = state.homeMsg && Date.now() - (state.homeMsgAt || 0) < 30000 ? state.homeMsg : ''; // (2.4.0: what the race page says when it sends you here, for half a minute: a race whose data was deleted)
   const rowOk = new Map(shown.map((x, k) => [x.i, lt.ok[k]])),
     allReady = !issues.length; // (1.58.0: a tick for every row, and one pill that says whether the race can start: nothing is wrong, and then every row is filled in, because what a row lacks is one of the issues)
   const lightsHtml =
@@ -862,6 +863,7 @@ async function renderHome() {
       ${mcHtml}${heatPlanHtml}
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
+      ${homeMsg ? `<p class="hint2 hm-msg" role="status">${esc(homeMsg)}</p>` : ''}
       ${otherIssues.length ? `<ul class="issues">${otherIssues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <div class="hm-go">${lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p><div class="row"><button type="button" class="btn primary" id="guideagain">Start the setup guide</button></div>') +

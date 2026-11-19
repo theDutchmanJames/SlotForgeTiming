@@ -716,7 +716,7 @@ const Help = (() => {
           <li><b>Bonuses</b>: fastest lap (only in the first places you set), pole position (fastest in the qualifying of the round, if he starts) and a point for starting. A car that is out gets no points for its place.</li>
           <li><b>Dropped results</b> take away the worst rounds of every driver and team. <b>Teams</b> count the best drivers of a team, all of them, or no team standings. A tie goes to the most wins, the last round or the qualifying.</li>
           <li>A race at 50% (a sprint) gives half of the points, rounded as you choose. A driver who is not in the roster is a guest: no points, and the drivers behind him move up (can be switched off).</li>
-          <li>After a race a panel shows its points. <b>Award these points</b> puts the race in the standings (a session counts once: a second run replaces the first), <b>Undo</b> takes it out again, and <b>Do not count this race</b> keeps the result but offers the session again on Home.</li>
+          <li>Finalize puts the points of a race in the standings (a session counts once: a second run replaces the first). <b>Undo</b> takes them out, <b>Award these points</b> puts them back, and <b>Do not count this race</b> keeps the result but offers the session again on Home.</li>
           <li><b>Races of teams</b> (Endurance, team heats) are scored: the team gets the points of its place once. Each driver who drove for it gets the same, a share by laps, or nothing, as you choose (with a minimum share of laps).</li>
           <li>Results and Records, <b>Championships</b>: Drivers, Teams and Rounds, with <b>Export to PDF</b>. Home shows who leads ("Maria leads by 5") and the top five.</li>
         </ul>`

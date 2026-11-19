@@ -1076,7 +1076,7 @@ async function renderRace() {
   const host = raceHost();
   const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
-  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><div id="raceactive"><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
+  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"><button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
     ${rulePlan ? `<p class="muted" id="race-rule-summary">Plugin rules: <strong>${esc(rulePlan.name)}</strong> · v${esc(rulePlan.version)} · frozen for this race. Raw lap timing is unchanged.</p>` : ''}
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
@@ -2042,6 +2042,10 @@ async function renderRace() {
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
+    if (live.roShown === 'break') {
+      if (live.phase !== 'between') roShow('');
+      else roBreak();
+    } else if (live.phase !== 'between' && ui('robackbreak') && !ui('robackbreak').hidden) ui('robackbreak').hidden = true; // (2.4.0: the break screen goes when the next heat starts)
     ph('buttons');
     share();
     ph('share');
@@ -2545,6 +2549,7 @@ async function renderRace() {
         date = new Date().toISOString(),
         fin = heat.isFinal() ? heat.raceName(heat.idx).slice(6) : '';
       if (eng.rivals?.length) (live.rivalHeats || (live.rivalHeats = [])).push({ heat: heat.idx + 1, rivals: VirtualRival.summary(eng) });
+      live.roBefore = heat.results.length ? new Map(heat.overall().map(o => [o.participant, o.pos])) : null; // (the places before this heat: the arrows of the break)
       const res = heat.record(eng);
       try {
         (res.rows || []).forEach(row => {
@@ -2656,6 +2661,10 @@ async function renderRace() {
         live.cpAt = undefined;
         shareStatic();
         update();
+        if (typeof RaceOver !== 'undefined') {
+          roBreak(true);
+          roShow('break');
+        } // (2.4.0: the break between two heats, a screen of its own)
         return; // (cpAt: the heat that is done is kept at once)
       }
     }
@@ -2677,7 +2686,362 @@ async function renderRace() {
       ? 'Race results deleted. Consumed resources remain spent.'
       : 'The race was deleted. Nothing was saved.';
     update();
+    // (2.4.0) nothing is left to look at: back to Home, which says what happened
+    state.homeMsg = ui('msg').textContent;
+    state.homeMsgAt = Date.now();
+    state.tab = 'home';
+    render();
   }
+
+  // ---- (2.4.0, SlotForgeRestyle.md "Chequered Flag") the screens after a race (raceover.js): Race over, the title fight of a championship, the break
+  // between two heats, Event over. The race page (raceactive) is hidden while one is shown; "Show the race screen" brings it back during a break.
+  const roColor = i => (typeof HomeStats !== 'undefined' ? HomeStats.laneColor(layout, i) : '');
+  const roSay = text => {
+    const s = ui('raceover') && ui('raceover').querySelector('.ro-saved');
+    if (s) s.textContent = text;
+  };
+  function roShow(which) {
+    live.roShown = which || '';
+    if (ui('raceover')) ui('raceover').hidden = which !== 'over';
+    if (ui('racebreak')) ui('racebreak').hidden = which !== 'break';
+    if (!live.reviewShown) ui('raceactive').hidden = !!which;
+    if (ui('robackbreak')) ui('robackbreak').hidden = !(live.phase === 'between' && !which);
+    if (which && typeof scrollTo === 'function') scrollTo(0, 0);
+  }
+  // the final lane picks and who drives (teams) are cards of the race page: during the break they are shown on the break screen, and go back after
+  const roPark = () => {
+    const at = ui('heatnext');
+    ['finalpick', 'teampick'].forEach(id => {
+      const el = ui(id);
+      if (el && at && el.parentElement !== at.parentElement) at.parentElement.insertBefore(el, at);
+    });
+  };
+  // the rows of the standings of the heats: a column per heat, the final, this heat's points, the move since the heat before
+  function roHeatRows(list) {
+    const heatsOnly = list.filter(x => !x.final),
+      lastDone = [...list].reverse().find(x => x.state === 'done');
+    return heat.overall().map(o => {
+      const p = o.participant,
+        seen = [...list].reverse().find(h => h.state === 'done' && h.rows.some(y => y.participant === p)),
+        laneRow = seen ? seen.rows.find(y => y.participant === p) : null,
+        mine = lastDone ? lastDone.rows.find(y => y.participant === p) : null,
+        was = live.roBefore && live.roBefore.get(p);
+      return {
+        pos: o.pos,
+        name: o.asTeam ? o.teamName : o.driverName,
+        lane: laneRow && Number.isInteger(laneRow.lane) ? laneRow.lane : null,
+        heats: heatsOnly.map(h => {
+          const r = h.rows.find(y => y.participant === p);
+          return r ? (byPts ? r.points : r.laps) : null;
+        }),
+        final: finalsOn ? Heats.finalCell(o) : '',
+        add: mine && byPts ? mine.points : null,
+        move: was ? was - o.pos : 0,
+        total: byPts ? o.points : o.laps
+      };
+    });
+  }
+  // a heat (or final) that is done, as the result board wants it
+  function roHeatOf(h) {
+    const rows = h.rows.map((y, i, all) => ({
+      pos: y.pos,
+      name: y.name,
+      car: (people[y.participant] || {}).carName || '',
+      avatar: (people[y.participant] || {}).avatar || '',
+      lane: Number.isInteger(y.lane) ? y.lane : null,
+      laps: y.laps,
+      points: y.points,
+      gap: RaceReport.gapText({}, all, i)
+    }));
+    let fastest = null;
+    h.rows.forEach(y => {
+      if (Number(y.best) > 0 && (!fastest || y.best < fastest.time)) fastest = { time: y.best, name: y.name };
+    });
+    const won = h.winner ? h.winner.name + ' won' : '';
+    return {
+      name: h.name,
+      note: [rows[0] && rows[0].laps !== undefined ? `${rows[0].laps} ${rows[0].laps === 1 ? 'lap' : 'laps'}` : '', won]
+        .filter(Boolean)
+        .join(' · '),
+      rows,
+      fastest
+    };
+  }
+  // the break between two heats (drawn again when the next heat, its lanes or the picks of a final change)
+  function roBreak(force) {
+    if (!heats || !ui('racebreak')) return;
+    const list = heatListOf(),
+      nx = list.find(x => x.state === 'next'),
+      key = JSON.stringify([heat.idx, heat.picksDone(), nx ? nx.drivers.map(d => [d.p, d.lane]) : 0]);
+    if (!force && key === live.roBreakKey) return;
+    live.roBreakKey = key;
+    const done = list.filter(x => x.state === 'done'),
+      last = done[done.length - 1],
+      totals = new Map(heat.overall().map(o => [o.participant, byPts ? o.points : o.laps]));
+    roPark();
+    ui('racebreak').innerHTML = RaceOver.breakHtml({
+      kicker: `Break · ${done.length} of ${list.length} done · ${setup.name} · ${r.track.name}`,
+      next: nx && {
+        name: nx.name,
+        line: `${limit}${nx.final ? ' · decides the places' : ''}`,
+        drivers: nx.drivers.map(d => ({
+          name: d.name,
+          car: (people[d.p] || {}).carName || '',
+          avatar: (people[d.p] || {}).avatar || '',
+          lane: Number.isInteger(d.lane) ? d.lane : null,
+          total: totals.get(d.p)
+        }))
+      },
+      startable: !picking(),
+      startNote: betweenMsg(),
+      picks: true,
+      track: list,
+      standings: RaceOver.heatStandings(roHeatRows(list), {
+        heatNames: list.filter(x => !x.final).map(x => x.name),
+        byPoints: byPts,
+        finals: finalsOn,
+        showAdd: byPts,
+        showMove: !!live.roBefore,
+        laneColor: roColor
+      }),
+      standingsNote: `after ${last ? last.name.toLowerCase() : 'the first heat'} of ${list.length}${scoreNote ? ' · ' + scoreNote : ''}`,
+      last: last ? roHeatOf(last) : null,
+      byPoints: byPts,
+      saved: last ? `✓ ${esc(last.name)} saved` : '',
+      laneColor: roColor
+    });
+    const picksBox = ui('ro-picks');
+    if (picksBox) ['finalpick', 'teampick'].forEach(id => ui(id) && picksBox.appendChild(ui(id)));
+  }
+  // the championship after this race: the points awarded at once (Finalize is the final check), the standings before and after, the next round
+  async function roChamp(id, award) {
+    let D = await champData({ sessionIds: [id] });
+    let s = D.sessions.find(x => x.id === id),
+      c = s && s.champ && D.champs.find(x => x.id === s.champ.id);
+    if (!c) return null;
+    if (award && !s.champ.awarded && !s.champ.off) {
+      for (const p of ChampPts.awardPatches(D.sessions, s, 'award', new Date().toISOString()))
+        await api.update('sessions', p.id, { champ: p.champ });
+      D = await champData({ sessionIds: [id] });
+      s = D.sessions.find(x => x.id === id);
+      c = D.champs.find(x => x.id === s.champ.id);
+    }
+    const classes = s.multiclass?.pointsMode === 'class' ? s.multiclass.classes || [] : [];
+    const view = ChampPts.awardView(c, s, D.sessions, { ...champCtx(D), classId: classes[0]?.id || '' });
+    const prog = Champ.progress(c, D.sessions),
+      at = prog.next,
+      round = at && c.rounds[at.round];
+    let next = null;
+    if (round) {
+      const tracks = await api.list('tracks').catch(() => []),
+        tr = (tracks || []).find(x => x.id === round.track);
+      const later = round.sessions.slice(at.session).filter(x => !x.skipped);
+      next = {
+        label: Champ.roundLabel(c, at.round),
+        short: at.round + 1 === view.round ? 'the next session' : 'round ' + (at.round + 1),
+        track: tr ? tr.name : '',
+        date: round.date || '',
+        lanes: tr ? (tr.lanes || []).length || tr.laneCount || 0 : 0,
+        sessions: later.map(x => (D.setups.find(y => y.id === x.setup) || {}).name || 'Session')
+      };
+      next.goLabel = `Go to ${next.short}`;
+    }
+    return { id, c, s, view, awarded: !!(s.champ.awarded && !s.champ.off), off: !!s.champ.off, next, name: c.name || 'the championship' };
+  }
+  // Race over (or Event over): drawn when the results are saved, and again after something in the championship changed
+  function roOver() {
+    const o = live.ro;
+    if (!o || !ui('raceover')) return;
+    const champ = o.champ && !o.champ.off ? o.champ : null;
+    let extra = {};
+    if (heats) {
+      const list = heatListOf(),
+        finalH = [...list].reverse().find(x => x.state === 'done'),
+        w = o.f.winner,
+        wonN = w ? list.filter(h => h.winner && h.winner.name === w.name).length : 0;
+      extra = {
+        event: true,
+        eventLine: w
+          ? [
+              w.car,
+              byPts ? `${w.points ?? 0} points` : `${w.laps} laps`,
+              `won ${wonN} of ${list.length} ${list.length === 1 ? 'race' : 'races'}`
+            ]
+              .filter(Boolean)
+              .map(esc)
+              .join(' · ')
+          : '',
+        eventChips:
+          `<span class="ro-chip"><small>Won</small><b>${wonN} of ${list.length}</b></span>` +
+          (o.f.fastest
+            ? `<span class="ro-chip fl"><small>Fastest lap</small><b>${esc((o.f.fastest.time / 1000).toFixed(3))} · ${esc(o.f.fastest.name)}</b></span>`
+            : '') +
+          (o.f.record
+            ? `<span class="ro-chip rec"><small>Track record</small><b>${esc((o.f.record.now / 1000).toFixed(3))} · ${o.f.record.before ? 'new' : 'first'}</b></span>`
+            : '') +
+          `<span class="ro-chip"><small>Laps</small><b>${esc(o.f.laps)}</b></span>`,
+        trackCard: RaceOver.heatTrack(list),
+        standingsCard: RaceOver.card(
+          'Final standings',
+          byPts ? 'the best score of every heat lit' : '',
+          RaceOver.heatStandings(roHeatRows(list), {
+            heatNames: list.filter(x => !x.final).map(x => x.name),
+            byPoints: byPts,
+            finals: finalsOn,
+            laneColor: roColor
+          })
+        ),
+        finalCard: finalH
+          ? RaceOver.card(
+              finalH.name,
+              esc(roHeatOf(finalH).note),
+              RaceOver.heatResult(roHeatOf(finalH), { byPoints: byPts && !finalH.final, laneColor: roColor })
+            )
+          : ''
+      };
+    }
+    ui('raceover').innerHTML = RaceOver.overHtml({
+      f: o.f,
+      kicker: `${heats ? 'Event over' : 'Chequered flag'} · ${setup.name} · ${r.track.name} · ${new Date(o.session.date).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}`,
+      note: limit,
+      champ,
+      again: true,
+      announce: !!audioSet && !tokens,
+      saved: `✓ Saved · ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`,
+      laneColor: roColor,
+      ...extra
+    });
+  }
+  async function roStart(session, savedId, laps) {
+    const s = { ...session, id: savedId };
+    // the lane and the picture of every row: a race knows the car of each driver; an event of heats, the lane of the last heat
+    s.standings = (session.standings || []).map(x => {
+      const car = !heats ? eng.cars.find(c => c.driverId === x.driverId && c.carId === x.carId) : null,
+        p = heats ? people[x.participant] : car;
+      return { ...x, lane: car ? car.lane : null, avatar: (p && p.avatar) || '' };
+    });
+    if (heats) {
+      const list = heatListOf(),
+        lastLane = new Map();
+      list.forEach(h => h.rows.forEach(y => Number.isInteger(y.lane) && lastLane.set(y.participant, y.lane)));
+      s.standings.forEach(x => (x.lane = lastLane.has(x.participant) ? lastLane.get(x.participant) : null));
+    }
+    live.ro = {
+      session: s,
+      laps: laps.length,
+      f: RaceOver.figures(s, laps, { recordBefore: Number.isFinite(base.track) ? base.track : Infinity, trackName: r.track.name }),
+      champ: null
+    };
+    roOver();
+    roShow('over');
+    if (r.champ && typeof champData === 'function') {
+      try {
+        live.ro.champ = await roChamp(savedId, true);
+      } catch (x) {
+        live.ro.champ = null;
+        roSay('The championship points could not be awarded: ' + x.message + '. Award them in Database › Results.');
+        return;
+      }
+      roOver();
+    }
+  }
+  async function roPrint() {
+    const s = live.ro && live.ro.session;
+    if (!s) return;
+    try {
+      const [tracks, cars] = await Promise.all([api.list('tracks'), api.list('slotcars')]);
+      const options = await pdfChoice(s, Stats.forSession(s, live.laps, tracks, cars));
+      if (!options) return;
+      roSay('Making the PDF…');
+      const res = await api.exportPdf(
+        Report.sessionHtml({
+          session: s,
+          laps: live.laps,
+          tracks,
+          cars,
+          options: { ...options, tyreWorn: state.settings.tyreWornRed === true },
+          unit: Speed.unitOf(state.settings),
+          distUnit: Speed.distUnitOf(state.settings)
+        }),
+        Report.fileName(s)
+      );
+      roSay(res.saved ? 'Saved to ' + res.path : 'Export cancelled.');
+    } catch (x) {
+      roSay('Could not make the PDF: ' + x.message);
+    }
+  }
+  const roHome = () => {
+    if (raceActive()) return;
+    state.tab = 'home';
+    render();
+  };
+  async function roAct(act) {
+    const o = live.ro;
+    if (act === 'home') return roHome();
+    if (act === 'again') {
+      // the same setup, drivers and cars: they are still chosen on Home, so Home starts it as Start race does (with its checks)
+      roHome();
+      // (Home draws itself again while it loads: Start is pressed once the same button has been there, enabled, for a moment; at most 8 seconds)
+      let seen = null,
+        tries = 0;
+      const tick = () => {
+        if (state.tab !== 'home' || ++tries > 32) return;
+        const b = document.getElementById('start');
+        if (b && !b.disabled && b === seen) return b.click();
+        seen = b && !b.disabled ? b : null;
+        setTimeout(tick, 250);
+      };
+      setTimeout(tick, 400);
+      return;
+    }
+    if (act === 'print') return roPrint();
+    if (act === 'results' && o) {
+      state.focusSession = o.session.id;
+      state.resultsSub = 'racing';
+      state.sub = 'results';
+      state.tab = 'database';
+      return render();
+    }
+    if (act === 'announce' && live.audioSummary) return live.audioSummary();
+    if (act === 'start') return actions.start();
+    if (act === 'screen') return roShow('');
+    if (act === 'heatprint' && ui('heatprint')) return ui('heatprint').click();
+    if (act === 'endevent') return actions.stop();
+    if (act === 'champ-next' && o && o.champ) {
+      if (state.settings.champId !== o.champ.c.id) state.settings = await api.setSettings({ champId: o.champ.c.id });
+      return roHome(); // (Home loads the next session of the championship by itself)
+    }
+    if (['champ-undo', 'champ-off', 'champ-award'].includes(act) && o && o.champ) {
+      if (
+        act === 'champ-off' &&
+        !(await Dialog.confirm(
+          'Do not count this race for the championship?\n\nIt stays in the results as a normal race and gives no points, and the Home tab offers the session again. You can count it again later in Database › Results.',
+          { ok: 'Do not count it' }
+        ))
+      )
+        return;
+      try {
+        const D = await champData({ sessionIds: [o.champ.id] }),
+          s = D.sessions.find(x => x.id === o.champ.id);
+        const mode = { 'champ-undo': 'undo', 'champ-off': 'off', 'champ-award': 'award' }[act];
+        for (const p of ChampPts.awardPatches(D.sessions, s, mode, new Date().toISOString()))
+          await api.update('sessions', p.id, { champ: p.champ });
+        o.champ = await roChamp(o.champ.id, false);
+      } catch (x) {
+        roSay('Could not save: ' + x.message);
+        return;
+      }
+      roOver();
+    }
+  }
+  ['raceover', 'racebreak'].forEach(id => {
+    if (ui(id))
+      ui(id).onclick = ev => {
+        const b = ev.target.closest && ev.target.closest('[data-ro]');
+        if (b) roAct(b.dataset.ro);
+      };
+  });
+  if (ui('robackbreak')) ui('robackbreak').onclick = () => roShow('break');
 
   async function finishAll() {
     if (mc && heats) live.classResultRows = MultiClass.eventRows(heat, people, live.laps, heat.spentBy(), live.extraBy);
@@ -2974,16 +3338,8 @@ async function renderRace() {
           /* the card on Home stays as it was */
         }
       } // (the next race is a normal race until a session is loaded again)
-      if (r.champ && typeof champPanelsFor === 'function') {
-        const cp = ui('champpanel');
-        if (cp) {
-          cp.hidden = false;
-          cp.dataset.cpbox = savedId;
-          champPanelsFor([cp]).catch(() => {
-            cp.hidden = true;
-          });
-        }
-      } // (1.56.0: the points of this race, to award)
+      // (2.4.0) Race over: the result as a broadcast graphic, the championship with the points of this race awarded (Undo is there)
+      if (typeof RaceOver !== 'undefined') roStart(session, savedId, laps).catch(() => roShow(''));
     } catch (x) {
       live.cpOff = false;
       ui('msg').textContent = 'Could not save the results: ' + x.message;

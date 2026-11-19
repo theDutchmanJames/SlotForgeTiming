@@ -52,6 +52,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
 | [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
+| [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
 | [Token Desk](#token-desk) | The time tokens of a Time Token Session: a card for every lane with the clock large, the buttons as a grid, the state as the edge | Race tab and Live Race › Tokens (Time Token Sessions) |
 | [Live Pages](#live-pages) | The Live Race pages that follow the race: a Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as tiles | Live Race (second screen, tablets, phones) |
@@ -1688,6 +1689,42 @@ html .pg{display:inline-flex;flex-direction:column;min-width:92px;padding:5px 10
 html .pg-bad{--pc:#e5484d;background:color-mix(in srgb,#e5484d 8%,var(--panel))}
 ```
 
+## Chequered Flag
+
+The screens after a race (`renderer/raceover.js`, wired in `race.js`: roStart, roBreak, roOver; styles under `.ro-`). The race page is hidden while one is
+shown. Built on the [Broadcast Hero](#broadcast-hero), the [Timing Tower](#timing-tower), [Title Fight](#title-fight) and the [Race Report](#race-report).
+
+- **The band** (`.ro-hero`): a chequered strip on top, the kicker (what, where, when; a championship and its round in pink first), the headline in big
+  Barlow that says what happened (*Anna wins*, *Anna wins & leads* with the second part grey, *Heat 2 next up*, *Iris T. wins the event*), one line of
+  what the winner did, the **highlights as chips** (fastest lap purple, a new or first track record gold, the championship pink, lead changes, laps),
+  the **helmet of the winner's lane** (`avatars/LaneN.png`, or the driver's own avatar) with a gold *1*, and the **actions as one bar** along the bottom
+  (one primary: Back to Home, or Go to round N in a championship; Race again, Print the race report, Open in Results, Announce the result).
+- **Race over**: the classification as a timing tower (place tile in gold, silver, bronze; the lane stripe and helmet; laps, time, the gap as a red chip,
+  the best lap, purple for the fastest of all) and the **race story**: the place of every driver on every lap in lane colours, the moments under it
+  (lead changes, who led the last laps, the record).
+- **A championship race**: *This race* and *Title fight* side by side, **as big as each other**. The title fight has the rounds as a pink strip, the first
+  three as podium cards (points, move, gap, this race's points as a green chip), the standings with a pink bar under every total (drivers without points
+  are one line), and *The points of this race are in the standings* with Undo and Do not count this race. Under both, the **next round** as a band with an edge
+  in pink: its name and track in Barlow, the date, its sessions as pills.
+- **The break between two heats**: the next heat as the headline with one big *Start heat 2* (Space too), its **line-up as lane tiles** (the lane colour on
+  top, the number, points so far, the helmet, name and car; a final before its lanes are chosen: grey helmets and the lane picks under the band), the
+  heats as a strip, the **standings with a column per heat** (the best score of every heat lit gold, this heat's points, the move) and the heat that was
+  just driven as a result board (the winner as a gold lower third). *Show the race screen* and *End the event…* (red text) in the bar.
+- **Event over**: the band for the winner of the event, the heats as a strip, the final standings, the result of the final.
+- **Delete all data** in the review goes back to Home, which says *The race was deleted* for half a minute.
+
+```css
+html .ro-hero{margin:-20px -20px 0;border-bottom:1px solid var(--line);background:radial-gradient(55% 140% at 0% 100%,color-mix(in srgb,var(--accent) 24%,transparent),transparent 70%),linear-gradient(110deg,color-mix(in srgb,var(--accent) 10%,var(--panel)) 0%,var(--bg) 62%)}
+html .ro-chq{height:10px;background:repeating-conic-gradient(color-mix(in srgb,var(--ink) 85%,transparent) 0 25%,transparent 0 50%) 0 0/10px 10px;opacity:.35}
+html .ro-host .ro-big{font:italic 700 clamp(52px,6vw,92px)/.88 'SF Barlow Condensed';text-transform:uppercase}
+html .ro-row{display:grid;grid-template-columns:40px 5px 40px minmax(0,1fr) 50px 90px 84px 72px;border-radius:10px;background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html .ro-main.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+html .ro-lt{border-top:4px solid var(--c);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 16%,var(--panel)),var(--panel))}
+html .ro-st td.h.top{background:color-mix(in srgb,#d4a400 16%,var(--panel))}
+```
+
+---
+
 ## Race Report PDF
 
 The race on paper (`renderer/racereport.js`, put together by `Report.sessionHtml` in `renderer/report.js`; the fonts and the wordmark are put in by
@@ -1928,3 +1965,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Race Report PDF | The heat list, the championship standings, the racing rules and the QR code in the same look; PDF prints: Colour or Monochrome in App Settings |
 | 2026-11 | Start Lights, Workshop Window, Race Report, Lane Desk | The last screens: the startup window with start lights, the Circuit file as a drop card, the record tables fit, an empty Results and Records as a card, the race folders with the Lane Desk off |
 | 2026-11 | Update Window | New: the update check of every SlotForge app (from Circuit): the window with What's new, Skip and Download, Settings › Updates; the notice on Home is gone |
+| 2026-11 | Chequered Flag | New: the screens after a race (Race over, a championship race with the title fight as big as the race, the break between heats, Event over) replace the frozen race page; the points of a championship race are awarded on Finalize, with Undo |
