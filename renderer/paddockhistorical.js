@@ -32,11 +32,23 @@ const PaddockHistorical = (() => {
   };
   const notice =
     'Received is not accepted. Only an approved decision from Paddock Review confirms acceptance. Pending imports do not add laps, mileage, wins or records to the collection. Your original Timing results remain unchanged.';
+  // (2.4.0, SlotForgeRestyle.md "Review Sheet") the race as a head, the notice as a callout, the drivers with a tag each, what is missing as chips, the fine print folded away
+  const tone = s => (s === 'approved' ? 'good' : s === 'rejected' || s === 'conflict' ? 'bad' : s === 'cancelled' ? 'off' : 'wait');
   function previewHtml(p) {
-    return `<h3>${esc(p.name)}</h3><p><strong>Review destination:</strong> ${esc(p.collectionName || p.databaseId)}</p><p>${esc(p.track)} · ${p.laps} saved ${p.laps === 1 ? 'lap' : 'laps'}</p><p>${notice}</p>${p.approvalEnabled === true ? '' : '<p class="muted">Historical approval is not available on this connection yet. Evidence can still be submitted for review.</p>'}<ul>${p.participants.map(v => `<li>${esc(v.name)} · ${v.laps} ${v.laps === 1 ? 'lap' : 'laps'} · ${v.kind === 'virtual' ? 'Virtual' : v.carId ? 'Recorded collection car: ' + esc(v.carId) : 'No recorded collection identity — not linked automatically'}</li>`).join('')}</ul><p><strong>Missing or not mapped:</strong> ${p.missing.map(k => esc(missingLabel[k] || k)).join(', ')}.</p><p class="muted">Saved overall/class results and identifiable heat/final results accompany the lap evidence. Championship awards without saved values and virtual replay summaries stay in Timing’s original evidence. Unknown values stay unknown. No current car configuration or track length is substituted. One session per submission, up to 50,000 laps and 8 MiB. Large transfers resume after interruptions when Paddock supports them; delivery still only means awaiting review.</p><button class="btn primary" data-historical-submit>Submit evidence for review</button>`;
+    const who = v =>
+      v.kind === 'virtual'
+        ? '<span class="hr-tag off">Virtual</span>'
+        : v.carId
+          ? `<span class="hr-tag good">Recorded collection car: ${esc(v.carId)}</span>`
+          : '<span class="hr-tag warn">No recorded collection identity — not linked automatically</span>';
+    return `<div class="hr-race"><span class="hr-k">Older race</span><h3>${esc(p.name)}</h3><p>${esc(p.track)} · ${p.laps} saved ${p.laps === 1 ? 'lap' : 'laps'}</p><p class="hr-dest"><strong>Review destination:</strong> ${esc(p.collectionName || p.databaseId)}</p></div><p class="hr-notice">${notice}</p>${p.approvalEnabled === true ? '' : '<p class="muted hr-note">Historical approval is not available on this connection yet. Evidence can still be submitted for review.</p>'}<h4 class="hr-k">Drivers in the evidence</h4><ul class="hr-people">${p.participants
+      .map(v => `<li><b>${esc(v.name)}</b><span class="hr-laps">${v.laps} ${v.laps === 1 ? 'lap' : 'laps'}</span>${who(v)}</li>`)
+      .join(
+        ''
+      )}</ul><p class="hr-missing"><strong>Missing or not mapped:</strong> ${p.missing.map(k => `<span class="hr-tag off">${esc(missingLabel[k] || k)}</span>`).join(' ')}</p><details class="hr-fine"><summary>What is sent, and the limits</summary><p class="muted">Saved overall/class results and identifiable heat/final results accompany the lap evidence. Championship awards without saved values and virtual replay summaries stay in Timing’s original evidence. Unknown values stay unknown. No current car configuration or track length is substituted. One session per submission, up to 50,000 laps and 8 MiB. Large transfers resume after interruptions when Paddock supports them; delivery still only means awaiting review.</p></details><button class="btn primary" data-historical-submit>Submit evidence for review</button>`;
   }
   function rowHtml(r, controls = true) {
-    return `<article class="card"><h4>${esc(r.name)}</h4><p>${r.state === 'blocked' ? '<strong>Needs attention — automatic retry stopped</strong>' : r.cancelRequested && r.state !== 'complete' ? 'Cancellation requested — awaiting confirmation' : ''}</p>${r.items.map(i => `<p>${r.items.length > 1 ? 'Session ' + esc(i.sessionId) + '<br>' : ''}<strong>${esc(label[i.status] || 'Unsupported decision — needs review')}</strong>${i.message ? ' · ' + esc(i.message) : ''}${i.status === 'approved' ? '<br><small>Accepted at revision 1. This receipt does not confirm the current state: check Collection race history for later corrections or withdrawal.</small>' : ''}</p>`).join('')}<p class="muted">${esc(r.databaseId)} · ${esc(r.sessionId)}${r.checkedAt ? ' · Checked ' + esc(new Date(r.checkedAt).toLocaleString()) : ''}</p>${r.error ? `<p role="alert">${esc(r.error)}</p>` : ''}${r.state === 'blocked' ? '<p>Original evidence and request identity are retained. Compare this submission in Paddock Review before any manual reconciliation; Timing will not redirect or recreate it after a restore.</p>' : r.state === 'complete' || !controls ? '' : `<div class="row"><button class="btn" data-review-refresh="${esc(r.id)}">Check status / retry</button><button class="btn" data-review-cancel="${esc(r.id)}" ${r.cancelRequested ? 'disabled' : ''}>Cancel pending submission</button></div>`}</article>`;
+    return `<article class="card hr-row"><div class="hr-rhead"><h4>${esc(r.name)}</h4>${r.state === 'blocked' ? '<span class="hr-pill bad"><strong>Needs attention — automatic retry stopped</strong></span>' : r.cancelRequested && r.state !== 'complete' ? '<span class="hr-pill wait">Cancellation requested — awaiting confirmation</span>' : ''}</div>${r.items.map(i => `<p class="hr-item">${r.items.length > 1 ? '<span class="hr-sess">Session ' + esc(i.sessionId) + '</span>' : ''}<span class="hr-pill ${tone(i.status)}"><strong>${esc(label[i.status] || 'Unsupported decision — needs review')}</strong></span>${i.message ? ' · ' + esc(i.message) : ''}${i.status === 'approved' ? '<br><small>Accepted at revision 1. This receipt does not confirm the current state: check Collection race history for later corrections or withdrawal.</small>' : ''}</p>`).join('')}<p class="muted hr-ids">${esc(r.databaseId)} · ${esc(r.sessionId)}${r.checkedAt ? ' · Checked ' + esc(new Date(r.checkedAt).toLocaleString()) : ''}</p>${r.error ? `<p role="alert">${esc(r.error)}</p>` : ''}${r.state === 'blocked' ? '<p>Original evidence and request identity are retained. Compare this submission in Paddock Review before any manual reconciliation; Timing will not redirect or recreate it after a restore.</p>' : r.state === 'complete' || !controls ? '' : `<div class="row"><button class="btn" data-review-refresh="${esc(r.id)}">Check status / retry</button><button class="btn" data-review-cancel="${esc(r.id)}" ${r.cancelRequested ? 'disabled' : ''}>Cancel pending submission</button></div>`}</article>`;
   }
   async function mount(root, api) {
     let page = 0;
@@ -88,7 +100,7 @@ const PaddockHistorical = (() => {
     const dialog = document.createElement('dialog');
     dialog.className = 'paddock-dialog historical-dialog';
     dialog.innerHTML =
-      '<h2>Submit older race evidence</h2><div data-historical-preview role="status">Checking saved evidence and host support…</div><div data-historical-message role="status"></div><div class="row"><button class="btn" data-historical-close>Close</button></div>';
+      '<header class="hr-head"><span class="hr-k">Paddock · Historical Review</span><h2>Submit older race evidence</h2></header><div data-historical-preview role="status">Checking saved evidence and host support…</div><div data-historical-message role="status"></div><div class="row hr-foot"><button class="btn" data-historical-close>Close</button></div>';
     document.body.append(dialog);
     dialog.addEventListener('close', () => dialog.remove(), { once: true });
     dialog.querySelector('[data-historical-close]').onclick = () => dialog.close();
@@ -102,6 +114,10 @@ const PaddockHistorical = (() => {
         );
         if (!dialog.isConnected) return;
         dialog.querySelector('[data-historical-preview]').innerHTML = previewHtml(p);
+        const go = dialog.querySelector('[data-historical-preview] [data-historical-submit]'),
+          foot = dialog.querySelector('.hr-foot');
+        dialog.querySelectorAll('.hr-foot [data-historical-submit]').forEach(x => x.remove());
+        if (go && foot) foot.append(go);
         dialog.querySelector('[data-historical-submit]').onclick = async e => {
           e.target.disabled = true;
           dialog.querySelector('[data-historical-message]').textContent = 'Submitting saved evidence…';
@@ -119,7 +135,8 @@ const PaddockHistorical = (() => {
             );
             if (dialog.isConnected) {
               dialog.querySelector('[data-historical-message]').textContent = '';
-              dialog.querySelector('[data-historical-preview]').innerHTML = `<p>${notice}</p>` + rowHtml(row, false);
+              dialog.querySelector('[data-historical-preview]').innerHTML = `<p class="hr-notice">${notice}</p>` + rowHtml(row, false);
+              e.target.remove();
             }
             document.querySelector('[data-historical-review]')?.dispatchEvent(new Event('historical-changed'));
           } catch (error) {

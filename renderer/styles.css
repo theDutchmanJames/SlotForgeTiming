@@ -5694,3 +5694,126 @@ html details.lv-opts[open]>.lv-optset{margin-top:10px}
 html details.lv-opts .lv-optset>legend{float:left;width:100%;margin:0 0 10px;padding:0;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 html details.lv-opts .lv-optset>legend+*{clear:both}
 @media (max-width:700px){html .lv-head:has(#lv-back) #lv-full{width:34px;padding:0;font-size:0;justify-content:center}html .lv-head:has(#lv-back) #lv-full::before{content:'\2922';font-size:17px;line-height:1}}
+/* ==== Plugin Desk (2.4.0, SlotForgeRestyle.md "Plugin Desk"): the open page or tool of Customization › Plugin Pages & Tools. A head (Page or Tool, the name,
+   what it does, the plugin as a status pill), the inputs in a box, the output in a box with the figures as tiles ==== */
+html .pd-panel{display:flex;flex-direction:column;gap:12px}
+html .pd-panel>*{margin:0}
+html .pd-phead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px 18px;flex-wrap:wrap}
+html .pd-ptitle{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 300px}
+html .pd-ptitle>*{margin:0}
+html .pd-kind{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text,var(--accent))}
+html #view .pd-ptitle>h3{font:italic 700 24px/1.05 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .pd-ptitle>p{font-size:13.5px;line-height:1.5;color:color-mix(in srgb,var(--ink) 85%,var(--muted))}
+html .pd-panel .pd-runtime{display:inline-flex;align-items:center;gap:7px;padding:4px 12px;border:1px solid var(--line);border-radius:14px;background:var(--bg);font-size:12px;font-weight:600;white-space:nowrap}
+html .pd-runtime::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--muted)}
+html .pd-runtime:is([data-state="running"],[data-state="active"],[data-state="on"]){border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));color:#3ecf8e}
+html .pd-runtime:is([data-state="running"],[data-state="active"],[data-state="on"])::before{background:#3ecf8e}
+html .pd-runtime:is([data-state="error"],[data-state="crashed"],[data-state="missing"],[data-state="failed"]){border-color:color-mix(in srgb,#e5484d 45%,var(--line));color:#ff6b70}
+html .pd-runtime:is([data-state="error"],[data-state="crashed"],[data-state="missing"],[data-state="failed"])::before{background:#e5484d}
+html .pd-sec{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+html #view .pd-sec>.pd-k{margin:0 0 10px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .pd-inputs>.formgrid{overflow:visible;padding:0;margin:0 0 10px;gap:10px 18px}
+html .pd-inputs>.formgrid:empty{display:none}
+html .pd-inputs>.row{margin:0}
+html .pd-panel>[data-page-message]:empty{display:none}
+html .pd-panel>[data-page-message]{font-size:12.5px;color:var(--muted)}
+/* the output: a metric a tile, a bar a meter, a line a chart of a sensible height */
+html .pd-page-output .plugin-view{font-size:28px}
+html .pd-page-output .pd-row{gap:8px;align-items:stretch}
+html .pd-page-output .pd-row>.pd-metric{padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+html .pd-page-output .pd-metric>span{font:700 1em/1.05 "Barlow Condensed","Segoe UI",sans-serif}
+html .pd-page-output .pd-block small{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;opacity:1;color:var(--muted);margin-bottom:5px}
+html .pd-page-output .pd-column{gap:12px}
+html .pd-page-output .pd-track{height:8px;border-radius:4px}
+html .pd-page-output .pd-line svg{max-height:96px;padding:6px 0;border-radius:6px;background:color-mix(in srgb,var(--ink) 4%,transparent)}
+html .pd-page-output .pd-line polyline{stroke-width:2.2;stroke:var(--accent)}
+html .pd-page-output .pd-text{font-size:14px;line-height:1.45}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .pd-runtime:is([data-state="running"],[data-state="active"],[data-state="on"]){color:#17804f}
+
+/* ==== Dealership Sheet (2.4.0, SlotForgeRestyle.md "Dealership Sheet"): App Settings › Connections › Dealership Mode. The connection as a status pill, a row
+   with more than one control stacks (the words above, the controls under them), the pages of cars on one line, the long words folded away ==== */
+html #settingsbox .sr-canvas .dealership-settings [data-status]{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:12.5px;font-weight:600;color:var(--ink)}
+html #settingsbox .sr-canvas .dealership-settings [data-status]:empty{display:none}
+html #settingsbox .sr-canvas .dealership-settings [data-status]::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--muted)}
+html #settingsbox .sr-canvas .dealership-settings [data-status][data-state="on"]{border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));background:color-mix(in srgb,#3ecf8e 10%,var(--panel))}
+html #settingsbox .sr-canvas .dealership-settings [data-status][data-state="on"]::before{background:#3ecf8e;box-shadow:0 0 0 3px color-mix(in srgb,#3ecf8e 25%,transparent)}
+html #settingsbox .sr-canvas .dealership-settings [data-status][data-state="saved"]::before{background:#f0a020}
+html #settingsbox .sr-canvas .dealership-settings [data-error]:empty{display:none}
+html #settingsbox .sr-canvas .dealership-settings .ss-row:has(>.ss-ctl :is(.btn,select,input) ~ :is(.btn,select,input)):has(>.ss-t:not(:empty)){grid-template-columns:minmax(0,1fr);gap:10px}
+html #settingsbox .sr-canvas .dealership-settings .ss-row:has(>.ss-ctl :is(.btn,select,input) ~ :is(.btn,select,input)):has(>.ss-t:not(:empty))>.ss-ctl{justify-content:flex-start;flex-wrap:wrap}
+html #settingsbox .sr-canvas .dealership-settings .pb-pages{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0}
+html #settingsbox .sr-canvas .dealership-settings .pb-pages>*{margin:0}
+html #settingsbox .sr-canvas .dealership-settings .pb-pages [data-car-count]{font-size:12.5px;color:var(--muted)}
+html #settingsbox .sr-canvas .dealership-settings details.paddock-how{margin:6px 0 12px;font-size:12.5px}
+html #settingsbox .sr-canvas .dealership-settings details.paddock-how>summary{cursor:pointer;color:var(--accent-text,var(--accent));font-weight:600}
+html #settingsbox .sr-canvas .dealership-settings details.paddock-how>p{margin:8px 0 0;line-height:1.55;color:var(--muted)}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) #settingsbox .dealership-settings [data-status][data-state="on"]{color:#17804f}
+
+/* ==== Review Sheet (2.4.0, SlotForgeRestyle.md "Review Sheet"): Paddock's Historical Review (submit an older race). A kicker over the title, the race as a
+   head, the notice as an amber callout, the drivers with a tag each, what is missing as chips, the fine print folded, Submit in the foot beside Close ==== */
+html dialog.historical-dialog{width:min(720px,94vw);padding:0;overflow:hidden}
+html dialog.historical-dialog>.hr-head{padding:18px 22px 12px;border-bottom:1px solid var(--line)}
+html dialog.historical-dialog .hr-k{display:block;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html dialog.historical-dialog>.hr-head>.hr-k{color:var(--accent-text,var(--accent))}
+html dialog.historical-dialog>.hr-head>h2{margin:4px 0 0}
+html dialog.historical-dialog>[data-historical-preview]{display:flex;flex-direction:column;gap:12px;max-height:min(64vh,620px);overflow:auto;padding:16px 22px;font-size:13.5px}
+html dialog.historical-dialog>[data-historical-preview]>*{margin:0}
+html dialog.historical-dialog>[data-historical-message]:empty{display:none}
+html dialog.historical-dialog>[data-historical-message]{padding:0 22px 10px;font-size:12.5px;color:var(--muted)}
+html .hr-race{padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
+html .hr-race>*{margin:0}
+html dialog .hr-race>h3{margin:3px 0 2px;font:italic 700 22px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .hr-race>p{font-size:13px;color:var(--muted)}
+html .hr-race>.hr-dest{margin-top:4px;color:var(--ink)}
+html .hr-notice{padding:10px 12px;border:1px solid color-mix(in srgb,#f0a020 45%,var(--line));border-radius:9px;background:color-mix(in srgb,#f0a020 9%,var(--panel));font-size:12.5px;line-height:1.5}
+html .hr-people{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+html .hr-people>li{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding:8px 12px;border-top:1px solid color-mix(in srgb,var(--line) 65%,transparent)}
+html .hr-people>li:first-child{border-top:0}
+html .hr-people>li>b{flex:1 1 140px;min-width:0}
+html .hr-laps{font:500 12px "Roboto Mono",Consolas,monospace;color:var(--muted)}
+html .hr-tag{display:inline-flex;align-items:center;padding:2px 9px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:11.5px;font-weight:600;color:var(--muted)}
+html .hr-tag.good{border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));color:#3ecf8e}
+html .hr-tag.warn{border-color:color-mix(in srgb,#f0a020 45%,var(--line));color:#f0b04a}
+html .hr-missing{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px}
+html .hr-fine>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--accent-text,var(--accent))}
+html .hr-fine>p{margin:8px 0 0;font-size:12.5px;line-height:1.55}
+html dialog.historical-dialog>.hr-foot{display:flex;justify-content:flex-end;gap:8px;margin:0;padding:12px 22px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+html dialog.historical-dialog>.hr-foot>[data-historical-close]{margin-right:auto}
+/* a submission: its decision as a pill */
+html .hr-row{display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 14px;border-radius:10px}
+html .hr-row>*{margin:0}
+html .hr-rhead{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+html .hr-rhead>h4{margin:0;font-size:15px}
+html .hr-item{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:12.5px}
+html .hr-item small{flex-basis:100%;color:var(--muted)}
+html .hr-sess{font:500 11.5px "Roboto Mono",Consolas,monospace;color:var(--muted)}
+html .hr-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);font-size:12px}
+html .hr-pill strong{font-weight:600}
+html .hr-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+html .hr-pill.wait{border-color:color-mix(in srgb,#f0a020 45%,var(--line));color:#f0b04a}
+html .hr-pill.good{border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));color:#3ecf8e}
+html .hr-pill.bad{border-color:color-mix(in srgb,#e5484d 45%,var(--line));color:#ff6b70}
+html .hr-pill.off{color:var(--muted)}
+html .hr-ids{font:500 11.5px "Roboto Mono",Consolas,monospace}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) :is(.hr-tag.good,.hr-pill.good){color:#17804f}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) :is(.hr-tag.warn,.hr-pill.wait){color:#9a5b00}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .hr-pill.bad{color:#b4232a}
+
+/* ==== Performance Gauges (2.4.0, SlotForgeRestyle.md "Performance Gauges"): the Performance line under the race tools, as small gauges in a row: what it
+   measures, the figure in mono, a word under it, and a colour for how healthy it is (the words of the line stay for a screen reader) ==== */
+html .perfline:has(+.perfvis:not([hidden])){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html .perfvis{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+html .perfvis[hidden]{display:none}
+html .pg{--pc:var(--muted);display:inline-flex;flex-direction:column;gap:1px;min-width:92px;padding:5px 10px 6px;border:1px solid var(--line);border-left:3px solid var(--pc);border-radius:8px;background:var(--panel)}
+html .pg>small{font:600 9.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+html .pg>b{font:600 14px/1.15 "Roboto Mono",Consolas,monospace;color:var(--ink)}
+html .pg>i{font-size:10.5px;font-style:normal;color:var(--muted);white-space:nowrap}
+html .pg-good{--pc:#3ecf8e}
+html .pg-warn{--pc:#f0a020}
+html .pg-bad{--pc:#e5484d;background:color-mix(in srgb,#e5484d 8%,var(--panel))}
+html .pg-bad>b{color:#ff6b70}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .pg-bad>b{color:#b4232a}
+html .pd-sec>.pd-page-output{margin:0;padding:0;min-height:0;border:0;background:none}
+html dialog.historical-dialog>header.hr-head{display:block;position:static}
+html dialog.historical-dialog>header.hr-head>h2{text-align:left}
+html dialog.historical-dialog>.hr-foot{flex-direction:row}

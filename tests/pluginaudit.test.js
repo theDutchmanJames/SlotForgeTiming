@@ -48,6 +48,7 @@ test('tool remains locked through display refresh and empty numeric input stays 
  const catalog=[{id:'test.tool',name:'Tool',state:'running',display:{pages:[],tools:[{id:'estimate',label:'Estimate',settings:[{id:'number',type:'number',min:0,max:10,default:1}]}]}}];
  const c={PluginDisplay:D,PluginDisplayClient:{refresh:async()=>{},catalog:()=>catalog,setPage:v=>callbacks=v},WidgetPreview:{state:()=>({preview:true})},PluginsPage:{field:()=>''},api:{pluginDisplayTool:r=>{calls++;lastRequest=r;return new Promise(resolve=>{finish=resolve;});}}};vm.createContext(c);
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../renderer/pluginpages.js'),'utf8'),c);await c.renderPluginPages(box);
+ assert(box.innerHTML.includes('<span class="pd-kind">Tool</span><h3>Estimate</h3>')&&box.innerHTML.includes('data-state="running">Tool · running')&&box.innerHTML.includes('<div class="pd-sec pd-inputs"><h4 class="pd-k">Inputs</h4>')&&box.innerHTML.includes('<h4 class="pd-k">Result</h4><div class="pd-page-output"'),'2.4.0 Plugin Desk: the head says Tool, the plugin is a status pill, the inputs and the result are boxes');
  const running=box.onclick({target:{closest:()=>button}});callbacks.paint();
  assert.equal(button.disabled,true,'Refresh must not unlock a pending tool');
  await box.onclick({target:{closest:()=>button}});assert.equal(calls,1);assert.equal(lastRequest.settings.number,null,'Blank is not numeric zero');

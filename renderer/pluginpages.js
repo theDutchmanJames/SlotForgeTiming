@@ -43,7 +43,7 @@ async function renderPluginPages(box) {
           )
           .join(
             ''
-          )}</nav><section class="card pd-panel">${`<h3>${D.esc(selected.d.label)}</h3><p>${D.esc(selected.d.description)}</p><p class="muted" data-page-runtime>${D.esc(selected.p.name)} · ${D.esc(selected.p.state)}${S().preview ? ' · Sample race data' : ''}</p><div class="formgrid">${selected.d.settings.map(f => PluginsPage.field(f, values[f.id] ?? f.default, false)).join('')}</div><div class="row">${selected.kind === 'pages' && selected.d.settings.length ? '<button class="btn" data-refresh>Apply inputs</button>' : ''}${selected.kind === 'tools' ? '<button class="btn primary" data-run>Run tool</button>' : ''}</div><p data-page-message role="status"></p><div class="pd-page-output" aria-live="polite"></div>`}</section></div>`
+          )}</nav><section class="card pd-panel">${`<div class="pd-phead"><div class="pd-ptitle"><span class="pd-kind">${selected.kind === 'tools' ? 'Tool' : 'Page'}</span><h3>${D.esc(selected.d.label)}</h3><p>${D.esc(selected.d.description)}</p></div><p class="muted pd-runtime" data-page-runtime data-state="${D.esc(selected.p.state)}">${D.esc(selected.p.name)} · ${D.esc(selected.p.state)}${S().preview ? ' · Sample race data' : ''}</p></div>${selected.d.settings.length || selected.kind === 'tools' ? `<div class="pd-sec pd-inputs">${selected.d.settings.length ? '<h4 class="pd-k">Inputs</h4>' : ''}<div class="formgrid">${selected.d.settings.map(f => PluginsPage.field(f, values[f.id] ?? f.default, false)).join('')}</div><div class="row">${selected.kind === 'pages' && selected.d.settings.length ? '<button class="btn" data-refresh>Apply inputs</button>' : ''}${selected.kind === 'tools' ? '<button class="btn primary" data-run>Run tool</button>' : ''}</div></div>` : ''}<p data-page-message role="status"></p><div class="pd-sec pd-out"><h4 class="pd-k">${selected.kind === 'tools' ? 'Result' : 'Live'}</h4><div class="pd-page-output" aria-live="polite"></div></div>`}</section></div>`
       : `<div class="plugin-pages lempty pd-empty"><span class="pd-emptyico">${typeof Icons !== 'undefined' ? Icons.svg('layers', { size: 26, stroke: 1.6 }) : ''}</span><h3>No plugin pages installed</h3><p class="muted">Install a code plugin that contributes pages or tools under App Settings → Plugins. They show up here.</p><button type="button" class="btn primary" data-open-plugins>Open App Settings › Plugins</button></div>`;
     result = null;
     revision++;
@@ -58,6 +58,7 @@ async function renderPluginPages(box) {
   function paint() {
     if (!box.isConnected) return;
     const status = box.querySelector('[data-page-runtime]');
+    if (status && selected && status.dataset) status.dataset.state = C.catalog().find(p => p.id === selected.p.id)?.state || 'missing';
     if (status && selected)
       status.textContent =
         selected.p.name +

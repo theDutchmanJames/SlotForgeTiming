@@ -187,6 +187,19 @@ const PerfUI = (() => {
       note(snap, main);
       el.hidden = false;
       el.textContent = Perf.line(snap, main);
+      // (2.4.0) the same figures as gauges for the eye (the line stays for a screen reader)
+      const vis = typeof document !== 'undefined' && document.getElementById ? document.getElementById('perfvis') : null;
+      if (vis && Perf.gauges) {
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]),
+          html = Perf.gauges(snap, main)
+            .map(
+              x =>
+                `<span class="pg pg-${x.tone}" data-g="${x.key}"><small>${esc(x.label)}</small><b>${esc(x.value)}</b>${x.sub ? `<i>${esc(x.sub)}</i>` : ''}</span>`
+            )
+            .join('');
+        vis.hidden = false;
+        if (vis.innerHTML !== html) vis.innerHTML = html;
+      }
     };
     const off = timer(show, 1000),
       stop = () => {
@@ -198,6 +211,8 @@ const PerfUI = (() => {
           unwatch = null;
         }
         el.hidden = true;
+        const vis = typeof document !== 'undefined' && document.getElementById ? document.getElementById('perfvis') : null;
+        if (vis) vis.hidden = true;
       };
     show();
     return stop;

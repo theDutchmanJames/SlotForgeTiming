@@ -738,6 +738,51 @@
     return p.join(' · ');
   }
 
+  // ---- the gauges (2.4.0, SlotForgeRestyle.md "Performance Gauges"): the same figures as the line, each with how healthy it is ----
+  // -> [{ key, label, value, sub, tone: 'good' | 'warn' | 'bad' | 'wait' }]; good, warn and bad as a race screen feels them
+  function gauges(r, m) {
+    const g = [],
+      tone = (v, warn, bad, low) =>
+        low ? (v >= warn ? 'good' : v >= bad ? 'warn' : 'bad') : v <= warn ? 'good' : v <= bad ? 'warn' : 'bad';
+    if (r) {
+      g.push(
+        r.fps === null
+          ? { key: 'fps', label: 'Frames', value: 'measuring…', sub: '', tone: 'wait' }
+          : { key: 'fps', label: 'Frames', value: `${r.fps}/s`, sub: '', tone: tone(r.fps, 50, 30, true) }
+      );
+      if (r.slowest !== null)
+        g.push({ key: 'slowest', label: 'Slowest frame', value: `${r.slowest} ms`, sub: '', tone: tone(r.slowest, 50, 150) });
+      if (r.updateAvg !== null)
+        g.push({
+          key: 'update',
+          label: 'Screen update',
+          value: `${f1(r.updateAvg)} ms`,
+          sub: `${f0(r.updates)}/s`,
+          tone: tone(r.updateAvg, 8, 16)
+        });
+    }
+    if (m) {
+      g.push({
+        key: 'cpu',
+        label: 'App CPU',
+        value: `${f0(m.procs.total)}%`,
+        sub: `window ${f0(m.procs.window)} · graphics ${f0(m.procs.graphics)} · core ${f0(m.procs.core)}`,
+        tone: isNum(m.procs.total) ? tone(m.procs.total, 40, 75) : 'wait'
+      });
+      if (m.lag.max10 !== null)
+        g.push({
+          key: 'stall',
+          label: 'Core stalled',
+          value: `${m.lag.max10} ms`,
+          sub: 'up to, last 10 s',
+          tone: tone(m.lag.max10, 50, 100)
+        });
+      if (m.save.writes)
+        g.push({ key: 'save', label: 'Race save', value: `${f1(m.save.lastMs)} ms`, sub: '', tone: tone(m.save.lastMs, 50, 150) });
+    }
+    return g;
+  }
+
   // ---- notes: what the figures may mean (only what the figures show; none when all is well) ----
   function notes(r, m) {
     const n = [];
@@ -997,7 +1042,7 @@
     return L.join('\n');
   }
 
-  const api = { createMonitor, loafFrom, cleanMain, line, report, notes, WINDOW, FPS_WINDOW, HIST_EVERY, HIST_MAX, MARKS_MAX };
+  const api = { createMonitor, loafFrom, cleanMain, line, gauges, report, notes, WINDOW, FPS_WINDOW, HIST_EVERY, HIST_MAX, MARKS_MAX };
   root.Perf = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

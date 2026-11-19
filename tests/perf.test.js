@@ -75,6 +75,11 @@ const R0 = { fps: 58, slowest: 41, updates: 10, updateAvg: 0.62, updateMax: 3, u
   ok('...without the window figures only the core part', Perf.line(null, M0).startsWith('app CPU 24%') && !Perf.line(null, M0).includes('frames'));
   ok('...in the first moments it says it is measuring, and has no race save to tell about', Perf.line({ ...R0, fps: null, slowest: null, updateAvg: null }, Perf.cleanMain({})) === 'measuring... · app CPU 0% (window 0, graphics 0, core 0)');
   ok('...with nothing at all it is empty', Perf.line(null, null) === ''); }
+{ const g = Perf.gauges(R0, M0), by = k => g.find(x => x.key === k);
+  ok('2.4.0 Performance Gauges: the same figures as the line, each with how healthy it is (58 frames good, 41 ms slowest good, update 0.6 ms of 10/s, CPU 24% with its parts, 14 ms stall, race save 3.4 ms)', g.map(x => x.key).join() === 'fps,slowest,update,cpu,stall,save' && by('fps').value === '58/s' && by('fps').tone === 'good' && by('slowest').value === '41 ms' && by('update').value === '0.6 ms' && by('update').sub === '10/s' && by('cpu').value === '24%' && by('cpu').sub === 'window 14 · graphics 7 · core 3' && by('stall').value === '14 ms' && by('save').value === '3.4 ms' && g.every(x => x.tone === 'good'));
+  const bad = Perf.gauges({ ...R0, fps: 22, slowest: 240, updateAvg: 12 }, Perf.cleanMain({ metrics: [{ type: 'Tab', cpu: 60 }, { type: 'GPU', cpu: 30 }], lag: { max10: 140 }, save: { writes: 1, lastMs: 90 } })), t = k => bad.find(x => x.key === k).tone;
+  ok('...a slow screen is warned about: 22 frames and a 240 ms frame bad, a 12 ms update and a 90 ms save a warning, 90% CPU and a 140 ms stall bad', t('fps') === 'bad' && t('slowest') === 'bad' && t('update') === 'warn' && t('save') === 'warn' && t('cpu') === 'bad' && t('stall') === 'bad');
+  ok('...while it measures the frames say so (no colour yet), and with nothing there are no gauges', Perf.gauges({ ...R0, fps: null }, null)[0].tone === 'wait' && Perf.gauges({ ...R0, fps: null }, null)[0].value === 'measuring…' && Perf.gauges(null, null).length === 0); }
 
 // ---- the notes ----
 { const hot = Perf.cleanMain({ gpuStatus: { gpu_compositing: 'enabled_on', rasterization: 'enabled_on' }, thermal: { tempC: 55, mhz: 2400, maxMhz: 2400 }, lag: { max10: 5 }, save: { maxMs: 10 }, os: { cpus: 4, memoryMB: 8000, freeMB: 4000 }, metrics: [{ type: 'Tab', cpu: 20 }] });

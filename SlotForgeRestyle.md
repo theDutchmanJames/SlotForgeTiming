@@ -55,6 +55,10 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
 | [Token Desk](#token-desk) | The time tokens of a Time Token Session: a card for every lane with the clock large, the buttons as a grid, the state as the edge | Race tab and Live Race › Tokens (Time Token Sessions) |
 | [Live Pages](#live-pages) | The Live Race pages that follow the race: a Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as tiles | Live Race (second screen, tablets, phones) |
+| [Plugin Desk](#plugin-desk) | The open page or tool of a plugin: a head with the plugin as a status pill, the inputs and the output in boxes, the figures as tiles | Customization › Plugin Pages & Tools |
+| [Dealership Sheet](#dealership-sheet) | Dealership Mode: the connection as a status pill, rows with several controls stacked, the long words folded | App Settings › Connections › Dealership Mode |
+| [Review Sheet](#review-sheet) | Historical Review: the race as a head, the notice as a callout, the drivers tagged, Submit in the foot, the decisions as pills | Results and Records (a Paddock race) |
+| [Performance Gauges](#performance-gauges) | The Performance line as a row of small gauges, each with a health colour | Race tab (App Settings › General, Performance line) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1605,6 +1609,67 @@ html .lv-board.classic table.lb tr[data-lap-lane] td.lb-pos{box-shadow:inset .22
 html .lv-lanes .btn>i{width:28px;height:28px;border-radius:50%;background:var(--c,var(--muted))}
 ```
 
+## Plugin Desk
+
+The open page or tool of Customization › Plugin Pages & Tools (`renderer/pluginpages.js`; styles under `.pd-phead`, `.pd-sec`, `.pd-page-output`). The
+side list of pages and tools and the empty page are as they were.
+
+- **The head**: *Page* or *Tool* as an accent kicker, the name in Barlow, what it does; on the right **the plugin as a status pill** (*Lap Coach /
+  running*): green dot while it runs, red when it failed or is missing, grey otherwise.
+- **Inputs** in a box with its kicker (the fields, then Apply inputs or Run tool); a page without inputs has no box.
+- **The output** in a box (*Live* for a page, *Result* for a tool): a metric is a **tile** with a kicker and the figure in Barlow, a bar is an 8px meter,
+  a line is a chart of at most 96px on a soft ground in the accent colour, text in 14px. (A plugin widget on the race screen draws as it did.)
+
+```css
+html .pd-runtime:is([data-state="running"]){border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));color:#3ecf8e}
+html .pd-sec{padding:12px 14px;border:1px solid var(--line);border-radius:10px}
+html .pd-page-output .pd-row>.pd-metric{padding:10px 12px;border:1px solid var(--line);border-radius:9px}
+```
+
+## Dealership Sheet
+
+App Settings › Connections › Dealership Mode (`renderer/paddockui.js`, `renderer/paddocklocalui.js`, as a [Settings Sheet](#settings-sheet)).
+
+- **The connection is a status pill** under the title: a grey dot with no host, amber for a saved host that is not connected, green with a halo when
+  it is connected (`data-state` off / saved / on).
+- **A row with more than one control stacks**: its words on top, the buttons and the list under them, from the left (no row squeezes its words to
+  nothing any more: *Find Dealership on network*, *Older local integration service*).
+- The pages of the cars (*Previous · 0 cars · Page 1 of 1 · Next*) are one line in the middle.
+- Result delivery says its first sentence, and the rest is folded under **How result delivery works**.
+
+## Review Sheet
+
+Paddock's Historical Review: submit an older race (`renderer/paddockhistorical.js`; styles under `.historical-dialog`, `.hr-`).
+
+- **The head**: *Paddock · Historical Review* as an accent kicker over the title, a line under it.
+- **The race** as a head card with an accent edge: *Older race*, the name in Barlow, the track and laps, the review destination.
+- **The notice** (*Received is not accepted…*) is an amber callout.
+- **The drivers in the evidence** as a list: the name, the laps in mono, and a tag: *Recorded collection car* green, *not linked automatically*
+  amber, *Virtual* grey. What is missing is a row of grey chips; the fine print is folded under *What is sent, and the limits*.
+- **The foot**: Close on the left, **Submit evidence for review** on the right (it leaves once it is sent).
+- **A submission** is a card: its name, and every decision as a pill with a dot (*Pending* amber, *Approved* green, *Rejected* / *Conflict* red,
+  *Cancelled* grey), the ids in small mono.
+
+## Performance Gauges
+
+The Performance line under the race tools (App Settings › General, `renderer/perfui.js`, `Perf.gauges` in `renderer/perf.js`). The words of the line
+stay for a screen reader; the eye gets a row of **gauges**: what it measures as a kicker, the figure in mono, a word under it (the parts of the CPU,
+*up to, last 10 s*), and an edge in the colour of how healthy it is: green, amber (a warning) or red with a tint (a slow screen).
+
+| Gauge | Green | Amber | Red |
+|---|---|---|---|
+| Frames | 50/s and up | 30–49 | under 30 |
+| Slowest frame | up to 50 ms | up to 150 ms | more |
+| Screen update | up to 8 ms | up to 16 ms | more |
+| App CPU | up to 40% | up to 75% | more |
+| Core stalled | up to 50 ms | up to 100 ms | more |
+| Race save | up to 50 ms | up to 150 ms | more |
+
+```css
+html .pg{display:inline-flex;flex-direction:column;min-width:92px;padding:5px 10px 6px;border-left:3px solid var(--pc);border-radius:8px}
+html .pg-bad{--pc:#e5484d;background:color-mix(in srgb,#e5484d 8%,var(--panel))}
+```
+
 ## Parc Fermé
 
 Choosing a car (`renderer/paddockbrowser.js`, **Browse cars** on Home). A [Workshop Window](#workshop-window) with a **sticky head** (eyebrow
@@ -1764,3 +1829,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Record Card | New: the card of a slotcar, a driver or a track; the statistics as tiles, a service meter, the progress of a driver as track cards with trend chips and the months folded away |
 | 2026-11 | Token Desk | New: the time tokens as a card for every lane (lane colour, a large clock, the buttons as a grid, the state as the edge), a line of what the lanes are doing, the folder first; the penalties folder as a Race Sheet |
 | 2026-11 | Live Pages | New: the Live Race pages that follow the race; a sticky Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as pills, a head card and tiles, the rules as a page, an empty page as a card |
+| 2026-11 | Plugin Desk, Dealership Sheet, Review Sheet, Performance Gauges | New: the smaller pages. A plugin page with a head, a status pill and boxes; Dealership Mode with a status pill and no squeezed rows; Historical Review as a sheet with tags, pills and Submit in the foot; the Performance line as gauges |

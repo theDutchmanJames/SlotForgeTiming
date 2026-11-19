@@ -1081,7 +1081,7 @@ async function renderRace() {
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
       <button class="btn" id="audio-summary" hidden>Announce summary</button><button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
-    <p id="perfline" class="muted perfline" hidden role="status" aria-label="Performance"></p>
+    <p id="perfline" class="muted perfline" hidden role="status" aria-label="Performance"></p><div id="perfvis" class="perfvis" hidden aria-hidden="true"></div>
     <div id="calls" class="card calls" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
