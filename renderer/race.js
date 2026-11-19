@@ -1102,7 +1102,8 @@ async function renderRace() {
     </div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="champpanel" class="card chpanelbox" hidden></div>
-    <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''}${tokenSession ? '' : " · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off"} · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
+    <div class="rd-keys" aria-hidden="true"><span><kbd>Space</kbd>start · pause</span><span><kbd>1</kbd>…<kbd>${Math.min(lanes, 8)}</kbd>lap</span>${tokenSession ? '' : '<span><kbd>⇧</kbd>+<kbd>1</kbd>pit</span>'}<span><kbd>Ctrl</kbd>+<kbd>1</kbd>call</span><span><kbd>Y</kbd>yellow</span><span><kbd>R</kbd>red</span><span><kbd>S</kbd>stop</span><span><kbd>F</kbd>full screen</span><span><kbd>Esc</kbd>closes it</span></div>
+    <p class="muted rd-keyline">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''}${tokenSession ? '' : " · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off"} · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
     ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>${byTeam ? 'Team' : 'Driver'}</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}</div>`;
 
   if (mc) {
@@ -2024,6 +2025,7 @@ async function renderRace() {
     if (live.flPanel) live.flPanel.update();
     ph('panels');
     syncFolders();
+    if (live.deck) live.deck.update();
     ph('folders');
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
@@ -4187,6 +4189,18 @@ async function renderRace() {
     live.cardsOff = live.lcPanel.off;
   }
   DirFolder.bind(host); // (a folder that is closed stays closed, also when the next race is shown)
+  // the Lane Desk (2.4.0): with the lane cards, everything under the widgets as one desk: a card per lane, a race column, tabs for the tables
+  if (cardsOn && typeof RaceDeck !== 'undefined')
+    live.deck = RaceDeck.mount(host, {
+      eng: () => eng,
+      lanes: Array.from({ length: lanes }, (_, l) => l),
+      now,
+      phase: () => live.phase,
+      trkCards: () => live.trkCards || [],
+      color: l => HomeStats.laneColor(layout, l),
+      weather: st => actions.weather(st),
+      tyreNext: (l, code) => actions.tyreNext(l, code)
+    });
 
   // ---- a race that was interrupted can be carried on (1.9.0) ----
   // While a single race runs (or waits in the review), a snapshot of it goes to a file every few seconds and whenever something changes (a lap, a swap, a flag, a pause). After a crash or a power cut the Home tab

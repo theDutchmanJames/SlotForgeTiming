@@ -45,6 +45,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket | The setup guide on Home |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green | Test sensors (Home, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
+| [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -70,6 +71,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Audio set** | Pit Board + Tech Sheet with a call list |
 | **Home** | Broadcast Hero + cards (Timing Tower inside one) |
 | **Setup guide** | Start Lights (+ Lane Check at step 5) |
+| **Race tab** (under the widgets) | Lane Desk (Control Strip on top, Gear Selector for the weather, Toggle Chips for the racing systems) |
 | **Live Race** (also on phones) | Live Desk |
 | **Choose a car** | Parc Fermé (Workshop Window + Control Strip + Gear Selector + Garage Cards) |
 
@@ -1326,6 +1328,42 @@ html dialog.appdlg-danger>.appdlg-buttons>.btn.danger{background:var(--accent-fi
 
 The **update notice** on Home has the same idea: a red download badge in front, the title in Barlow, a soft accent wash from the left.
 
+## Lane Desk
+
+The race screen under the widgets (`renderer/racedeck.js`, styles under `.rdeck`, `.rd-tabs`, `.rd-keys`). It replaces up to thirteen
+full-width folders in eight colours. The widgets above are not touched.
+
+- **The tool bar** is one Control Strip: Simulated cars, the timing status, the tools as outline buttons, Stop race (red text, red rim) and Back to Home.
+- **A card per lane**, in the lane's colour (a 3px top stripe and the number tile; the colour of the layout's lanes, else one of eight).
+  From top to bottom:
+  - the driver and car;
+  - the **Lap** button (2/4 of the width, tinted in the lane colour, with its key), then **Pit** and **Call** (quiet, their icon in their colour,
+    filled only while the car is on the sensor or the call is open);
+  - the **facts**, one 34px row each with a small grey label: *Tyres* (ring in the tyre colour, life bar, "72% · 29 laps", the Next-stop list),
+    *Fuel* (blue bar, "% · laps"), *Pace* (the Push / Normal / Save pill and why), *Weather* (only when there is something to do);
+  - the state chips (All clear, penalties), the four Race Director pads (quiet ± buttons, the pad's name in its colour, values in Roboto Mono),
+    the Penalty / Damage / Failure menus and Balance of Power.
+- **Lanes:** 1 lane one card of at most 620px; 2–3 in a row; 4 as 2 × 2; 5–6 in three; 7–8 in four (compact: no car name, pads two by two).
+- **The race column** (340px, at the right): *Race Director* (the last action and Undo), *Weather* (the state in Barlow, the forecast, the
+  Dry / Cloudy / Wet / Clearing Gear Selector), *Tyre rule* (the mandatory stops and where every lane stands), *Racing systems* (Toggle Chips:
+  a green dot when on, dashed when off; "(needs Fuel)" stays in words), *Log*.
+- **Tabs** under the desk for the tables (Tyres, Weather, Push and Save, Pit stops, Endurance, Resources): a quiet tab bar, the open tab with a
+  2px accent line on top; the tables at their own width, not stretched; the open tab stays open for the next race.
+- **The keys** as key caps in one line (Space, 1…8, ⇧+1, Ctrl+1, Y, R, S, F, Esc); the full sentence stays for screen readers.
+- **Smaller windows:** under 1280px the race column goes under the lanes in two columns; under 760px everything is one column.
+- The setting "folders" (App Settings › Race Director), time tokens and the Race Director page of other devices keep their folders.
+
+```css
+html .rdeck{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:repeat(7,auto) 1fr;column-gap:12px}
+html .rdeck>#lcpanel,html .rdeck .lc,html .rdeck .lc-main{display:contents} /* (the lane cards' own box keeps its clicks) */
+html .rdeck .lc-card{border:1px solid var(--line);border-top:3px solid var(--c);border-radius:10px;background:var(--panel)}
+html .rdeck .lc-card .trk-card{display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px}
+html .rdeck .lc-card .trk-lap{background:color-mix(in srgb,var(--c) 22%,var(--panel));border-color:color-mix(in srgb,var(--c) 60%,var(--line))}
+html .rdeck .rd-fr{display:grid;grid-template-columns:62px minmax(0,1fr) auto;min-height:34px;border-bottom:1px solid var(--line)}
+html .rd-tab[aria-selected="true"]{background:var(--panel);font-weight:600;box-shadow:inset 0 2px 0 var(--accent)}
+html .rd-keys kbd{min-width:20px;height:20px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;font:600 11px "Roboto Mono",monospace}
+```
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1487,3 +1525,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Light themes | Tracks and unlit lights are theme tokens (`--sf-track`, `--sf-lightoff`): soft in Light, Ocean and light Custom themes |
 | 2026-11 | Pit Wall | Two more fitting steps for a big Interface size on a small window (tighter, then pictures only) |
 | 2026-11 | Parc Fermé | Cars without a picture in one of ten colours by model; the Dealership message only on its own tab, quiet while offline |
+| 2026-11 | Lane Desk | New: the race screen under the widgets as one desk: a card per lane (Lap / Pit / Call, tyres, fuel, pace, weather, the Race Director's pads), a race column (Race Director, weather, tyre rule, systems, log), the tables as tabs, the keys as key caps |

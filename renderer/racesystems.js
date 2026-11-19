@@ -87,9 +87,19 @@
           grid.appendChild(b);
           rows.set(item.key, b);
         }
-        b.textContent = `${item.label} · ${state.enabled ? 'On' : 'Off'}${state.enabled && !state.effective ? ' (needs Fuel)' : ''}`;
+        // (the name, then its state: the Lane Desk shows the state as a dot and leaves the words out)
+        const words = `${state.enabled ? 'On' : 'Off'}${state.enabled && !state.effective ? ' (needs Fuel)' : ''}`;
+        if (b.dataset.words !== words) {
+          b.dataset.words = words;
+          b.textContent = item.label;
+          const w = document.createElement('span');
+          w.className = 'ss-state';
+          w.textContent = ' · ' + words;
+          b.appendChild(w);
+        }
         b.setAttribute('aria-checked', String(state.enabled));
         b.classList.toggle('on', state.enabled);
+        b.classList.toggle('ss-need', state.enabled && !state.effective);
         b.disabled = !ready;
       });
       host.hidden = !Object.values(data).some(x => x.available);

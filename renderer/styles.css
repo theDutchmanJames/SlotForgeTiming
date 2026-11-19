@@ -4644,3 +4644,164 @@ html body.app-shell>header.mb-t7>#tabs .mb-right>.tab.onair{font-size:0;gap:0;pa
 html .paddock-browser .pb-car>.pb-car-placeholder{background:radial-gradient(ellipse at 50% 75%,hsl(var(--h,210) 60% 50% / .28),transparent 70%),linear-gradient(160deg,hsl(var(--h,210) 35% 30% / .35),transparent 70%),color-mix(in srgb,var(--bg) 60%,var(--panel));color:hsl(var(--h,210) 65% 68%)}
 :root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .paddock-browser .pb-car>.pb-car-placeholder{color:hsl(var(--h,210) 55% 40%)}
 html .paddock-browser>p[data-error].pf-quiet{color:var(--muted)}
+/* ==== Lane Desk (2.4.0, SlotForgeRestyle.md "Lane Desk"): the race screen under the widgets. A card per lane (its buttons, tyres, fuel, pace, weather and the Race Director's pads),
+   a race column (Race Director, weather, tyre rule, systems, log), the tables as tabs. The Race Director box (#lcpanel) keeps its own clicks; display:contents lets its parts sit in the grid. ==== */
+html #raceactive .rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html #raceactive .rt-tools>label{display:inline-flex;align-items:center;gap:7px;font-size:13px}
+html #raceactive .rt-tools>#tmstatus{font-size:12.5px}
+html #raceactive .rt-tools>#msg{flex:1;min-width:0;font-size:12.5px}
+html #raceactive .rt-tools>.btn:not(.stopbtn):not(#back){background:transparent;border:1px solid var(--line)}
+html #raceactive .rt-tools>.stopbtn{border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));font-weight:600}
+html .rt-folders.rd-on{margin-top:12px}
+html .rt-folders.rd-on>.trk-hint{margin:0 0 10px;padding:8px 12px;border-radius:8px;background:color-mix(in srgb,var(--ink) 5%,var(--panel));font-size:13px}
+html .rdeck{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:repeat(7,auto) 1fr;column-gap:12px;row-gap:0;align-items:start}
+html .rdeck>#lcpanel,html .rdeck .lc,html .rdeck .lc-main{display:contents}
+html .rdeck>#lcpanel[hidden]{display:none}
+html .rdeck .lc-strip{display:none}
+html .rdeck .lc-cards,html .rdeck>#trackgrid{grid-column:1;grid-row:1 / -1;align-self:start}
+html .rdeck .lc-bar,html .rdeck .rd-box,html .rdeck .lc-log{grid-column:2;margin:0 0 10px;min-width:0}
+html .rdeck .lc-bar{order:1}
+html .rdeck .rd-wx{order:2}
+html .rdeck .rd-rule{order:3}
+html .rdeck .rd-sys{order:4}
+html .rdeck .lc-log{order:5}
+/* the lanes: 1 wide card, 2-3 in a row, 4 as 2 x 2, 5-6 in three, 7-8 in four */
+html .rdeck .lc-cards{display:grid;gap:10px;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
+html .rdeck[data-n="1"] .lc-cards{grid-template-columns:minmax(0,620px)}
+html .rdeck[data-n="4"] .lc-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+html .rdeck:is([data-n="5"],[data-n="6"]) .lc-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+html .rdeck:is([data-n="7"],[data-n="8"]) .lc-cards{grid-template-columns:repeat(4,minmax(0,1fr))}
+html .rdeck>#trackgrid{display:grid;gap:10px;grid-template-columns:repeat(min(var(--n),4),minmax(0,1fr))}
+html .rdeck>#trackgrid[hidden]{display:none}
+/* the lane card */
+html .rdeck .lc-card{--c:var(--muted);gap:9px;padding:11px 12px 12px;border:1px solid var(--line);border-top:3px solid var(--c);border-radius:10px;background:var(--panel)}
+html .rdeck .lc-card[data-kind]{border-top-color:var(--c)}
+html .rdeck .lc-head{min-height:28px;gap:9px}
+html .rdeck .lc-num{width:26px;height:26px;border-radius:7px;background:var(--c);color:#0f1216;font:700 15px/1 "Barlow Condensed","Segoe UI",sans-serif}
+html .rdeck .lc-who{font-size:15px}
+html .rdeck .lc-car{font-size:12px}
+html .rdeck .lc-card.rd-lane:has(.rd-fr-tyre:not([hidden])) .lc-tyre{display:none}
+html .rdeck .lc-chips{min-height:0}
+html .rdeck .lc-chips:empty{display:none}
+html .rdeck .lc-chip{font-size:11.5px;padding:2px 9px}
+/* the Lap / Pit / Call buttons in the card: Lap big in the lane's colour, Pit and Call quiet until they are on */
+html .rdeck .lc-card .trk-card{display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;padding:0;border:0;background:none;box-shadow:none}
+html .rdeck .lc-card .trk-head{display:none}
+html .rdeck .lc-card .trk-sub{display:contents}
+html .rdeck .lc-card .trk-btn{min-height:50px;border-width:1px;border-radius:8px}
+html .rdeck .lc-card .trk-lap{--tc:var(--c);font-size:17px;color:var(--ink);background:color-mix(in srgb,var(--c) 22%,var(--panel));border-color:color-mix(in srgb,var(--c) 60%,var(--line))}
+html .rdeck .lc-card .trk-sub .trk-btn{flex-direction:column;gap:2px;min-height:50px;padding:4px;font-size:13px;color:var(--ink);background:var(--bg);border-color:var(--line)}
+html .rdeck .lc-card .trk-sub .trk-btn::before{width:16px;height:16px;color:var(--tc)}
+html .rdeck .lc-card .trk-sub .trk-btn::after{font-size:10px}
+html .rdeck .lc-card .trk-pit[aria-pressed="true"],html .rdeck .lc-card .trk-call[data-active="true"]{background:var(--tc);border-color:var(--tc);color:#1c1204}
+html .rdeck .lc-card .trk-pit[aria-pressed="true"]::before,html .rdeck .lc-card .trk-call[data-active="true"]::before{color:inherit}
+/* the facts of the lane: tyres, fuel, pace, weather */
+html .rdeck .rd-facts{display:grid;border-top:1px solid var(--line)}
+html .rdeck .rd-facts:not(:has(.rd-fr:not([hidden]))){display:none}
+html .rdeck .rd-fr{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:34px;padding:4px 0;border-bottom:1px solid var(--line)}
+html .rdeck .rd-fr[hidden]{display:none}
+html .rdeck .rd-fr>i{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-style:normal}
+html .rdeck .rd-v{display:flex;align-items:center;gap:8px;min-width:0;font-size:12.5px}
+html .rdeck .rd-ring{flex:none;display:inline-grid;place-items:center;box-sizing:border-box;width:20px;height:20px;border-radius:50%;border:3px solid var(--tc,var(--muted));font:700 9px "Segoe UI",system-ui,sans-serif;color:var(--ink)}
+html .rdeck .rd-bar{position:relative;flex:1;min-width:36px;max-width:220px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+html .rdeck .rd-bar>b{position:absolute;inset:0 auto 0 0;border-radius:3px;background:#3ecf8e}
+html .rdeck .rd-bar.rd-fuel>b{background:#4c9aff}
+html .rdeck .rd-bar.lo>b{background:#f2b705}
+html .rdeck .rd-num{font:500 12px "Roboto Mono",Consolas,monospace;white-space:nowrap}
+html .rdeck .rd-sub{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
+html .rdeck .rd-next{height:28px;max-width:150px;padding:0 6px;font-size:12px}
+html .rdeck .rd-fr .pspill{font-size:10.5px}
+/* the Race Director's pads: quiet buttons, the name of a pad in its colour */
+html .rdeck .lc-pads{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+html .rdeck .lc-pad{padding:5px 6px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+html .rdeck .lc-padl{margin:0 0 4px;text-align:center;font-size:9.5px;letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rdeck .lc-padrow{gap:3px}
+html .rdeck .lc-padrow>.lc-pm,html .rdeck .lc-padrow>.lc-pp{height:26px;width:26px;font-size:16px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--ink)}
+html .rdeck .lc-padrow>.lc-val{height:26px;border:0;background:transparent;font:600 14px "Roboto Mono",Consolas,monospace}
+html .rdeck .lc-acts{gap:6px;flex-wrap:wrap}
+html .rdeck .lc-act{flex:1 1 0;height:28px;font-size:12px;font-weight:500;border-bottom-width:2px}
+html .rdeck .lc-bop .lc-seg,html .rdeck .lc-bop .lc-segb{height:28px}
+/* 5 lanes and more: compact cards */
+html .rdeck:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .lc-pads{grid-template-columns:repeat(2,minmax(0,1fr))}
+html .rdeck:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .lc-card .trk-btn{min-height:42px}
+html .rdeck:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .lc-car{display:none}
+html .rdeck:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .rd-fr{grid-template-columns:52px minmax(0,1fr) auto}
+html .rdeck:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .rd-next{max-width:96px}
+/* the race column */
+html .rdeck .lc-bar{flex-wrap:wrap;gap:8px;min-height:0;padding:10px 12px;background:var(--panel);border-radius:10px}
+html .rdeck .lc-bar .lc-title{display:block;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rdeck .lc-bar .lc-sp{flex:1}
+html .rdeck .lc-bar .lc-last{order:9;flex-basis:100%}
+html .rdeck .lc-bar .lc-last:empty{display:none}
+html .rdeck .lc-bar .lc-undo{height:28px;padding:0 12px;font-size:12.5px}
+html .rdeck .lc-logbtn{display:none}
+html .rdeck .rd-box{box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html .rdeck .rd-box[hidden]{display:none}
+html .rdeck .rd-bh{display:flex;align-items:baseline;gap:8px;margin:0 0 8px}
+html .rdeck .rd-bh>b{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rdeck .rd-bhnote{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right}
+html .rdeck .rd-wxnow{font:italic 700 22px/1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .rdeck .rd-wxinfo{margin:3px 0 0;font-size:12px;color:var(--muted)}
+html .rdeck .rd-wxinfo:empty{display:none}
+html .rdeck .rd-wxslot:not(:empty){margin-top:9px}
+html .rdeck .rd-wxslot .lc-wx{display:block}
+html .rdeck .rd-wxslot .lc-wx[hidden]{display:none}
+html .rdeck .rd-wxslot .lc-wxl{display:none}
+html .rdeck .rd-wxslot .lc-seg{display:flex;height:30px;padding:2px;gap:2px;border-radius:8px;background:var(--bg)}
+html .rdeck .rd-wxslot .lc-segb{flex:1;min-width:0;padding:0 6px;border-radius:6px;font-size:12px;color:var(--muted)}
+html .rdeck .rd-wxslot .lc-segb[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 14%,var(--panel));color:var(--ink);font-weight:600}
+html .rdeck .rd-rulerows{display:grid;gap:4px}
+html .rdeck .rd-rulerow{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;font-size:12px}
+html .rdeck .rd-ln{display:grid;place-items:center;width:20px;height:20px;border-radius:5px;background:var(--c,var(--muted));color:#0f1216;font:700 12px "Barlow Condensed","Segoe UI",sans-serif}
+html .rdeck .rd-rulest{font-size:11.5px;color:var(--muted)}
+html .rdeck .rd-rulest.ok{color:#3ecf8e}
+html .rdeck .rd-sys>#systempanel>p{display:none}
+html .rdeck .rd-sys .system-switches{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+html .rdeck .rd-sys .system-switch{display:inline-flex;justify-content:flex-start;gap:7px;width:auto;min-height:28px;padding:0 11px;border:1px dashed var(--line);border-radius:14px;background:var(--bg);color:var(--muted);font-size:12.5px;box-shadow:none;transform:none}
+html .rdeck .rd-sys .system-switch::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;border:1.5px solid var(--muted)}
+html .rdeck .rd-sys .system-switch.on{border-style:solid;color:var(--ink);background:var(--bg)}
+html .rdeck .rd-sys .system-switch.on::before{border-color:#3ecf8e;background:#3ecf8e}
+html .rdeck .rd-sys .system-switch.on b{color:inherit}
+html .rdeck .lc-log{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html .rdeck .lc[data-log] .lc-log{display:block;position:static;width:auto;box-shadow:none}
+html .rdeck .lc-loghead{min-height:0;margin-bottom:6px}
+html .rdeck .lc-loghead .lc-padl{font-size:10.5px;letter-spacing:.14em;text-align:left}
+html .rdeck .lc .lc-loglist{max-height:260px;overflow:auto;font-size:12.5px}
+/* the tabs under the desk: the tables at a width you can read */
+html .rd-tabs{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+html .rd-tabs[hidden]{display:none}
+html .rd-tabbar{display:flex;flex-wrap:wrap;gap:2px;padding:6px 6px 0;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+html .rd-tab{padding:8px 14px;border:0;border-radius:7px 7px 0 0;background:transparent;color:var(--muted);font:500 13px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+html .rd-tab[hidden]{display:none}
+html .rd-tab:hover{color:var(--ink)}
+html .rd-tab[aria-selected="true"]{background:var(--panel);color:var(--ink);font-weight:600;box-shadow:inset 0 2px 0 var(--accent)}
+html .rd-tab:focus-visible{outline:2px solid #4c9aff;outline-offset:-2px}
+html .rd-panes>.rd-pane{margin:0;border:0;border-radius:0;background:none;box-shadow:none}
+html .rd-panes>.rd-pane.rd-off,html .rd-panes>.rd-pane[hidden]{display:none}
+html .rd-panes>.rd-pane>summary{display:none}
+html .rd-panes>.rd-pane>.df-body{padding:12px 14px 14px}
+html .rd-panes table{width:auto;min-width:min(100%,720px);max-width:100%}
+html .rd-panes :is(th,td){padding:7px 12px}
+html .rd-panes .twfix{max-width:720px}
+/* the keys, as key caps (the sentence stays for screen readers) */
+html .rd-keys{display:flex;flex-wrap:wrap;gap:6px 16px;margin:12px 0 0;padding:9px 12px;border-radius:10px;background:color-mix(in srgb,var(--bg) 45%,var(--panel));font-size:12px;color:var(--muted)}
+html .rd-keys>span{display:inline-flex;align-items:center;gap:5px}
+html .rd-keys kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--bg);font:600 11px "Roboto Mono",Consolas,monospace;color:var(--ink)}
+html .rd-keyline{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* a smaller window: the race column under the lanes, in two columns; a phone-wide window: one column */
+@media (max-width:1280px){
+  html .rdeck{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;column-gap:10px}
+  html .rdeck .lc-cards,html .rdeck>#trackgrid{grid-column:1 / -1;grid-row:auto;margin-bottom:10px}
+  html .rdeck .lc-bar,html .rdeck .rd-box,html .rdeck .lc-log{grid-column:auto}
+  html .rdeck:is([data-n="3"],[data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .lc-cards{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+}
+@media (max-width:760px){
+  html .rdeck{grid-template-columns:minmax(0,1fr)}
+  html .rdeck .lc-cards{grid-template-columns:minmax(0,1fr) !important}
+  html .rdeck .lc-pads{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+html .rt-folders.rd-on>.dirfolder.rd-gone{display:none}
+html .rdeck .rd-sys .ss-state{display:none}
+html .rdeck .rd-sys .system-switch.ss-need .ss-state{display:inline;color:#f2b705}
+html .rdeck .rd-next{max-width:170px}
+html .rd-panes .df-body>p,html .rd-panes .twnote,html .rd-panes .bophead{max-width:120ch}

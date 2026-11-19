@@ -193,6 +193,7 @@
     "renderer/pushsaveui.js",
     "renderer/quiet.js",
     "renderer/race.js",
+    "renderer/racedeck.js",
     "renderer/racelimit.js",
     "renderer/racesystems.js",
     "renderer/railform.js",
