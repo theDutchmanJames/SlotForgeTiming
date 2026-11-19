@@ -203,7 +203,7 @@
   const CREDIT = [
     'This App has been made by theDutchmanJames, Codex & Claude.',
     'Special thanks to Bjorn and Joanne and the members of:',
-    '@SlotForum.com: Kevan, Roguejackal, Dangermouse, Dopamine, LMP & Superslab, Slotranger'
+    '@SlotForum.com: Kevan, Roguejackal, Dangermouse, Dopamine, LMP & Superslab, Slotranger, Angelsoft'
   ];
   // The racing rules as a page to hand out: the club's own formatting and a clear title (no credit on it)
   function rulesHtml({ title, html }) {
