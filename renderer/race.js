@@ -1792,13 +1792,22 @@ async function renderRace() {
         eng.cars.map(c => [c.laps.length, c.best, c.invalid, c.removed, c.dq, c.done, c.driverName]),
         [...R.open],
         R.del,
+        R.filter,
+        [...R.checked],
+        R.focus,
         tokens ? tokens.snapshot().lates : 0
       ]);
     if (sig === live.lapSig) return;
     live.lapSig = sig;
     box.hidden = false;
     const tv = tokens ? tokens.view() : null;
-    box.innerHTML = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null });
+    // (2.4.0) the lap explorer, as in the review after the race; a Time Token Session keeps the list of every lane (with its laps after the paid time)
+    Review.render(
+      box,
+      tv
+        ? Review.lapsHtml(eng, { late: (i, n) => tv.lateAt(eng.cars[i].lane, n) })
+        : Review.lapDeskHtml(eng, { color: l => HomeStats.laneColor(layout, l) })
+    );
   };
   // after a correction: the best laps that are shown (the highlights, the record lap) are worked out again from the laps that still count
   const recomputeBests = () => {

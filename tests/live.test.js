@@ -1743,7 +1743,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the next lap, a full lap under yellow and much faster than 15 seconds, is called out with the driver, the time and the target, and the penalty point after it', marks().length === 2 && /^MARK fast Alex \d+\.\d\d 15 seconds$/.test(marks()[0]) && marks()[1] === 'MARK pen Alex 1', marks().join(' | '));
     say('...the driver has the point, and the lap is marked in the race', E2().cars[0].points === 1 && E2().cars[0].yellowFast.join() === '1' && E2().cars[1].points === 0);
     E('lapsbtn').onclick({}); E('lapreview').onclick({ target: { closest: () => ({ dataset: { rv: 'laps', car: '0' } }) } });
-    say('the lap review shows the mark on that lap, and only on that lap', E('lapreview').innerHTML.split('class="rv-lap').filter(x => x.includes('faster than the Safety Car limit')).length === 1);
+    say('the lap review shows the mark on that lap, and only on that lap', E('lapreview').innerHTML.split('class="rx-row').slice(1).filter(x => x.includes('rx-tag-flag">Faster than the Safety Car')).length === 1);
     key('s'); await wait(60); ctx.Sound.stop(); spoken.length = 0;
     // a race without a target: only the yellow flag call
     await openRace({ name: 'YT0', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0, audioSet: 'AUY', penaltySystem: 'py' }, store.tracks[0], rows(1, 2));

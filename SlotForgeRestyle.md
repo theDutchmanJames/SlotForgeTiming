@@ -1586,3 +1586,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Pit Wall | The shared library's light shows the results waiting to be sent in amber with their number ("1 to send"), never as a red "Library" |
 | 2026-11 | Scrutineering | Reimagined: the classification as slim rows with a lap chart each, and a lap explorer (chart of every lap, figures, filters, suspect laps, several laps at once, back in the records); one colour per kind of lap |
 | 2026-11 | Scrutineering | The Race Director page of Live Race has the desk after the race and the lap explorer during it; on a phone the laps are two-line cards |
+| 2026-11 | Scrutineering | The race window's Review laps during the race has the same drivers and lap explorer as the Race Director page |

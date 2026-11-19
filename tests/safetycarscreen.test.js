@@ -128,7 +128,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   await wait(60); key('1'); await wait(200);
   say('the next lap, a full lap behind the Safety Car and much faster than 15 seconds, is called out, and has the 2 points of the system after it', /^MARK fast Alex \d+\.\d\d 15 seconds$/.test(spoken.filter(t => t.startsWith('MARK'))[0] || '') && spoken.filter(t => t.startsWith('MARK'))[1] === 'MARK pen Alex 2' && eng().cars[0].points === 2 && eng().cars[0].yellowFast.join() === '1', spoken.join(' | '));
   E('lapsbtn').onclick({}); E('lapreview').onclick({ target: { closest: () => ({ dataset: { rv: 'laps', car: '0' } }) } });
-  say('the lap review marks that lap as faster than the Safety Car limit (and not as faster than the yellow flag target)', E('lapreview').innerHTML.split('class="rv-lap').filter(x => x.includes('faster than the Safety Car limit')).length === 1 && !E('lapreview').innerHTML.includes('faster than the yellow flag target'));
+  say('the lap review marks that lap as faster than the Safety Car limit (and not as faster than the yellow flag target)', E('lapreview').innerHTML.split('class="rx-row').slice(1).filter(x => x.includes('rx-tag-flag">Faster than the Safety Car')).length === 1 && !E('lapreview').innerHTML.includes('Faster than the yellow target'));
   { const yb = { disabled: true, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, textContent: '' };
     const host = document.createElement('div'); await run('LiveView.mount')(host, {}); run('LiveView.go')('director'); await wait(150);
     E('lv-body').querySelectorAll = sel => (sel === '[data-cmd="yellow"]' ? [yb] : []); cbs.dyn.forEach(f => f(plain(sent.dyn))); await wait(100);
@@ -153,7 +153,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   say('a race without a safety car system: the flag text says Yellow flag, the widget YELLOW FLAG, no Safety Car line in the log, and a lap too fast is "faster than the yellow flag target" in the review', flagText().includes('Flag: Yellow flag') && node('flag').val.innerHTML.includes('YELLOW FLAG') && eng().events.every(e => e.type !== 'safetycar') && eng().scOut() === false);
   await wait(60); key('1'); await wait(60); key('1'); await wait(150);
   E('lapsbtn').onclick({}); E('lapreview').onclick({ target: { closest: () => ({ dataset: { rv: 'laps', car: '0' } }) } });
-  say('retired standalone yellow-flag targets do not mark a lap or create Safety Car events', !E('lapreview').innerHTML.includes('faster than the yellow flag target') && !E('lapreview').innerHTML.includes('faster than the Safety Car'));
+  say('retired standalone yellow-flag targets do not mark a lap or create Safety Car events', !/faster than the (yellow|Safety Car)/i.test(E('lapreview').innerHTML));
   key('s'); await until(() => phase() === 'finished', 3000); await wait(60); ctx.Sound.stop(); spoken.length = 0; run('state.rand = null');
 
   console.log(fails ? fails + ' SAFETY CAR SCREEN TESTS FAILED' : 'ALL SAFETY CAR SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
