@@ -33,6 +33,7 @@
     { t: 'Setup guide', k: 's', s: 'general' },
     { t: 'Interface size (the text, buttons and check boxes of the whole app)', k: 's', s: 'general' },
     { t: 'Depth (how much cards, buttons, folders and widgets stand up from the page)', k: 's', s: 'general' },
+    { t: 'PDF prints', k: 's', s: 'general' },
     { t: 'Speed unit in the tables (Results and Records, the PDF of a session)', k: 's', s: 'general' },
     { t: 'Distance unit (the distance driven in the tables and on Home, and the lengths of a track)', k: 's', s: 'general' },
     { t: 'App Name (shown at the top of the window)', k: 's', s: 'general' },

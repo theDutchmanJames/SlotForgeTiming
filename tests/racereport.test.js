@@ -104,3 +104,19 @@ test('a long race (500 laps) stays on one page: the lap sheet shows the ten fast
   const big = Array.from({ length: 200000 }, (_, i) => ({ n: i + 1, time: 5000 + (i % 300), lane: 1, heat: 0, pit: false, bad: false, off: false }));
   assert.doesNotThrow(() => RR.histogram(big));
 });
+
+test('the other prints have the same look: the heat list, the standings, the racing rules and the QR code, in Colour or Monochrome', () => {
+  const list = [{ name: 'Heat 1', label: '', drivers: [{ lane: 0, name: 'Anna' }, { lane: 1, name: 'Bjorn' }], rows: [] }];
+  const heat = Report.heatSheetHtml({ title: 'Club', subtitle: 'Oval', list, lanes: 2 }),
+    heatMono = Report.heatSheetHtml({ title: 'Club', subtitle: 'Oval', list, lanes: 2, mono: true });
+  assert.ok(heat.includes('<span class="rp-k">Heat list</span>') && heat.includes('class="rp-check"') && heat.includes('@page { size: A4 landscape') && heat.includes('<!--SF-PDF-WORDMARK-->'), 'the heat list: the head of the race report, landscape, the wordmark');
+  assert.ok(heat.includes("table.hs th:nth-child(2)::before { background: #e5484d; content: '1'; }") && heat.includes("table.hs th:nth-child(3)::before { background: #3b82f6; content: '2'; }"), 'every lane heads its column with its disc');
+  assert.ok(heatMono.includes('<body class="pdf-mono">') && heatMono.includes('table.hs th::before { background: #fff !important;'), 'in Monochrome the discs are rings');
+  const table = { title: 'Drivers', columns: [{ label: 'Pos' }, { label: 'Driver' }, { label: 'Points', r: true }], rows: [{ lead: true, cells: [{ t: '1' }, { t: 'Anna', b: true }, { t: '25', b: true, big: true }] }, { cells: [{ t: '2' }, { t: 'Bjorn', b: true }, { t: '18', b: true, big: true }] }], legend: [] };
+  const st = Report.standingsHtml({ championship: 'Cup', table, lead: 'Anna leads by 7' });
+  assert.ok(st.includes('<span class="rp-k">Championship standings</span>') && st.includes('class="rp-podium"') && st.includes('<small>Leader</small><b>Anna</b>') && st.includes('<b>25<small> pts</small></b>'), 'the standings: the head and the first ones as podium cards');
+  const rules = Report.rulesHtml({ title: 'Rules', html: '<h2>Safety</h2>' });
+  assert.ok(rules.includes('<span class="rp-k">Racing rules</span>') && rules.includes('.body h2 {') && !rules.includes('SF-PDF-WORDMARK'), 'the rules are the club page: the head without the wordmark');
+  const qr = Report.qrHtml({ title: 'Live', url: 'http://x', svg: '<svg></svg>', mono: true });
+  assert.ok(qr.includes('<span class="rp-k">Live race</span>') && qr.includes('class="qr-card"') && qr.includes('class="qr-steps"') && qr.includes('<body class="pdf-mono">'), 'the QR page: the code in a card, three steps, Monochrome');
+});

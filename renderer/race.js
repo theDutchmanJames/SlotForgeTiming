@@ -2192,6 +2192,7 @@ async function renderRace() {
       api
         .exportPdf(
           Report.heatSheetHtml({
+            mono: state.settings.pdfMode === 'mono',
             title: `${setup.name}: heat list`,
             subtitle: `${r.track.name} · ${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? finalsNote : ''}`,
             list: heatListOf(),

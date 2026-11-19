@@ -199,15 +199,27 @@
   }
 
   // A page to print: the QR code of a network address, big enough to scan from a print on the wall
-  function qrHtml({ title, url, svg }) {
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
-      @page { size: A4; margin: 15mm; }
-      body { font: 14pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; text-align: center; }
-      h1 { font-size: 34pt; margin: 10mm 0 4mm; } p { margin: 3mm 0; color: #333; }
-      .qr { width: 150mm; height: 150mm; margin: 8mm auto; } .qr svg { width: 100%; height: 100%; display: block; }
-      .url { font: bold 20pt Consolas, monospace; color: #000; word-break: break-all; } .small { font-size: 11pt; color: #666; }
-    </style></head><body><h1>${esc(title)}</h1><p>Scan this code with your phone camera to follow the race live.</p>
-      <div class="qr">${svg}</div><p class="url">${esc(url)}</p><p class="small">Your phone must be on the same wifi network as the timing computer.</p></body></html>`;
+  function qrHtml({ title, url, svg, mono }) {
+    if (!RR)
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title></head><body><h1>${esc(title)}</h1><div class="qr">${svg}</div><p class="url">${esc(url)}</p></body></html>`;
+    // (2.4.0) the page to pin on the wall: the head of the race report, the code large in a card with a checkered edge, the address, three steps
+    const steps = ['Open the camera of your phone', 'Point it at the code', 'Follow the race live'];
+    return RR.printDoc({
+      title,
+      mono,
+      extra: `.qr-card { margin: 12mm auto 0; width: 158mm; padding: 6mm; border: 1pt solid var(--line); border-radius: 8pt; background: #fff; box-shadow: 0 0 0 3pt #fff, 0 0 0 5pt #15181d; }
+      .qr { width: 146mm; height: 146mm; margin: 0 auto; } .qr svg { width: 100%; height: 100%; display: block; }
+      .url { margin: 8mm 0 0; text-align: center; font: 700 17pt "SF Mono", "Roboto Mono", Consolas, monospace; word-break: break-all; }
+      .qr-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin: 9mm 0 0; }
+      .qr-steps div { display: flex; align-items: center; gap: 3mm; padding: 3mm 4mm; border: .8pt solid var(--line); border-left: 2.4pt solid var(--a); font-size: 10pt; font-weight: 600; }
+      .qr-steps b { font: italic 700 20pt/1 "SF Barlow", "Barlow Condensed", "Arial Narrow", sans-serif; color: var(--a); }
+      .small { margin: 6mm 0 0; text-align: center; font-size: 9pt; color: var(--mut); }`,
+      body: `<main>${RR.head({ session: RR.today(), kicker: 'Live race', title, sub: 'Scan this code with your phone camera to follow the race live.', right: RR.mark })}
+      <div class="qr-card"><div class="qr">${svg}</div></div><p class="url">${esc(url)}</p>
+      <div class="qr-steps">${steps.map((t, i) => `<div><b>${i + 1}</b>${esc(t)}</div>`).join('')}</div>
+      <p class="small">Your phone must be on the same wifi network as the timing computer.</p>
+      <footer class="rp-foot"><span>Made with SlotForge Timing</span><span></span></footer></main>`
+    });
   }
 
   // The credit under the racing rules on the screen (Racing Rules tab). It is not on the printed page: that is the club's own page.
@@ -217,19 +229,23 @@
     '@SlotForum.com: Kevan, Roguejackal, Dangermouse, Dopamine, LMP & Superslab, Slotranger, Angelsoft'
   ];
   // The racing rules as a page to hand out: the club's own formatting and a clear title (no credit on it)
-  function rulesHtml({ title, html }) {
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
-      @page { size: A4; margin: 18mm; }
-      body { font: 12pt/1.5 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
-      h1.title { font-size: 26pt; margin: 0 0 2mm; padding-bottom: 3mm; border-bottom: 2px solid #111; }
-      .body h1, .body h2, .body h3 { margin: 1em 0 .3em; page-break-after: avoid; } .body ul, .body ol { padding-left: 1.4em; } .body li, .body p { page-break-inside: avoid; }
-      .body blockquote { margin: .6em 0; padding: .2em 0 .2em 1em; border-left: 3px solid #999; color: #333; } .body hr { border: 0; border-top: 1px solid #999; margin: 1.2em 0; }
-    </style></head><body><h1 class="title">${esc(title)}</h1><div class="body">${RT.clean(html)}</div></body></html>`;
+  function rulesHtml({ title, html, mono }) {
+    // (2.4.0) the club's own page: the head of the race report without the wordmark, the club's formatting in the look of the app (no app credit on it)
+    const body = `<main class="rl">${RR ? RR.head({ session: RR.today(), kicker: 'Racing rules', title, sub: '' }) : `<h1 class="title">${esc(title)}</h1>`}<div class="body">${RT.clean(html)}</div><footer class="rp-foot"><span>${esc(title)}</span><span></span></footer></main>`;
+    const extra = `body { font-size: 10.5pt; line-height: 1.55; } .rl .rp-meta:empty { display: none; }
+      .body { margin-top: 2mm; } .body h1, .body h2, .body h3 { margin: 1.1em 0 .35em; page-break-after: avoid; font-family: "SF Barlow", "Barlow Condensed", "Arial Narrow", sans-serif; font-style: italic; font-weight: 700; text-transform: uppercase; letter-spacing: 0; color: #15181d; }
+      .body h1 { font-size: 18pt; } .body h2 { font-size: 14pt; padding-left: 7pt; border-left: 3pt solid var(--a); } .body h3 { font-size: 11.5pt; }
+      .body ul, .body ol { padding-left: 1.4em; } .body li { margin: .15em 0; } .body li::marker { color: var(--a); font-weight: 700; } .body li, .body p { page-break-inside: avoid; }
+      .body blockquote { margin: .7em 0; padding: .4em .9em; border-left: 3pt solid var(--a); background: var(--soft); color: #333; } .body hr { border: 0; border-top: 1pt solid var(--line); margin: 1.2em 0; }
+      .body table { border-collapse: collapse; width: 100%; font-size: 9.5pt; } .body th { text-align: left; font: 700 7pt "Segoe UI", Arial, sans-serif; letter-spacing: 1pt; text-transform: uppercase; color: var(--mut); border-bottom: 1pt solid #15181d; padding: 3pt 5pt; } .body td { border-bottom: .6pt solid var(--line); padding: 3pt 5pt; }`;
+    if (!RR)
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: A4; margin: 18mm; }${extra}</style></head><body>${body}</body></html>`;
+    return RR.printDoc({ title, mono, extra: '@page { size: A4; margin: 14mm 16mm; }' + extra, body });
   }
 
   // The heat list as a sheet to hand out or pin up: a row per heat with the driver of every lane, and a place to write the winner. list: Heats.listOf(...) entries;
   // lanes: the lanes of the track; points: show what a finished heat gave (points, or the time of the result); a heat that is finished shows its winner.
-  function heatSheetHtml({ title, subtitle, list, lanes, points, time }) {
+  function heatSheetHtml({ title, subtitle, list, lanes, points, time, mono }) {
     const n = Math.max(
       1,
       Math.floor(Number(lanes)) ||
@@ -251,25 +267,38 @@
             .join(', ')
         : '';
     const anyResult = list.some(x => x.rows.length);
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
-      @page { size: A4 landscape; margin: 14mm; }
-      body { font: 12pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
-      h1 { font-size: 22pt; margin: 0 0 1mm; } p.sub { margin: 0 0 5mm; color: #555; }
-      table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #888; padding: 2.4mm 3mm; text-align: left; vertical-align: top; } th { background: #eee; }
-      td.win { width: 28%; } tr { page-break-inside: avoid; } td.h { white-space: nowrap; font-weight: bold; }
-    </style></head><body><h1>${esc(title)}</h1><p class="sub">${esc(subtitle || '')}</p>
-      <table><thead><tr><th>Heat</th>${Array.from({ length: n }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}<th>${anyResult ? 'Result' : 'Winner'}</th></tr></thead><tbody>${list
-        .map(
-          x =>
-            `<tr><td class="h">${esc(x.name)}${x.label ? `<br><span style="font-weight:normal">${esc(x.label)}</span>` : ''}</td>${unplaced(x).length === x.drivers.length && x.drivers.length ? `<td colspan="${n}">${esc(HT.andList(x.drivers.map(d => d.name)))} (lanes are chosen before the final)</td>` : drivers(x)}<td class="win">${result(x)}</td></tr>`
-        )
-        .join('')}</tbody></table>
-    </body></html>`;
+    // (2.4.0) the heat list in the look of the race report: landscape, the lanes with their disc, a row per heat (the heat in Barlow), a line to write the winner on
+    const table = `<table class="hs"><thead><tr><th>Heat</th>${Array.from({ length: n }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}<th>${anyResult ? 'Result' : 'Winner'}</th></tr></thead><tbody>${list
+      .map(
+        x =>
+          `<tr><td class="h">${esc(x.name)}${x.label ? `<br><span style="font-weight:normal">${esc(x.label)}</span>` : ''}</td>${unplaced(x).length === x.drivers.length && x.drivers.length ? `<td colspan="${n}">${esc(HT.andList(x.drivers.map(d => d.name)))} (lanes are chosen before the final)</td>` : drivers(x)}<td class="win">${result(x)}</td></tr>`
+      )
+      .join('')}</tbody></table>`;
+    const extra = `table.hs { border-collapse: collapse; width: 100%; font-size: 10pt; }
+      table.hs th { padding: 5pt 7pt; border-bottom: 1.2pt solid #15181d; text-align: left; font: 700 7pt "Segoe UI", Arial, sans-serif; letter-spacing: 1pt; text-transform: uppercase; color: var(--mut); white-space: nowrap; }
+      table.hs th::before { display: inline-grid; place-items: center; width: 11pt; height: 11pt; margin-right: 4pt; border-radius: 50%; color: #fff; font: 700 7pt/1 "Segoe UI", Arial, sans-serif; vertical-align: -1.5pt; }
+      table.hs td { padding: 6pt 7pt; border-bottom: .6pt solid var(--line); vertical-align: top; }
+      table.hs tbody tr:nth-child(even) td { background: var(--soft); }
+      table.hs td.h { width: 1%; white-space: nowrap; font: italic 700 13pt/1.1 "SF Barlow", "Barlow Condensed", "Arial Narrow", sans-serif; text-transform: uppercase; box-shadow: inset 2.4pt 0 0 var(--a); padding-left: 9pt; }
+      table.hs td.h span { font: 400 8pt "Segoe UI", Arial, sans-serif; text-transform: none; color: var(--mut); }
+      table.hs td.win { width: 26%; font-size: 9pt; } table.hs td.win:empty::after { content: ''; display: block; height: 11pt; border-bottom: .8pt dotted #6b7280; }
+      tr { page-break-inside: avoid; }
+      ${RR ? RR.laneHeads(n, 2, 'table.hs') : ''}
+      ${mono ? 'table.hs th::before { background: #fff !important; color: #15181d; box-shadow: inset 0 0 0 1pt #15181d; }' : ''}`;
+    if (!RR)
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: A4 landscape; margin: 14mm; }${extra}</style></head><body><h1>${esc(title)}</h1><p class="sub">${esc(subtitle || '')}</p>${table}</body></html>`;
+    return RR.printDoc({
+      title,
+      mono,
+      landscape: true,
+      extra,
+      body: `<main>${RR.head({ session: RR.today(), kicker: 'Heat list', title, sub: esc(subtitle || ''), right: RR.mark })}${table}<footer class="rp-foot"><span>Made with SlotForge Timing</span><span>${list.length} ${list.length === 1 ? 'heat' : 'heats'} · ${n} ${n === 1 ? 'lane' : 'lanes'}</span></footer></main>`
+    });
   }
 
   // The standings of a championship as a page to print (1.56.0): the table that ChampPts.tableOf makes ({ title, note, columns, rows, legend }) under the name of the championship.
   // A dropped result is crossed out, a fastest lap bonus is bold, the leader's row is shaded. The page is landscape: a championship has many rounds.
-  function standingsHtml({ championship, table, lead }) {
+  function standingsHtml({ championship, table, lead, mono }) {
     const t = table || { title: '', columns: [], rows: [], legend: [] },
       cls = c => (c ? ` class="${esc(c)}"` : '');
     const head = t.columns
@@ -282,15 +311,34 @@
       )
       .join('');
     const legend = (t.legend || []).map(l => `<span${cls(l.cls)}>${esc(l.text)}</span>`).join(' &nbsp;&middot;&nbsp; ');
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(championship)}</title><style>
-      @page { size: A4 landscape; margin: 14mm; }
-      body { font: 11pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
-      h1 { font-size: 22pt; margin: 0 0 1mm; } p.sub { margin: 0 0 5mm; color: #555; } p.foot { color: #777; font-size: 9pt; margin-top: 8mm; }
-      table { border-collapse: collapse; width: 100%; } th, td { border-bottom: 1px solid #ccc; padding: 2mm 2.5mm; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; } th { background: #eee; }
-      .r { text-align: right; } .big { font-size: 13pt; } tr.lead td { background: #fde8f1; -webkit-print-color-adjust: exact; print-color-adjust: exact; } tr { page-break-inside: avoid; }
+    // (2.4.0) the first three as podium cards (the name and the points of the row), when the table has points
+    const ptsAt = t.rows.length ? t.rows[0].cells.findIndex(c => c.big) : -1,
+      top = ptsAt > 0 && t.rows.length > 1 ? t.rows.slice(0, 3) : [];
+    const podium = top.length
+      ? `<section class="rp-podium">${[top[1], top[0], top[2]]
+          .map((r, k) => {
+            if (!r) return '<div></div>';
+            const i = [1, 0, 2][k];
+            return `<div class="pd pd${i + 1}"><span class="pd-pl">${esc(r.cells[0].t)}</span><div class="pd-w"><small>${['Leader', 'Second', 'Third'][i]}</small><b>${esc(r.cells[1].t)}</b><span>${esc((r.cells[2] && !(t.columns[2] || {}).r && r.cells[2].t) || '')}</span></div><div class="pd-f"><b>${esc(r.cells[ptsAt].t)}<small> pts</small></b><span>${i ? esc(r.cells[ptsAt + 1] ? r.cells[ptsAt + 1].t : '') : '&nbsp;'}</span></div></div>`;
+          })
+          .join('')}</section>`
+      : '';
+    const extra = `.st table { border-collapse: collapse; width: 100%; font-size: 9pt; }
+      .st th { padding: 4pt 6pt; border-bottom: 1.2pt solid #15181d; text-align: left; font: 700 6.6pt "Segoe UI", Arial, sans-serif; letter-spacing: 1pt; text-transform: uppercase; color: var(--mut); white-space: nowrap; }
+      .st th.r { text-align: right; }
+      .st td { padding: 4pt 6pt; border-bottom: .6pt solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .st tbody tr:nth-child(even) td { background: var(--soft); }
+      .st td:first-child { font: italic 700 12pt/1 "SF Barlow", "Barlow Condensed", "Arial Narrow", sans-serif; width: 24pt; }
+      .st tbody tr:nth-child(1) td:first-child { color: var(--gold); } .st tbody tr:nth-child(2) td:first-child { color: var(--silver); } .st tbody tr:nth-child(3) td:first-child { color: var(--bronze); }
+      .r { text-align: right; } .big { font: 700 11pt "SF Mono", "Roboto Mono", Consolas, monospace; } tr.lead td { background: #fde8f1; -webkit-print-color-adjust: exact; print-color-adjust: exact; } tr { page-break-inside: avoid; }
       .dr { color: #888; text-decoration: line-through; } .fl { font-weight: bold; color: #b8326f; } .mu { color: #888; }
-    </style></head><body><h1>${esc(championship)}</h1><p class="sub">${esc(t.title)}${t.note ? ' &middot; ' + esc(t.note) : ''}${lead ? ' &middot; ' + esc(lead) : ''}</p>
-      <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${legend ? `<p class="sub">${legend}</p>` : ''}<p class="foot">Made with SlotForge Timing</p></body></html>`;
+      .st-legend { margin: 5pt 0 0; font-size: 7.6pt; color: var(--mut); }
+      ${mono ? 'tr.lead td { background: #eef0f3 !important; } .fl { color: #15181d; text-decoration: underline; }' : ''}`;
+    const page = `<main class="st">${RR ? RR.head({ session: RR.today(), kicker: 'Championship standings', title: championship || 'Championship', sub: `${esc(t.title)}${t.note ? ' &middot; ' + esc(t.note) : ''}${lead ? ' &middot; ' + esc(lead) : ''}`, right: RR.mark }) : `<h1>${esc(championship)}</h1>`}
+      ${podium}<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${legend ? `<p class="st-legend">${legend}</p>` : ''}<footer class="rp-foot"><span>Made with SlotForge Timing</span><span>${esc(t.title)}</span></footer></main>`;
+    if (!RR)
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(championship)}</title><style>@page { size: A4 landscape; margin: 14mm; }${extra}</style></head><body>${page}</body></html>`;
+    return RR.printDoc({ title: championship || 'Championship', mono, landscape: true, extra, body: page });
   }
   const standingsFileName = (name, which) =>
     `${name || 'Championship'} ${which === 'teams' ? 'teams' : which === 'rounds' ? 'rounds' : 'drivers'} standings.pdf`.replace(

@@ -1721,6 +1721,18 @@ h1 { font: italic 700 25pt/1 "SF Barlow", "Barlow Condensed", sans-serif; text-t
 .rp-dpage { break-before: page; height: 275mm; overflow: hidden; }
 ```
 
+**The other prints** use the same page (`RaceReport.printDoc`: the style sheet, Colour or Monochrome, portrait or landscape): the head (accent rule,
+kicker, the title in Barlow, the date tile, the wordmark) and the checkered strip, a footer line.
+- **Heat list** (landscape): a Race Sheet with a column per lane, the lane disc before *LANE 1* (a ring in Monochrome), the heat in Barlow with an accent
+  edge, zebra rows, the result of a raced heat, or a dotted line to write the winner on.
+- **Championship standings** (landscape): the first three as podium cards (Leader, Second, Third, the points), the table with the place in its podium
+  colour, the leader's row tinted, the points in mono, a dropped result struck, a fastest lap bonus in the championship colour (underlined in Monochrome).
+- **Racing rules**: the club's own page, so no wordmark and no credit: the club's formatting with headings in Barlow (h2 with an accent edge), red list
+  markers, a quote as a tinted note.
+- **QR code of Live Race**: the code in a card with a dark double edge, the address in mono, three numbered steps (open the camera, point it at the code,
+  follow the race live).
+- **App Settings › General › Units › PDF prints**: Colour or Monochrome for every print (the same choice as *Print in* of Export to PDF).
+
 ## Parc Fermé
 
 Choosing a car (`renderer/paddockbrowser.js`, **Browse cars** on Home). A [Workshop Window](#workshop-window) with a **sticky head** (eyebrow
@@ -1882,3 +1894,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Live Pages | New: the Live Race pages that follow the race; a sticky Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as pills, a head card and tiles, the rules as a page, an empty page as a card |
 | 2026-11 | Plugin Desk, Dealership Sheet, Review Sheet, Performance Gauges | New: the smaller pages. A plugin page with a head, a status pill and boxes; Dealership Mode with a status pill and no squeezed rows; Historical Review as a sheet with tags, pills and Submit in the foot; the Performance line as gauges |
 | 2026-11 | Race Report PDF | New: the race PDF in the look of SlotForge: page one with the podium, race notes, laps per lane and the race lap by lap; a page for every driver with the lap chart, per lane, through the race, the spread and the lap sheet; Colour or Monochrome |
+| 2026-11 | Race Report PDF | The heat list, the championship standings, the racing rules and the QR code in the same look; PDF prints: Colour or Monochrome in App Settings |

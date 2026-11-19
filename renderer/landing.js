@@ -1318,6 +1318,7 @@ async function renderHome() {
       api
         .exportPdf(
           Report.heatSheetHtml({
+            mono: state.settings.pdfMode === 'mono',
             title: `${setup.name}: heat list`,
             subtitle: `${track ? track.name + ' · ' : ''}${heatPlan.count} ${heatPlan.count === 1 ? 'participant' : 'participants'} · ${list.length} ${list.length === 1 ? 'heat' : 'heats'}`,
             list,

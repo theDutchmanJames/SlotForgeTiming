@@ -596,6 +596,9 @@ async function renderGeneralSettings(box) {
     <div class="field" style="max-width:480px"><label for="speedunit">Speed unit in the tables (Results and Records, the PDF of a session)</label>
       <select id="speedunit">${Speed.UNITS.map(([k, t]) => `<option value="${k}"${k === su ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">The average speed and the scale speed of the laps, sessions, stints and records. The Speed widget in a layout has a Unit choice of its own.</span></div>
+    <div class="field" style="max-width:480px"><label for="pdfmode">PDF prints (the race report, the heat list, the standings, the racing rules, the QR code)</label>
+      <select id="pdfmode"><option value="colour"${state.settings.pdfMode === 'mono' ? '' : ' selected'}>Colour</option><option value="mono"${state.settings.pdfMode === 'mono' ? ' selected' : ''}>Monochrome (saves ink)</option></select>
+      <span class="muted hint">Colour keeps the page white and uses colour only in thin lines and pale tints. Monochrome uses no colour at all: the lanes are numbers in a ring, the best lap is underlined. Export to PDF of a race can change it too.</span></div>
     <div class="field" style="max-width:480px"><label for="distunit">Distance unit (the distance driven in the tables and on Home, and the lengths of a track)</label>
       <select id="distunit">${Speed.DIST_UNITS.map(([k, t]) => `<option value="${k}"${k === du ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">Feet and miles show the distance in the tables and on the At a glance card in feet (up to a mile) and miles, and you type the length of a track, its lanes and its pieces in feet and inches. Everything stays saved in metres, so you can change this at any time and nothing is lost.</span></div>`
@@ -776,6 +779,10 @@ async function renderGeneralSettings(box) {
   };
   $('speedunit').onchange = async ev => {
     state.settings = await api.setSettings({ speedUnit: Speed.unitOf({ speedUnit: ev.target.value }) });
+    renderSettings();
+  };
+  $('pdfmode').onchange = async ev => {
+    state.settings = await api.setSettings({ pdfMode: ev.target.value === 'mono' ? 'mono' : 'colour' });
     renderSettings();
   };
   $('distunit').onchange = async ev => {
@@ -1105,7 +1112,10 @@ async function renderNetworkSettings(box) {
     msg.textContent = 'Making the PDF...';
     try {
       const name = (state.settings.appName || '').trim() || DEFAULT_NAME;
-      const res = await api.exportPdf(Report.qrHtml({ title: name + ' – Live Race', url: u.url, svg: u.svg }), 'QR code live race.pdf');
+      const res = await api.exportPdf(
+        Report.qrHtml({ mono: state.settings.pdfMode === 'mono', title: name + ' – Live Race', url: u.url, svg: u.svg }),
+        'QR code live race.pdf'
+      );
       msg.textContent = res && res.saved ? 'Saved: ' + res.path : 'Not saved.';
     } catch (x) {
       msg.textContent = 'Could not make the PDF: ' + x.message;
@@ -1288,7 +1298,10 @@ async function renderRules() {
     msg.textContent = 'Making the PDF...';
     try {
       const name = (state.settings.appName || '').trim() || DEFAULT_NAME;
-      const res = await api.exportPdf(Report.rulesHtml({ title: name + ' – Racing Rules', html: box.innerHTML }), 'Racing Rules.pdf');
+      const res = await api.exportPdf(
+        Report.rulesHtml({ mono: state.settings.pdfMode === 'mono', title: name + ' – Racing Rules', html: box.innerHTML }),
+        'Racing Rules.pdf'
+      );
       msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
     } catch (x) {
       msg.textContent = 'Could not make the PDF: ' + x.message;

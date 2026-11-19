@@ -39,7 +39,7 @@ const GeneralPage = (() => {
     // the status of every topic, for the side list
     const status = {
       look: `${get('uiscale').value}% · ${short(optText(get('depthlevel')))}`,
-      units: `${Speed.unitName(get('speedunit').value)} · ${get('distunit').value === 'ft' ? 'feet' : 'metres'}`,
+      units: `${Speed.unitName(get('speedunit').value)} · ${get('distunit').value === 'ft' ? 'feet' : 'metres'} · ${get('pdfmode') && get('pdfmode').value === 'mono' ? 'monochrome' : 'colour'} prints`,
       home:
         [S.homeHeader ? 'picture' : '', S.clubLogo ? 'logo' : '', S.appName ? 'own name' : ''].filter(Boolean).join(' · ') ||
         'standard look',
@@ -149,6 +149,14 @@ const GeneralPage = (() => {
       R('Speed', 'In the tables and the PDF of a session: e.g. 12.4 km/h or 7.7 mph', seg('speedunit', { kmh: 'km/h', mph: 'mph' }), {
         hint: hintOf('speedunit')
       }),
+      R(
+        'PDF prints',
+        'The race report, the heat list, the standings, the rules and the QR code',
+        seg('pdfmode', { colour: 'Colour', mono: 'Monochrome' }),
+        {
+          hint: hintOf('pdfmode')
+        }
+      ),
       R(
         'Distance',
         `A lane of ${Speed.lengthText(28.45, 'm')} is ${Speed.lengthText(28.45, 'ft')}; everything stays saved in metres`,

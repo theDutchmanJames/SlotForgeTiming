@@ -1058,7 +1058,7 @@ async function renderChampStandings(box) {
     msg.textContent = 'Making the PDF...';
     try {
       const res = await api.exportPdf(
-        Report.standingsHtml({ championship: c.name || 'Championship', table: t, lead }),
+        Report.standingsHtml({ mono: state.settings.pdfMode === 'mono', championship: c.name || 'Championship', table: t, lead }),
         Report.standingsFileName(c.name, which)
       );
       msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';

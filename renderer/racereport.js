@@ -367,7 +367,7 @@
   // ---- the parts of the pages ----
   const disc = (lane, big) => (lane ? `<span class="ln${big ? ' ln-big' : ''}" style="--c:${laneColor(lane)}">${lane}</span>` : '');
   function head({ session, label, dateText, kicker, title, sub, right }) {
-    const d = session.date ? new Date(session.date) : null;
+    const d = session && session.date ? new Date(session.date) : null;
     return `<header class="rp-head"><div class="rp-ht"><span class="rp-k">${esc(kicker)}</span><h1>${esc(title)}</h1><p class="rp-meta">${sub}</p></div><div class="rp-hr">${right || ''}${
       d && !isNaN(d)
         ? `<span class="rp-date"><b>${d.getDate()}</b><small>${esc(d.toLocaleString('en-GB', { month: 'short' }))} ${d.getFullYear()}</small></span>`
@@ -677,7 +677,29 @@
       ? '<svg width="0" height="0" style="position:absolute"><defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#fff"/><line x1="0" y1="0" x2="0" y2="4" stroke="#999" stroke-width="1.4"/></pattern></defs></svg>'
       : '';
 
+  // ---- the other prints (2.4.0, SlotForgeRestyle.md "Race Report PDF"): the heat list, the standings, the racing rules, the QR code of Live Race ----
+  // the same page: the style sheet of the race report, Colour or Monochrome, portrait or landscape, and the print's own rules (extra)
+  function printDoc({ title, mono, landscape, body, extra = '' }) {
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>
+      ${css(mono)}
+      ${landscape ? '@page { size: A4 landscape; margin: 10mm 12mm; }' : ''}
+      ${extra}
+    </style></head><body class="${mono ? 'pdf-mono' : 'pdf-colour'}">${defs(mono)}${body}</body></html>`;
+  }
+  // the lanes in the colour of their disc, for a table whose columns are lanes (first: the number of the column of lane 1)
+  const laneHeads = (n, first, scope) =>
+    Array.from(
+      { length: n },
+      (_, l) => `${scope} th:nth-child(${l + first})::before { background: ${laneColor(l + 1)}; content: '${l + 1}'; }`
+    ).join('\n');
+  const mark = '<span class="rp-mark"><!--SF-PDF-WORDMARK--></span>';
+  const today = () => ({ date: new Date().toISOString() });
+
   const api = {
+    printDoc,
+    laneHeads,
+    mark,
+    today,
     story,
     storyHtml,
     middle,
