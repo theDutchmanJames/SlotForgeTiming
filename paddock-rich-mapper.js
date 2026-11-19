@@ -382,6 +382,10 @@ function measured(session, rows, databaseId) {
   // Only for those laps (measured: true in the journal); a lap timed by Timing's own clock keeps the strict rule. A mismatch of more than 15 minutes is no
   // clock difference: it stays refused.
   const SHIFT_MAX = 15 * 60e3;
+  // (2.4.0) A journal from before 2.3.1 does not say which laps the hardware measured (it has no "marks"): a DS race of then was refused for
+  // good. A lap timed by Timing's own clock never overlaps (its time is the gap between two crossings), so for those journals every lap may
+  // move as a hardware-timed lap does, and the race says so. Journals since 2.4.0 have marks: 1 and keep the strict rule.
+  const unmarked = j.marks !== 1;
   let shifted = false;
   for (const p of ps) {
     let prior = null;
@@ -389,7 +393,7 @@ function measured(session, rows, databaseId) {
       const h = bounds.get(l.heatId),
         floor = Math.max(prior ?? -Infinity, h.start),
         gap = floor - (l.endedAtMs - l.durationMs);
-      if (gap > 0 && (gap < 1 || (hardwareTimed.has(l) && gap <= SHIFT_MAX))) {
+      if (gap > 0 && (gap < 1 || ((hardwareTimed.has(l) || unmarked) && gap <= SHIFT_MAX))) {
         if (gap >= 1) shifted = true;
         let e = Math.max(l.endedAtMs, floor + l.durationMs);
         while (e - l.durationMs < floor) e = up(e);

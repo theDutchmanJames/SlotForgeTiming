@@ -285,7 +285,10 @@ test('DS: laps kept during a pause, all added at the resume, are accepted in ord
     [...laps.map(l => l.number)].sort((a, b) => a - b)
   );
   const duration = Date.parse(bundle.race.endedAt) - Date.parse(bundle.race.startedAt);
-  assert(laps.every(l => l.endedAtMs <= duration), 'the session still covers its last crossing');
+  assert(
+    laps.every(l => l.endedAtMs <= duration),
+    'the session still covers its last crossing'
+  );
 });
 test('DS: a mismatch of more than 15 minutes is no clock difference and stays refused; Timing-timed laps keep the 1 ms rule', () => {
   const { s, rows } = dsRace((e, row) => {
@@ -299,7 +302,13 @@ test('the race journal marks the laps whose time the hardware measured', () => {
     E = require('../renderer/engine.js');
   const r = E.createRace({ type: 'race', laps: 10, entries: [{ lane: 0, carId: 'c', driverId: 'd' }] }),
     journal = { heats: [] };
-  PR.attach(r, journal, 1, () => 0, t => t);
+  PR.attach(
+    r,
+    journal,
+    1,
+    () => 0,
+    t => t
+  );
   r.start(0);
   r.cross(0, 100);
   r.cross(0, 5100);
@@ -307,4 +316,50 @@ test('the race journal marks the laps whose time the hardware measured', () => {
   const laps = r.paddockReview().entries[0].laps;
   assert.equal(laps[0].measured, undefined, 'a lap of Timing’s own clock');
   assert.equal(laps[1].measured, true);
+});
+// ---- (2.4.0) a DS race from before 2.3.1: its journal does not say which laps the box measured ----
+test('a journal from before the marks (a DS race of then) is accepted, with the note; a journal with marks keeps the strict rule', () => {
+  const old = () => {
+    const s = structuredClone(dsBase),
+      rows = structuredClone(dsRows),
+      e = s.paddockJournal.heats[0].entries[0];
+    e.laps.forEach(l => delete l.measured); // (no lap says the box measured it)
+    e.laps[3].time += 25;
+    rows.find(r => r.carId === e.carId && r.lapNumber === 4).time = e.laps[3].time;
+    return { s, rows };
+  };
+  const a = old();
+  delete a.s.paddockJournal.marks;
+  const { bundle } = Mapper.measured(a.s, a.rows, dsDb);
+  assert(/moved forward to fit the lap times measured/.test(bundle.context.notes));
+  const b = old();
+  b.s.paddockJournal.marks = 1;
+  assert.throws(
+    () => Mapper.measured(b.s, b.rows, dsDb),
+    /overlap or are incomplete/,
+    'a lap of Timing’s own clock that overlaps is a real contradiction'
+  );
+});
+test('a new race journal carries the marks; a journal that has heats already is left as it is', () => {
+  const PR = require('../renderer/paddockrace.js'),
+    E = require('../renderer/engine.js');
+  const mk = () => E.createRace({ type: 'race', laps: 10, entries: [{ lane: 0, carId: 'c', driverId: 'd' }] });
+  const fresh = { heats: [] };
+  PR.attach(
+    mk(),
+    fresh,
+    1,
+    () => 0,
+    t => t
+  );
+  assert.equal(fresh.marks, 1);
+  const older = { heats: [{ id: 1, name: 'Heat 1', startedAt: 0, endedAt: null, entries: [], crossings: {} }] };
+  PR.attach(
+    mk(),
+    older,
+    1,
+    () => 0,
+    t => t
+  );
+  assert.equal(older.marks, undefined, 'a race resumed after the update keeps what its journal could say');
 });

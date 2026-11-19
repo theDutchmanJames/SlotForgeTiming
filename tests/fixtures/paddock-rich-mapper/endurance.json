@@ -99,6 +99,7 @@
             "weatherNote": ""
           }
         ],
+        "marks": 1,
         "classifiedTimes": {
           "local": 21000
         }

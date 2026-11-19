@@ -19,7 +19,7 @@ for(const p of race.participants){let prior=null;for(const l of p.laps){if(prior
 for(const p of race.participants)for(const l of p.laps){const o=[...original].find(([k])=>k.endsWith('#'+l.number)&&Math.abs(original.get(k)-l.endedAtMs)<1);assert(o,'crossing moved by less than 1 ms');}
 
 // 2. A real contradiction (a lap claiming to start 5 ms before the previous crossing) is still refused.
-const broken=structuredClone(s),lap=broken.paddockJournal.heats[0].entries[0].laps[3];lap.time+=5;
+const broken=structuredClone(s),lap=broken.paddockJournal.heats[0].entries[0].laps[3];lap.time+=5;broken.paddockJournal.marks=1; // (a journal of now, 2.4.0: it says which laps the hardware measured; one from before may move its laps, see racenight.test.js)
 const rows=structuredClone(L);rows.find(r=>r.carId===broken.paddockJournal.heats[0].entries[0].carId&&r.lapNumber===4).time=lap.time;
 assert.throws(()=>M.measured(broken,rows,db),/overlap or are incomplete/);
 

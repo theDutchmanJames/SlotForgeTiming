@@ -8,6 +8,7 @@
   const clone = x => JSON.parse(JSON.stringify(x));
   function attach(engine, journal, id, clock = () => Date.now(), toWall = () => clock()) {
     if (!journal) return engine;
+    if (!journal.heats.length && journal.marks === undefined) journal.marks = 1; // (2.4.0: a new journal marks the laps the hardware measured itself)
     let heat = journal.heats.find(h => h.id === id);
     const ensure = () =>
       heat ||
