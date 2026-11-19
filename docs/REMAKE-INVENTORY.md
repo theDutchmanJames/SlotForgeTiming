@@ -113,9 +113,76 @@ Home, Chart Editor, Live Race pages, Leaderboard Editor, Parallel Port page (the
 Startup screen, Statistics and Performance. The rules files without a screen (heats, endurance, tokens, tyre wear, weather,
 delta, points) need nothing. No raw `prompt()` or `alert()` is left: everything uses the app's own Dialog.
 
+## Design pass: how the pages look and read
+Judged from screenshots of every page, editor and race state (QA profile, dark theme, 1366 px), apart from the code.
+Verdicts here are about the design only: **Design remake** · **Design rework** · **Good**.
+
+### What keeps coming back
+1. **Help before content.** Nearly every list and editor opens with an outlined explainer box (often 3-5 lines), so
+   help text wins the hierarchy over the content and the main action. On a page with one or two items it is most of what
+   you see.
+2. **Every setting looks the same.** The two things set every night (race over after, number of laps) look exactly
+   like "Sensor must be blocked… (seconds)". The rail has "Only if you need it", the content doesn't.
+3. **Red is louder than the main action.** Delete, Archive, trash icons and "Delete all data" are red and repeat on every
+   card; Timing Hardware has 2-3 red primary buttons per page; a disabled primary is a muddy red that still looks clickable.
+4. **Cards that carry no information.** Database lists default to tiles that are 75 % a random colour with one letter
+   (B, B, B…). About 8 cars per screen, nothing that tells them apart.
+5. **Wide screens used poorly.** List pages with 1-2 cards leave half the screen empty; editors stack single columns
+   (the points table is 10+ full-width rows).
+6. **Every editor is framed differently.** Layout and Leaderboard go full width, Chart, Widget and Image stay under the
+   page's explainer; Multi-Class and Resource say "Back to systems" and "Saved" where the others say "Cancel" and
+   "Ready to use". Four save models (autosave, Undo/Save footer, inline save buttons, "saved automatically").
+7. **Uneven empty states.** A proper card on Token Records and Plugin Pages; plain grey text on Teams, Plugins and Virtual
+   Rival; empty table headers on Championships; a blank page on "Other"; a black box for an empty layout.
+8. **Labels as sentences, help cut off.** "The track length is that of (optional)", "Callsign (3 letters)" on every card,
+   descriptions cut off at "…More" right where the choice is explained, truncated race-display labels ("Positi…").
+9. **Unlabelled dots.** Red, yellow and green dots on rails and cards, never explained, sometimes contradicting the badge
+   next to them (red dots on the rail beside a green "Ready to race").
+10. **Race states reuse the running page.** After Finalize and between heats the app shows the running layout greyed
+    out, instead of a layout made for that moment.
+
+### Per page
+
+| Page | Design verdict | What you see |
+|---|---|---|
+| Race window, running | Design remake | Cell labels overlap their values ("Race clock" over the time); "Lap time -2:07.543" in the biggest font; an empty "Drive…" column; Start/Pause/Stop/Yellow/Red look alike, Stop and Red not marked as dangerous; display buttons and the director panel duplicate each other; lane cards below the fold |
+| Race window, after Finalize | Design remake | The race board greyed out, "Lap time 0.000", every control disabled; the only confirmation a small grey line |
+| Race window, between heats | Design rework | "Next up heat 2" is good, but there are two Start buttons; the board is sorted by grid position (3, 2, 4, 1); heat list and overall result are at the very bottom |
+| Finalize review | Good | Clear and ranked, the lap sparklines work. "Delete all data" sits right next to Finalize at the same size, and again at the bottom |
+| Race Setup editor | Design remake | Race Settings is one flat list of 13 identical rows; Track Call spread over 4 rows; a system is picked in a dropdown and then switched on again in a pill row; a native dropdown plus a duplicate track card; long engineering labels |
+| Slotcars, Drivers lists | Design remake | Letter tiles (see 4); "Archive…" in red 48 times; a red trash on every driver |
+| Car editor | Design remake | About 30 fields of equal weight in a long modal; the footer cut off; "Reload current record", "Save history"; 6-7 lines of help under fields |
+| Calculations | Design remake | About 2600 px of demo, prose, a "try it" sandbox and real settings mixed, with two small save buttons; sandbox and real settings look identical |
+| Home | Design rework | Start a Race is the right centrepiece, but the race picker looks like a heading, the helmet art squeezes the driver and car pickers, and "No timing hardware chosen" has the same weight as "34 drivers". (The title showed "TRACK" doubled behind it in the capture; check on a real screen.) |
+| Tracks | Design rework | Letter tiles for 9 tracks (two are "C") where a layout drawing would say it at once; an overloaded toolbar |
+| Track editor | Design rework | Fine structure; Length and Lanes is a wall of "(optional)" and π maths |
+| Driver editor | Good | Clear sections, sticky footer; virtual-rival help in Basics |
+| Results and Records | Design rework | The sessions list is good; the help line comes first; a ragged last column mixing Remove and sync notes; Track Records and Personal Bests repeat the same rows |
+| Championships, Rounds (Results) | Design rework | Empty standings as bare headers; a lone "R1" floating in the progress bar; "Export to PDF" as the primary on a page with no data; one small round card on a full-width panel |
+| Teams, Plugins, Virtual Rival, Other (empty) | Design rework | Plain text, or nothing, where a designed empty card belongs |
+| Race Setups list | Design rework | Add, a 7-pill filter and a view toggle at equal weight; the kinds shown twice; cards of different heights; an unlabelled green dot |
+| Race system lists (fuel … resource) | Design rework | The explainer takes the top third; 1-2 cards on a 3-column grid; Add/New and Copy/Duplicate mixed; List/Grid on some pages only |
+| Race system editors | Design rework | A strong shell (rail with summaries, sticky footer), but prose intros of 5 lines; empty steppers that look broken (Damage: rail says "deslot 1 point", the field is empty); dependent switches not nested; the championship points table as one tall column |
+| Timing Hardware pages | Design rework | 2-3 red primaries per page; actions loose on one page, in a form card on the next; a long middle rail; fine print inside the Parallel Port card |
+| Connections | Design rework | Two nested navs in one rail; what organisers need on the night (address, QR, password) is behind sub-links |
+| Race Director (settings) | Design rework | A 5-line explainer above a single two-way toggle |
+| Customization editors | Design rework | No shared editor shell (see 6); the layout canvas is small, its widget tree 18 bare headings; the image type picker is greyed out yet the biggest block |
+| Customization libraries | Good | Real previews; one card in the top-left of an empty page; only Audio says "Used by" |
+| Race Results (customization) | Good | The settings-and-preview split is the best page here; the preview text is too small to read |
+| App Settings › General | Good | The rail with value summaries is excellent; Picture quality and Units are too thin for pages of their own; Performance hides its explanations behind "More" |
+| App Theme, Import and Export, Help, Racing Rules, Plugin Pages, Balance of Power, Time Tokens | Good | Small points only (a full temp path in bold, a detached search field, the explainer repeating the header) |
+
+### What this changes in the order
+The design pass agrees with the feature pass on the race window, the Race Setup editor and the screens after a race. It
+adds three that the feature pass rated lower: the **Database lists and the Car editor** (letter tiles, 30-field modal),
+**Calculations**, and a set of **shared fixes** that touch every page: one explainer style that stays small, one editor
+shell, one empty-state card, one rule for red, and settings in tiers (everyday first, the rest folded away).
+
 ## Suggested order
 1. After the race (#1): the flow you notice every race night, and it settles where results, standings and the PDF show.
-2. Race window controls (#2), then Race Setup and start checks (#3): they share the race page.
-3. Timing Hardware with DS and the Lane Check (#4, #5, Tier 2).
-4. Results and Records (#8), which builds on #1.
-5. Audio (#6), Widgets (#7), Paddock (#9), then the Tier 2 reworks.
+2. Race window during the race (#2): one control strip, no duplicate controls, a board that doesn't overlap itself.
+3. Race Setup editor and start checks (#3), with settings in tiers.
+4. The shared fixes (explainer, editor shell, empty state, red, tiers), so every later remake starts from them.
+5. Database lists and the Car editor, then Results and Records (#8).
+6. Timing Hardware with DS and the Lane Check (#4, #5).
+7. Audio (#6), Widgets (#7), Paddock (#9), Calculations, then the Tier 2 reworks.
