@@ -327,12 +327,12 @@ const TokenPanel = (() => {
       lastSub = {},
       dec = o.decrements || [];
     box.hidden = false;
-    box.innerHTML = `<div class="tkhead"><strong>Time tokens</strong><span class="muted">Add time to a lane to switch it on. The lane turns red when its time is up.</span><span class="tkgrow"></span>
+    box.innerHTML = `<div class="tkhead"><strong>Time tokens</strong><span class="muted">Add time to a lane to switch it on. The lane turns red when its time is up.</span><span class="tksum" data-tk="sum" role="status"></span><span class="tkgrow"></span>
         <button class="btn" data-tk="pause">Pause all</button></div>
       <div class="wrap"><table class="fields tktable"><thead><tr><th>Lane</th><th>Driver</th><th>Time left</th><th>${dec.length ? 'Add or take off time' : 'Add time'}</th><th></th></tr></thead><tbody>${o.lanes
         .map(
-          l => `<tr data-lane="${l}">
-        <td><strong>${l + 1}</strong></td>
+          l => `<tr data-lane="${l}"${o.color ? ` style="--c:${esc(o.color(l))}"` : ''}>
+        <td><span class="tklane">Lane</span><strong>${l + 1}</strong></td>
         <td><select data-tk="who" aria-label="Driver on lane ${l + 1}"><option value="">Guest</option>${o.drivers.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></td>
         <td class="tkcell"><span class="tkclock" data-tk="clock">00:00</span> <span class="tkstate" data-tk="state">No time</span></td>
         <td><div class="tkbtns">${o.increments.map(m => `<button class="btn" data-tk="add" data-min="${m}">${esc(Tokens.incLabel(m))}</button>`).join('')}</div>${dec.length ? `<div class="tkbtns tkminus">${dec.map(m => `<button class="btn" data-tk="sub" data-min="${m}" aria-label="Take ${m} minutes off lane ${l + 1}">${esc(Tokens.decLabel(m))}</button>`).join('')}</div>` : ''}</td>
@@ -379,7 +379,8 @@ const TokenPanel = (() => {
       if (!K) return;
       const T = o.T(),
         ph = o.phase(),
-        open = ph === 'ready' || ph === 'running' || ph === 'paused' || ph === 'countdown' || ph === 'between';
+        open = ph === 'ready' || ph === 'running' || ph === 'paused' || ph === 'countdown' || ph === 'between',
+        count = {};
       o.lanes.forEach(l => {
         const tr = row(l);
         if (!tr) return;
@@ -395,7 +396,9 @@ const TokenPanel = (() => {
           sc.dataset.c = color;
           sc.style.background = color;
           sc.style.color = color ? Tokens.onColor(color) : '';
+          if (tr.style && tr.style.setProperty) tr.style.setProperty('--tkc', color || '');
         }
+        count[st] = (count[st] || 0) + 1;
         tr.querySelectorAll('[data-tk="add"]').forEach(b => {
           b.disabled = !open;
         });
@@ -410,6 +413,19 @@ const TokenPanel = (() => {
         if (document.activeElement !== sel && sel.value !== want) sel.value = want;
         sel.disabled = !open;
       });
+      const sum = box.querySelector('[data-tk="sum"]');
+      if (sum && sum.dataset && sum.dataset.tk === 'sum')
+        set(
+          sum,
+          [
+            [count.running, 'running'],
+            [count.warning, 'almost up'],
+            [count.out, "time's up"]
+          ]
+            .filter(x => x[0])
+            .map(x => x[0] + ' ' + x[1])
+            .join(' · ') || 'No lane has time'
+        );
       const p = box.querySelector('[data-tk="pause"]');
       if (p) {
         set(p, ph === 'paused' ? 'Resume all' : 'Pause all');

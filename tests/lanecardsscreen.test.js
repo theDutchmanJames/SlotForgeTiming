@@ -155,7 +155,7 @@ const fresh = () => { dom.created.length = 0; };
   say('a race without systems still has time and laps to adjust: the cards show those two pads only', E('fd-director').hidden === false && cards().view().groups.join() === 'time,laps' && padOf(0, 'points').hidden === true && padOf(0, 'damage').hidden === true && padOf(0, 'time').hidden === false);
   await finish();
   fresh(); await openRace({ id: 'lc4', name: 'Tokens', sessionType: 'tokens', layout: '' }, store.tracks[1], rows(1, 2));
-  say('a Time Token Session has no lane cards: Track actions and Time tokens, as before', folders().map(x => x.id + ':' + x.tone).join() === 'track:green,tokens:teal' && !E('racehost').innerHTML.includes('id="lcpanel"') && !run('live.lcPanel'));
+  say('a Time Token Session has no lane cards: Time tokens (2.4.0: first) and Track actions', folders().map(x => x.id + ':' + x.tone).join() === 'tokens:teal,track:green' && !E('racehost').innerHTML.includes('id="lcpanel"') && !run('live.lcPanel'));
   await finish();
 
   // ---------- four lanes ----------

@@ -845,6 +845,7 @@ const LiveView = (() => {
         drivers: ui.drivers,
         increments: ui.increments,
         decrements: ui.decrements || [],
+        color: l => HomeStats.laneColor(V.stat().layout, l),
         T,
         phase: () => V.dyn().phase,
         label: l => {

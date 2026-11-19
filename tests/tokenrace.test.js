@@ -162,6 +162,8 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   const panelHtml = E('tokenpanel').innerHTML;
   say('the controls list every lane with the buttons of the settings, a driver choice with Guest, and Pause all', (panelHtml.match(/data-lane="/g) || []).length === 4 && ['+1 min', '+5 min', '+10 min', '+15 min', '+30 min', '+60 min', '\u22121 min', '\u22125 min', '\u221210 min'].every(t => panelHtml.includes(t)) && panelHtml.includes('>Guest<') && panelHtml.includes('>Kim<') && panelHtml.includes('End time now') && panelHtml.includes('Undo') && panelHtml.includes('Pause all'));
 
+  say('2.4.0 Token Desk: every lane is a card with its number in its lane colour, the head has a place for what the lanes are doing, and the time tokens come first', /<tr data-lane="0" style="--c:#[0-9a-f]{6}">/i.test(panelHtml) && panelHtml.includes('<span class="tklane">Lane</span><strong>1</strong>') && panelHtml.includes('class="tksum" data-tk="sum"') && E('racehost').innerHTML.indexOf('id="tokenpanel"') < E('racehost').innerHTML.indexOf('id="trackgrid"'));
+
   // ---------- ending the session ----------
   ops().add(1, 0.3); await wait(60); key('2'); await wait(60); key('2');
   const totalBefore = tokSessions().length;
@@ -265,10 +267,10 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   const fakePanel = () => { const part = k => ({ dataset: { tk: k }, disabled: false, textContent: '', className: '', style: {}, value: '' });
     const rowsOf = {}; [0, 1].forEach(l => { const r = { className: '', dataset: { lane: String(l) }, parts: {}, adds: [5, 10].map(m => ({ ...part('add'), dataset: { tk: 'add', min: String(m) } })), subs: [1, 5].map(m => ({ ...part('sub'), dataset: { tk: 'sub', min: String(m) } })) };
       ['clock', 'state', 'undo', 'end', 'clear', 'who'].forEach(k => { r.parts[k] = part(k); });
-      r.querySelector = sel => r.parts[/data-tk="(\w+)"/.exec(sel)[1]]; r.querySelectorAll = sel => (/"sub"/.test(sel) ? r.subs : r.adds); rowsOf[l] = r; });
-    const pause = part('pause'), box = { hidden: true, innerHTML: '', querySelector: sel => (/tr\[data-lane="(\d+)"\]/.test(sel) ? rowsOf[/"(\d+)"/.exec(sel)[1]] : pause) };
-    return { rowsOf, pause, box }; };
-  { const { rowsOf, pause, box } = fakePanel();
+      r.style = { props: {}, setProperty(k, v) { this.props[k] = v; } }; r.querySelector = sel => r.parts[/data-tk="(\w+)"/.exec(sel)[1]]; r.querySelectorAll = sel => (/"sub"/.test(sel) ? r.subs : r.adds); rowsOf[l] = r; });
+    const pause = part('pause'), sum = part('sum'), box = { hidden: true, innerHTML: '', querySelector: sel => (/tr\[data-lane="(\d+)"\]/.test(sel) ? rowsOf[/"(\d+)"/.exec(sel)[1]] : /"sum"/.test(sel) ? sum : pause) };
+    return { rowsOf, pause, sum, box }; };
+  { const { rowsOf, pause, sum, box } = fakePanel();
     const K = ctx.Tokens.create({ lanes: 2, warnSeconds: 60, warnColor: '#ffb300', outColor: '#d62828' }); let T = 0, ph = 'running';
     const panel = run('TokenPanel').build(box, { tokens: K, lanes: [0, 1], drivers: [], increments: [5, 10], decrements: [1, 5], T: () => T, phase: () => ph, ops: {}, label: () => '' });
     const on = (l, ...k) => k.map(x => !(x === 'add' ? rowsOf[l].adds.every(a => a.disabled) : x === 'sub' ? rowsOf[l].subs.every(a => a.disabled) : rowsOf[l].parts[x].disabled)).join();
@@ -278,7 +280,9 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('a lane with time: everything can be pressed, the other lane is unchanged', on(0, 'add', 'sub', 'undo', 'end', 'clear') === 'true,true,true,true,true' && rowsOf[0].parts.state.textContent === 'Running' && rowsOf[0].parts.clock.textContent === '10:00' && on(1, 'sub', 'undo', 'end', 'clear') === 'false,false,false,false');
     T = 9.5 * 60000; panel.update();
     say('in the warning the state says so in the warning colour', rowsOf[0].parts.state.textContent === 'Almost up' && rowsOf[0].parts.state.style.background === '#ffb300' && rowsOf[0].className === 'tk-warning');
+    say('2.4.0 Token Desk: the card of the lane has the warning colour for its edge, and the head says what the lanes are doing (1 almost up)', rowsOf[0].style.props['--tkc'] === '#ffb300' && sum.textContent === '1 almost up');
     T = 11 * 60000; panel.update();
+    say('...time up: the edge in the colour of time up, and the head says so', rowsOf[0].style.props['--tkc'] === '#d62828' && sum.textContent === "1 time's up");
     say('time up: red, nothing to undo or end any more, but the lane can be cleared and new time bought', rowsOf[0].parts.state.textContent === "Time's up" && rowsOf[0].parts.state.style.background === '#d62828' && on(0, 'add', 'sub', 'undo', 'end', 'clear') === 'true,false,false,false,true');
     ph = 'finished'; panel.update();
     say('when the session is over nothing can be pressed', on(0, 'add', 'sub', 'undo', 'end', 'clear') === 'false,false,false,false,false' && on(1, 'add') === 'false' && pause.disabled === true);

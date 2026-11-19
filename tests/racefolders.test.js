@@ -147,7 +147,7 @@ const btn = (arr, i) => run(`live.${arr}[${i}].b`);
   // ---------- the Time Token Session ----------
   await openRace({ id: 'rf4', name: 'Tokens', sessionType: 'tokens', layout: '' }, store.tracks[1], rows(1, 2));
   const ft = folders();
-  say('a Time Token Session has Track actions (green) and Time tokens (teal): no Adjust, no pit buttons', ft.map(x => x.id + ':' + x.tone).join() === 'track:green,tokens:teal' && run('live.pitBtns.length') === 0 && run('live.callBtns.length') === 4);
+  say('a Time Token Session has Track actions (green) and Time tokens (teal): no Adjust, no pit buttons', ft.map(x => x.id + ':' + x.tone).join() === 'tokens:teal,track:green' && run('live.pitBtns.length') === 0 && run('live.callBtns.length') === 4);
   say('...the lane controls of the tokens are in their folder', E('racehost').innerHTML.includes('id="tokenpanel" class="tkpanel"') && !!run('live.tkPanel'));
   run('state.race = null; live = null'); saved.length = 0;
 

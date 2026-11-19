@@ -5554,3 +5554,55 @@ html .dp-table td{padding:5px 8px;border:0;border-bottom:1px solid color-mix(in 
 html .dp-table td:not(:first-child){font-family:"Roboto Mono",Consolas,monospace}
 @media (max-width:560px){html .vchead{grid-template-columns:1fr}html .vchead>.vcpic{max-width:280px}html .dp-sum{grid-template-columns:repeat(3,minmax(0,1fr))}}
 html .dp-chips+.dp-change{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ==== Token Desk (2.4.0, SlotForgeRestyle.md "Token Desk"): the time tokens of a Time Token Session, on the race screen and on the Tokens page of Live
+   Race. A card for every lane (the table stays: its rows are the cards): the lane in its colour and the driver, the clock large with its state, the
+   buttons that add time as a grid, the ones that take it off smaller, Undo / End / Clear in the foot. The edge of the card is the state ==== */
+html .tkpanel .tkhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 12px}
+html .tkpanel .tkhead>.muted{font-size:12.5px}
+html .tkpanel .tksum{display:inline-flex;align-items:center;padding:3px 11px;border:1px solid var(--line);border-radius:14px;background:var(--bg);font-size:12px;font-weight:600;white-space:nowrap}
+html .tkpanel .tkhead .btn{min-height:32px;font-size:12.5px}
+html .tkpanel>.wrap{overflow:visible}
+html .tkpanel table.tktable{display:block;width:100%;border:0;background:none}
+html .tkpanel .tktable>thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+html .tkpanel .tktable>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+html .tkpanel .tktable tr{--c:var(--muted);display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"lane who" "clock clock" "add add" "foot foot";align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-top:4px solid color-mix(in srgb,var(--ink) 18%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html .tkpanel .tktable td{display:block;padding:0;border:0;background:none}
+html .tkpanel .tktable td:nth-child(1){grid-area:lane;display:flex;align-items:center;gap:7px}
+html .tkpanel .tktable td:nth-child(2){grid-area:who}
+html .tkpanel .tktable td:nth-child(3){grid-area:clock}
+html .tkpanel .tktable td:nth-child(4){grid-area:add}
+html .tkpanel .tktable td:nth-child(5){grid-area:foot;padding-top:10px;border-top:1px solid var(--line)}
+html .tkpanel .tklane{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .tkpanel .tktable td:nth-child(1)>strong{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--c);color:#0f1216;font:700 17px/1 "Barlow Condensed","Segoe UI",sans-serif}
+html .tkpanel .tktable select{width:100%;min-width:0;height:34px}
+/* the clock and its state */
+html .tkpanel .tktable td.tkcell{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-radius:10px;background:var(--bg)}
+html .tkpanel .tkclock{min-width:0;font:700 38px/1.05 "Roboto Mono",Consolas,monospace;letter-spacing:-.02em;color:var(--ink)}
+html .tkpanel .tkstate{padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:600;white-space:nowrap}
+html .tkpanel tr.tk-idle .tkclock{color:var(--muted)}
+html .tkpanel .tktable tr.tk-running{border-top-color:#3ecf8e}
+html .tkpanel tr.tk-running .tkstate{border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));background:color-mix(in srgb,#3ecf8e 14%,var(--panel));color:#3ecf8e}
+html .tkpanel .tktable tr.tk-warning{border-top-color:var(--tkc,#ffb300);background:color-mix(in srgb,var(--tkc,#ffb300) 7%,var(--panel))}
+html .tkpanel .tktable tr.tk-out{border-top-color:var(--tkc,#d62828);background:color-mix(in srgb,var(--tkc,#d62828) 11%,var(--panel))}
+html .tkpanel tr.tk-out .tkclock{color:var(--tkc,#d62828)}
+/* the buttons: add time as a grid, take it off smaller, the rest in the foot */
+html .tkpanel .tktable td:nth-child(4)>.tkbtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+html .tkpanel .tktable td:nth-child(4)>.tkbtns .btn{min-height:38px;padding:0 6px;font:600 14px "Segoe UI",system-ui,sans-serif;justify-content:center}
+html .tkpanel .tktable td:nth-child(4)>.tkbtns:not(.tkminus) .btn:not(:disabled){border-color:color-mix(in srgb,#3ecf8e 40%,var(--line));background:color-mix(in srgb,#3ecf8e 10%,var(--panel))}
+html .tkpanel .tktable td:nth-child(4)>.tkbtns.tkminus{margin-top:6px}
+html .tkpanel .tktable td:nth-child(4)>.tkbtns.tkminus .btn{min-height:28px;font-size:12px;font-weight:500}
+html .tkpanel .tktable td:nth-child(5)>.tkbtns{display:flex;gap:6px}
+html .tkpanel .tktable td:nth-child(5)>.tkbtns .btn{flex:1 1 0;min-height:30px;padding:0 6px;font-size:12.5px;justify-content:center}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .tkpanel tr.tk-running .tkstate{color:#17804f}
+/* the penalties beside the time tokens (and in the folders when the Lane Desk is off): a Race Sheet, the log as quiet lines */
+html .rt-folders #penpanel>.wrap{border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow-x:auto}
+html .rt-folders #penpanel table.fields{width:100%;border:0;border-collapse:collapse;background:none;font-size:12.5px}
+html .rt-folders #penpanel table.fields th{padding:7px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left;white-space:nowrap}
+html .rt-folders #penpanel table.fields td{padding:6px 12px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:none}
+html .rt-folders #penpanel table.fields tr:last-child td{border-bottom:0}
+html .rt-folders #penpanel td:first-child{width:34px;font:700 15px "Barlow Condensed","Segoe UI",sans-serif}
+html .rt-folders #penpanel td.num{font-family:"Roboto Mono",Consolas,monospace}
+html .rt-folders #penpanel td.actions{text-align:right;white-space:nowrap}
+html .rt-folders #penpanel td.actions .btn{min-height:28px;padding:0 10px;font-size:12px}
+html #racehost .rt-folders #penpanel>h3{margin:14px 0 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rt-folders #penpanel>.lv-log{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted)}

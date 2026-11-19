@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
+| [Token Desk](#token-desk) | The time tokens of a Time Token Session: a card for every lane with the clock large, the buttons as a grid, the state as the edge | Race tab and Live Race › Tokens (Time Token Sessions) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1538,6 +1539,28 @@ html .vcmeter>i{width:var(--p);background:color-mix(in srgb,#3ecf8e 55%,var(--pa
 html .dp-chip.up{background:color-mix(in srgb,#3ecf8e 12%,var(--panel));color:#3ecf8e}
 ```
 
+## Token Desk
+
+The time tokens of a Time Token Session (`renderer/tokenui.js`: TokenPanel; styles under `.tkpanel`), on the race screen and on the Tokens page of
+Live Race. On the race screen the Time tokens folder comes first (before Track actions): it is what a token night is run with.
+
+- **The head**: the hint, then **what the lanes are doing** as a pill (*2 running · 1 almost up · 1 time's up*, or *No lane has time*), and Pause all
+  on the right.
+- **A card for every lane** (the table is kept for screen readers and the tests: its rows are the cards), in a grid of 290px and up:
+  *LANE* and its number in a disc of the lane colour, the driver choice beside it; **the clock** in mono 38px in a dark box with its state pill; the
+  **buttons that add time** as a 3-column grid (tinted green while they can be pressed), **the ones that take time off** smaller under them, and
+  **Undo · End time now · Clear** in the foot.
+- **The state is the edge**: a grey top for no time, green while it runs, the warning colour (Time Tokens settings) when it is almost up, and the
+  colour of time up with a tint of the card when it is up (the clock in that colour too).
+- **Penalties** beside the time tokens (and in the folders whenever the Lane Desk is off) are a Race Sheet in a box; the log is quiet lines.
+
+```css
+html .tkpanel .tktable>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+html .tkpanel .tktable tr{grid-template-areas:"lane who" "clock clock" "add add" "foot foot";border-top:4px solid var(--line);border-radius:12px}
+html .tkpanel .tktable tr.tk-out{border-top-color:var(--tkc,#d62828);background:color-mix(in srgb,var(--tkc,#d62828) 11%,var(--panel))}
+html .tkpanel .tkclock{font:700 38px/1.05 "Roboto Mono",Consolas,monospace}
+```
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1713,3 +1736,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Heat Board | New: Next up with Start between heats, the heat list as heat cards, the overall result as a Race Sheet, the lanes of a final as tiles in the lane colours |
 | 2026-11 | Title Fight | New: the championship standings with the season as a band, the first three as podium cards, the best score of every round lit, a bar for the points, the rounds as cards |
 | 2026-11 | Record Card | New: the card of a slotcar, a driver or a track; the statistics as tiles, a service meter, the progress of a driver as track cards with trend chips and the months folded away |
+| 2026-11 | Token Desk | New: the time tokens as a card for every lane (lane colour, a large clock, the buttons as a grid, the state as the edge), a line of what the lanes are doing, the folder first; the penalties folder as a Race Sheet |

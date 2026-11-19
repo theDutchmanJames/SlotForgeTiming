@@ -1089,8 +1089,9 @@ async function renderRace() {
     <div class="rt-folders">
       ${!tokenSession && typeof RaceSystems !== 'undefined' && Object.values(eng.systemsOf()).some(x => x.available) ? folderHtml('systems', 'Racing systems', 'On / Off for this race', 'plain', '<div id="systempanel"></div>') : ''}
       ${resourceState ? folderHtml('resources', 'Resources', 'Supplies, balances and director adjustments', 'teal', '<div id="resource-live"></div>') : ''}
+      ${tokenSession ? folderHtml('tokens', 'Time tokens', 'Add time to a lane to switch it on', 'teal', '<div id="tokenpanel" class="tkpanel"></div>') : ''}
       ${folderHtml('track', 'Track actions', 'Lap, pit and call buttons for each lane', 'green', '<p class="trk-hint muted" id="trkhint" role="status" hidden></p><div id="trackgrid" class="trk-grid"></div>')}
-      ${tokenSession ? folderHtml('tokens', 'Time tokens', 'Add time to a lane to switch it on', 'teal', '<div id="tokenpanel" class="tkpanel"></div>') : cardsOn ? folderHtml('director', 'Race Director', 'Penalties, points, time, laps, damage and Balance of Power for each lane', 'plain', '<div id="lcpanel"></div>') : folderHtml('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="adjpanel" class="boppanel adjpanel"></div>')}
+      ${tokenSession ? '' : cardsOn ? folderHtml('director', 'Race Director', 'Penalties, points, time, laps, damage and Balance of Power for each lane', 'plain', '<div id="lcpanel"></div>') : folderHtml('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="adjpanel" class="boppanel adjpanel"></div>')}
       ${penCfg.on && !cardsOn ? folderHtml('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', '<div id="penpanel"></div>') : ''}
       ${bopCfg && !cardsOn ? folderHtml('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="boppanel" class="boppanel"></div>') : ''}
       ${eng.damage && !cardsOn ? folderHtml('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dmpanel" class="boppanel"></div>') : ''}
@@ -4038,6 +4039,7 @@ async function renderRace() {
       drivers: drivers.map(d => ({ id: d.id, name: titleOf('drivers', d) })),
       increments: tokenSet.increments,
       decrements: tokenSet.decrements,
+      color: l => HomeStats.laneColor(layout, l),
       T: raceT,
       phase: () => live.phase,
       label: lane => (eng.cars[carIndex(lane)] || {}).driverId || '',
