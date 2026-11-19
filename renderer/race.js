@@ -284,7 +284,6 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
     if (e) {
       const st = tmWord();
       e.textContent =
-        ' · ' +
         st.text +
         (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null
           ? Trackmate.link.power
@@ -292,6 +291,7 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
             : ', track power off'
           : '');
       if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn');
+      if (e.dataset) e.dataset.state = st.state || ''; // (2.4.0: the status as a pill with a light: on, warn, off)
     }
   };
   drawTm();
@@ -4198,6 +4198,9 @@ async function renderRace() {
       phase: () => live.phase,
       trkCards: () => live.trkCards || [],
       color: l => HomeStats.laneColor(layout, l),
+      title: setup.name || '',
+      sub: `${SESSION_LABEL[setup.ofType || setup.sessionType] || ''} · ${limitFull} · ${r.track.name}`,
+      elapsed: () => eng.elapsed(now()),
       weather: st => actions.weather(st),
       tyreNext: (l, code) => actions.tyreNext(l, code)
     });

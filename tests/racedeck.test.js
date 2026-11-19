@@ -34,7 +34,7 @@ test('the keys stay said in full for screen readers, and are shown as key caps',
 });
 
 test('the styles: the Race Director box sits in the grid, the lanes follow their number, the tabs show one table', () => {
-  assert.ok(css.includes('html .rdeck>#lcpanel,html .rdeck .lc,html .rdeck .lc-main{display:contents}'));
+  assert.ok(css.includes('html .rdeck>:is(#lcpanel,#dir-cards),html .rdeck .lc,html .rdeck .lc-main{display:contents}'));
   assert.ok(css.includes('html .rdeck[data-n="4"] .lc-cards{grid-template-columns:repeat(2,minmax(0,1fr))}'));
   assert.ok(css.includes('html .rdeck:is([data-n="7"],[data-n="8"]) .lc-cards{grid-template-columns:repeat(4,minmax(0,1fr))}'));
   assert.ok(css.includes('html .rd-panes>.rd-pane.rd-off,html .rd-panes>.rd-pane[hidden]{display:none}'));
@@ -53,18 +53,42 @@ test('a racing system says its state in a part of its own (the desk shows a dot)
         attrs: {},
         className: '',
         textContent: '',
-        classList: { set: new Set(), toggle(c, on) { on ? this.set.add(c) : this.set.delete(c); }, contains(c) { return this.set.has(c); } },
-        setAttribute(k, v) { this.attrs[k] = v; },
-        appendChild(c) { this.children.push(c); }
+        classList: {
+          set: new Set(),
+          toggle(c, on) {
+            on ? this.set.add(c) : this.set.delete(c);
+          },
+          contains(c) {
+            return this.set.has(c);
+          }
+        },
+        setAttribute(k, v) {
+          this.attrs[k] = v;
+        },
+        appendChild(c) {
+          this.children.push(c);
+        }
       };
       made.push(e);
       return e;
     }
   };
-  const grid = { children: [], appendChild(c) { this.children.push(c); } },
+  const grid = {
+      children: [],
+      appendChild(c) {
+        this.children.push(c);
+      }
+    },
     host = { innerHTML: '', querySelector: () => grid, hidden: false };
   let on = true;
-  const eng = { status: 'running', systemsOf: () => ({ fuel: { available: true, enabled: true, effective: true }, pushsave: { available: true, enabled: on, effective: false } }), systemEnabled: () => on };
+  const eng = {
+    status: 'running',
+    systemsOf: () => ({
+      fuel: { available: true, enabled: true, effective: true },
+      pushsave: { available: true, enabled: on, effective: false }
+    }),
+    systemEnabled: () => on
+  };
   const p = S.build(host, { eng: () => eng, send() {} });
   const [fuel, ps] = grid.children;
   assert.equal(fuel.textContent, 'Fuel');
@@ -80,4 +104,22 @@ test('a racing system says its state in a part of its own (the desk shows a dot)
   assert.equal(ps.children.at(-1).textContent, ' · Off');
   assert.equal(ps.classList.contains('ss-need'), false);
   delete global.document;
+});
+
+test('the Race Director page of Live Race has the same desk, with its own commands', () => {
+  const lv = R('renderer/liveview.js');
+  assert.match(lv, /useCards && typeof RaceDeck !== 'undefined'\s*\? RaceDeck\.mount\(body, \{\s*page: 'director'/);
+  assert.match(lv, /tyreNext: \(lane, code\) => send\(\{ type: 'tyrenext', lane, tyre: code \}\)/);
+  assert.match(lv, /if \(deck\) deck\.update\(\);/);
+  assert.ok(css.includes('html #lv-dir>.lv-ctl.rd-strip{'));
+  assert.ok(
+    /@media \(max-width:760px\)\{\s*html \.rdeck>:is\(#lcpanel,#dir-cards\)\{display:block/.test(css),
+    'a phone keeps the one-lane view of the cards'
+  );
+});
+
+test('the tables of the race and the results after the race have their own styles (Race Sheet, Scrutineering)', () => {
+  assert.ok(css.includes('html .rd-sheet table.fields th{'));
+  assert.ok(css.includes('html .race-finish .rv-lap{display:flex;flex-wrap:nowrap'));
+  assert.ok(css.includes('html .race-finish .rv-pads .pad-plus{'));
 });

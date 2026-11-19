@@ -460,6 +460,7 @@ const LiveView = (() => {
   // (the lane that is picked and what the pads did are kept here, so they stay when the page is drawn again; the panel itself is in adjustui.js)
   let adjPanel = null,
     cardsPanel = null,
+    deck = null,
     rvShown = '';
   const adjMem = { lane: null, hist: AdjustPad.history(), key: undefined },
     cardsMem = { hist: AdjustPad.history(), key: undefined }; // (cardsMem: the lane cards of 1.72.0 keep the picked lane, the open pop-up and what was done here)
@@ -637,6 +638,21 @@ const LiveView = (() => {
           })
         : null; // the lane cards: the same commands as the folders they replace
       DirFolder.bind(body);
+      // (2.4.0) the Lane Desk, as on the Race tab: a card per lane (with its Call button), a race column, the tables as tabs
+      deck =
+        useCards && typeof RaceDeck !== 'undefined'
+          ? RaceDeck.mount(body, {
+              page: 'director',
+              eng: () => V.engine(),
+              lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b),
+              now: () => V.clock(performance.now()),
+              phase: () => V.dyn().phase,
+              elapsed: () => V.engine().elapsed(V.clock(performance.now())),
+              color: l => HomeStats.laneColor(st.layout, l),
+              weather: state => send({ type: 'weather', state }),
+              tyreNext: (lane, code) => send({ type: 'tyrenext', lane, tyre: code })
+            })
+          : null;
       Review.bind(
         $('dir-review'),
         c => send({ type: 'review', ...c }),
@@ -746,6 +762,7 @@ const LiveView = (() => {
     }
     if (dmPanel) dmPanel.update();
     if (flPanel) flPanel.update();
+    if (deck) deck.update();
     // during the race: the laps of every car, to mark a lap invalid or take it out. Drawn again only when something in it changed, so a button never changes under your finger.
     const lb = $('dir-lapsbox'),
       tv = d.tokens ? Tokens.view(d.tokens) : null;

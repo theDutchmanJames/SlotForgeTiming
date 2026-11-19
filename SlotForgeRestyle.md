@@ -46,6 +46,8 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green | Test sensors (Home, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
+| [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
+| [Scrutineering](#scrutineering) | Finalize race results: a card per driver, the laps as a slim scrolling list, quiet Adjust pads | After the race |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -72,6 +74,8 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Home** | Broadcast Hero + cards (Timing Tower inside one) |
 | **Setup guide** | Start Lights (+ Lane Check at step 5) |
 | **Race tab** (under the widgets) | Lane Desk (Control Strip on top, Gear Selector for the weather, Toggle Chips for the racing systems) |
+| **Race Director page** (Live Race) | Lane Desk (the race buttons as its Control Strip) + Race Sheet |
+| **Finalize race results** | Scrutineering (+ Pit Buttons) |
 | **Live Race** (also on phones) | Live Desk |
 | **Choose a car** | Parc Fermé (Workshop Window + Control Strip + Gear Selector + Garage Cards) |
 
@@ -1351,7 +1355,13 @@ full-width folders in eight colours. The widgets above are not touched.
   2px accent line on top; the tables at their own width, not stretched; the open tab stays open for the next race.
 - **The keys** as key caps in one line (Space, 1…8, ⇧+1, Ctrl+1, Y, R, S, F, Esc); the full sentence stays for screen readers.
 - **Smaller windows:** under 1280px the race column goes under the lanes in two columns; under 760px everything is one column.
-- The setting "folders" (App Settings › Race Director), time tokens and the Race Director page of other devices keep their folders.
+- **The Control Strip** starts with the race (name in Barlow, its kind, length and track under it) and its clock in Roboto Mono; the timing
+  status is a pill with a light (green connected, red not connected, grey none chosen); Simulated cars is a switch.
+- **The Race Director page** of Live Race (second screen, phones, tablets) has the same desk: Start / Pause / Yellow / Red / Stop as its Control
+  Strip (a flag button filled in its colour while the flag is out), the Call button of a lane in its card, the open calls in the race column.
+  On a phone the lane cards keep their own view: the lane picked in a strip, one card, then the race column and the tabs.
+- The tables in the tabs are a [Race Sheet](#race-sheet).
+- The setting "folders" (App Settings › Race Director) and time tokens keep their folders.
 
 ```css
 html .rdeck{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:repeat(7,auto) 1fr;column-gap:12px}
@@ -1362,6 +1372,37 @@ html .rdeck .lc-card .trk-lap{background:color-mix(in srgb,var(--c) 22%,var(--pa
 html .rdeck .rd-fr{display:grid;grid-template-columns:62px minmax(0,1fr) auto;min-height:34px;border-bottom:1px solid var(--line)}
 html .rd-tab[aria-selected="true"]{background:var(--panel);font-weight:600;box-shadow:inset 0 2px 0 var(--accent)}
 html .rd-keys kbd{min-width:20px;height:20px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;font:600 11px "Roboto Mono",monospace}
+```
+
+## Race Sheet
+
+The tables of a race (Tyres, Weather, Push and Save, Pit stops, Endurance, Resources), in the Lane Desk's tabs and on the Race Director page
+(the class `.rd-sheet` on what holds them). The column names in small grey capitals (10px, letter-spaced), rows quiet with a thin line, the lane
+in a small tile, times, laps and multipliers in Roboto Mono, the tables at most 1100px wide. A note is one grey line with a 2px rule in the
+accent at the left, not a blue box. *Correct the tyres now* is one compact box with a small-capitals title. Push and Save's lap by lap list sits
+under its own small label.
+
+```css
+html .rd-sheet table.fields{width:100%;max-width:1100px;border-collapse:collapse;font-size:12.5px}
+html .rd-sheet table.fields th{border-bottom:1px solid var(--line);color:var(--muted);font:600 10px "Segoe UI";letter-spacing:.12em;text-transform:uppercase}
+html .rd-sheet table.fields td{padding:7px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent)}
+html .rd-sheet .twnote{padding:3px 0 3px 10px;border-left:2px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:none}
+```
+
+## Scrutineering
+
+Finalize race results, after the race (`renderer/review.js` in `.race-finish`). The head as a Page Note with a Barlow title and its two actions
+(Finalize results filled red, Delete all data red text). A card per driver: the place in a small tile (gold for the winner, with a 3px gold top
+stripe instead of a gold frame), the numbers (laps, total, best lap, penalties) in Roboto Mono between two thin lines, the actions as small
+buttons. **The laps** are a slim list (32px rows: number, time in mono, what happened in that lap in one grey line, then Mark invalid and
+Delete… as small outline buttons at the right); a long race scrolls inside the card (480px). **Adjust the result** has a small-capitals title and
+the pads as small steppers: + tinted in the colour of its kind (time orange, laps purple), − neutral, the amounts in mono.
+
+```css
+html .race-finish .rfinish-card.winner{border-top:3px solid #d4a400;box-shadow:none}
+html .race-finish .rv-laps{max-height:480px;overflow:auto;border-top:1px solid var(--line)}
+html .race-finish .rv-lap{display:flex;align-items:center;gap:8px;min-height:32px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent)}
+html .race-finish .rv-pads .pad-plus{background:color-mix(in srgb,var(--pc) 24%,var(--panel));color:var(--ink)}
 ```
 
 ## Live Desk
@@ -1526,3 +1567,6 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Pit Wall | Two more fitting steps for a big Interface size on a small window (tighter, then pictures only) |
 | 2026-11 | Parc Fermé | Cars without a picture in one of ten colours by model; the Dealership message only on its own tab, quiet while offline |
 | 2026-11 | Lane Desk | New: the race screen under the widgets as one desk: a card per lane (Lap / Pit / Call, tyres, fuel, pace, weather, the Race Director's pads), a race column (Race Director, weather, tyre rule, systems, log), the tables as tabs, the keys as key caps |
+| 2026-11 | Lane Desk | The Control Strip starts with the race and its clock, the status as a pill, Simulated cars as a switch; the same desk on the Race Director page of Live Race (phones keep the one-lane view) |
+| 2026-11 | Race Sheet | New: the tables of a race in small capitals and mono, the notes as a grey line, the tyre correction as one compact box |
+| 2026-11 | Scrutineering | New: Finalize race results with a gold stripe for the winner, slim lap rows with small buttons, quiet Adjust pads |

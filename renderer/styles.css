@@ -4655,16 +4655,17 @@ html #raceactive .rt-tools>.stopbtn{border:1px solid color-mix(in srgb,var(--acc
 html .rt-folders.rd-on{margin-top:12px}
 html .rt-folders.rd-on>.trk-hint{margin:0 0 10px;padding:8px 12px;border-radius:8px;background:color-mix(in srgb,var(--ink) 5%,var(--panel));font-size:13px}
 html .rdeck{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:repeat(7,auto) 1fr;column-gap:12px;row-gap:0;align-items:start}
-html .rdeck>#lcpanel,html .rdeck .lc,html .rdeck .lc-main{display:contents}
-html .rdeck>#lcpanel[hidden]{display:none}
+html .rdeck>:is(#lcpanel,#dir-cards),html .rdeck .lc,html .rdeck .lc-main{display:contents}
+html .rdeck>:is(#lcpanel,#dir-cards)[hidden]{display:none}
 html .rdeck .lc-strip{display:none}
 html .rdeck .lc-cards,html .rdeck>#trackgrid{grid-column:1;grid-row:1 / -1;align-self:start}
 html .rdeck .lc-bar,html .rdeck .rd-box,html .rdeck .lc-log{grid-column:2;margin:0 0 10px;min-width:0}
 html .rdeck .lc-bar{order:1}
-html .rdeck .rd-wx{order:2}
-html .rdeck .rd-rule{order:3}
-html .rdeck .rd-sys{order:4}
-html .rdeck .lc-log{order:5}
+html .rdeck .rd-calls{order:2}
+html .rdeck .rd-wx{order:3}
+html .rdeck .rd-rule{order:4}
+html .rdeck .rd-sys{order:5}
+html .rdeck .lc-log{order:6}
 /* the lanes: 1 wide card, 2-3 in a row, 4 as 2 x 2, 5-6 in three, 7-8 in four */
 html .rdeck .lc-cards{display:grid;gap:10px;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
 html .rdeck[data-n="1"] .lc-cards{grid-template-columns:minmax(0,620px)}
@@ -4755,7 +4756,7 @@ html .rdeck .rd-rulerow{display:grid;grid-template-columns:20px minmax(0,1fr) au
 html .rdeck .rd-ln{display:grid;place-items:center;width:20px;height:20px;border-radius:5px;background:var(--c,var(--muted));color:#0f1216;font:700 12px "Barlow Condensed","Segoe UI",sans-serif}
 html .rdeck .rd-rulest{font-size:11.5px;color:var(--muted)}
 html .rdeck .rd-rulest.ok{color:#3ecf8e}
-html .rdeck .rd-sys>#systempanel>p{display:none}
+html .rdeck .rd-sys>div>p{display:none}
 html .rdeck .rd-sys .system-switches{display:flex;flex-wrap:wrap;gap:6px;margin:0}
 html .rdeck .rd-sys .system-switch{display:inline-flex;justify-content:flex-start;gap:7px;width:auto;min-height:28px;padding:0 11px;border:1px dashed var(--line);border-radius:14px;background:var(--bg);color:var(--muted);font-size:12.5px;box-shadow:none;transform:none}
 html .rdeck .rd-sys .system-switch::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;border:1.5px solid var(--muted)}
@@ -4805,3 +4806,141 @@ html .rdeck .rd-sys .ss-state{display:none}
 html .rdeck .rd-sys .system-switch.ss-need .ss-state{display:inline;color:#f2b705}
 html .rdeck .rd-next{max-width:170px}
 html .rd-panes .df-body>p,html .rd-panes .twnote,html .rd-panes .bophead{max-width:120ch}
+/* ==== Race Sheet (2.4.0, SlotForgeRestyle.md "Race Sheet"): the tables of the race (Tyres, Weather, Push and Save, Pit stops, Endurance, Resources) in the Lane Desk's tabs
+   and on the Race Director page: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line, the correction as one compact box ==== */
+html .rd-sheet .wrap{overflow-x:auto}
+html .rd-sheet table.fields{width:100%;max-width:1100px;min-width:0;border-collapse:collapse;font-size:12.5px;background:none}
+html .rd-sheet table.fields th{padding:6px 10px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left;white-space:nowrap}
+html .rd-sheet table.fields td{padding:7px 10px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:none;font-size:12.5px;vertical-align:middle}
+html .rd-sheet table.fields tbody tr:last-child td{border-bottom:0}
+html .rd-sheet table.fields tbody tr:hover td{background:color-mix(in srgb,var(--ink) 3%,transparent)}
+html .rd-sheet table.fields tbody td:first-child>strong{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 4px;box-sizing:border-box;border-radius:6px;background:color-mix(in srgb,var(--ink) 10%,var(--panel));font:700 13px/1 "Barlow Condensed","Segoe UI",sans-serif}
+html .rd-sheet :is([data-ps="last"],[data-ps="ref"],[data-ps="tmult"],[data-ps="fmult"],[data-ty="life"],[data-ty="left"],[data-ty="effect"],[data-wx="hinder"]),
+html .rd-sheet .pslaps td:is(:nth-child(1),:nth-child(2),:nth-child(3),:nth-child(5),:nth-child(6)){font:500 12px "Roboto Mono",Consolas,monospace}
+html .rd-sheet .pssub,html .rd-sheet .twnotesm{display:block;margin-top:2px;font-size:11px;color:var(--muted);font-weight:400}
+html .rd-sheet .tyrechip{padding:1px 8px;border-radius:10px;font-size:11.5px}
+html .rd-sheet .twlifecell{min-width:110px}
+html .rd-sheet .twbar{width:110px;height:6px;border-radius:3px;margin-top:4px}
+html .rd-sheet .twbar>i{border-radius:3px}
+html .rd-sheet .twstate{padding:1px 7px;border-radius:5px;font-size:11px;font-weight:600}
+html .rd-sheet .twsc{margin-right:5px;font-size:11px}
+html .rd-sheet table.fields select{height:28px;padding:0 6px;font-size:12px}
+html .rd-sheet .pspill{font-size:10.5px}
+/* the notes: one grey line with a rule at the left, not a blue box */
+html .rd-sheet :is(.tyhint,.hint,.bophead,.twnote,[data-ps="rules"]){max-width:120ch;font-size:12.5px;color:var(--muted)}
+html .rd-sheet p:is(.tyhint,.hint){margin:0 0 10px}
+html .rd-sheet .twnote{margin:0 0 8px;padding:3px 0 3px 10px;border:0;border-left:2px solid color-mix(in srgb,var(--accent) 55%,var(--line));border-radius:0;background:none;color:var(--ink)}
+html .rd-sheet .bophead{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin:0 0 10px}
+html .rd-sheet .bophead>[data-wx="info"]{font-size:13px;color:var(--ink)}
+/* Correct the tyres now: one compact box */
+html .rd-sheet .twfix{max-width:720px;margin-top:14px;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+html .rd-sheet .twfix>strong{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rd-sheet .twfix>.muted{font-size:12px}
+html .rd-sheet .twfix .row{gap:6px;margin:2px 0}
+html .rd-sheet .twfix :is(select,.btn){min-height:30px;height:30px;font-size:12.5px}
+html .rd-sheet :is(.twfix,.rd-sheet) label.inline,html .rd-sheet label.wxsave{font-size:12.5px}
+html .rd-sheet .twfix .hint{margin:0;font-size:11.5px}
+/* Push and Save: lap by lap */
+html .rd-sheet .psbylap{margin-top:14px}
+html .rd-sheet .psbylap>label{display:inline-flex;align-items:center;gap:8px;margin:0 0 6px;font-size:12.5px;color:var(--muted)}
+html .rd-sheet .psbylap select{height:28px;font-size:12px}
+html .rd-sheet .psbylap table.fields{max-width:820px}
+html .rd-sheet>.rd-pane>.df-body>p.hint:last-child,html .rd-sheet .boppanel>p.hint:last-child{margin:12px 0 0;font-size:11.5px}
+/* the tabs: a ring only when they are used with the keys */
+html .rd-tab:focus-visible{outline:0}
+html .rd-tabbar.rd-kbd .rd-tab:focus-visible{outline:2px solid #4c9aff;outline-offset:-2px}
+/* the Control Strip of the race: the race and its clock first, the status as a pill with a light, Simulated cars as a switch */
+html #raceactive .rt-tools.rd-strip{gap:8px 10px;padding:8px 10px}
+html .rd-strip>.rd-race{display:flex;flex-direction:column;min-width:0;max-width:340px;line-height:1.15;margin-right:4px}
+html .rd-strip>.rd-race>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:italic 700 18px/1.05 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .rd-strip>.rd-race>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--muted)}
+html .rd-strip>.rd-clock{padding:0 12px;border-left:1px solid var(--line);border-right:1px solid var(--line);font:600 20px "Roboto Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+html .rd-strip>#tmstatus{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:1px solid var(--line);border-radius:12px;font-size:12px;color:var(--ink);white-space:nowrap}
+html .rd-strip>#tmstatus::before{content:'';width:7px;height:7px;border-radius:50%;background:#3ecf8e}
+html .rd-strip>#tmstatus[data-state="off"]{color:var(--muted)}
+html .rd-strip>#tmstatus[data-state="off"]::before{background:var(--muted)}
+html .rd-strip>#tmstatus:is([data-state="warn"],.hwwarn){border-color:color-mix(in srgb,#e5484d 55%,var(--line));color:#ff8a8e}
+html .rd-strip>#tmstatus:is([data-state="warn"],.hwwarn)::before{background:#e5484d}
+html .rd-strip>label{gap:8px;font-size:12.5px;color:var(--ink)}
+html .rd-strip #sim{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:30px;height:18px;margin:0;border-radius:9px;background:var(--line);cursor:pointer;transition:background .12s}
+html .rd-strip #sim::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .12s}
+html .rd-strip #sim:checked{background:var(--accent-fill,var(--accent))}
+html .rd-strip #sim:checked::after{left:14px}
+html .rd-strip #sim:disabled{opacity:.45;cursor:not-allowed}
+html .rd-strip #sim:focus-visible{outline:2px solid #4c9aff;outline-offset:2px}
+html .rd-strip>#msg:empty{flex:1}
+html .rd-strip>.btn{min-height:30px;font-size:12.5px}
+/* ==== Scrutineering (2.4.0, SlotForgeRestyle.md "Scrutineering"): Finalize race results after the race. The head as a Page Note with its two actions,
+   a card per driver (gold top stripe for the winner), numbers in Roboto Mono, the laps as a slim scrolling list with small buttons, the Adjust pads quiet ==== */
+html .race-finish .rfinish-head{align-items:center;margin:8px 0 14px}
+html .race-finish .rfinish-head h2{font:italic 700 28px/1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .race-finish .eyebrow{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase}
+html .race-finish .rfinish-check{font-size:12px}
+html .race-finish .rfinish-grid{gap:12px}
+html .race-finish .rfinish-card{padding:12px 14px;border-radius:10px;border-top:3px solid var(--line)}
+html .race-finish .rfinish-card.winner{border-color:var(--line);border-top-color:#d4a400;box-shadow:none}
+html .race-finish .rfinish-place{width:28px;height:28px;border-radius:7px;background:color-mix(in srgb,var(--ink) 12%,var(--panel));font:700 15px/1 "Barlow Condensed","Segoe UI",sans-serif}
+html .race-finish .rfinish-card.winner .rfinish-place{background:#d4a400;color:#1c1504}
+html .race-finish .rfinish-cardhead strong{font-size:16px}
+html .race-finish .rfinish-cardhead span{font-size:12px;color:var(--muted)}
+html .race-finish .rfinish-state{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+html .race-finish .rfinish-stats{margin:12px 0;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+html .race-finish .rfinish-stats span{font-size:10px;letter-spacing:.12em;font-weight:600}
+html .race-finish .rfinish-stats strong{font:600 16px "Roboto Mono",Consolas,monospace}
+html .race-finish .rfinish-actions{gap:6px}
+html .race-finish .rfinish-actions .btn{min-height:28px;padding:0 10px;font-size:12.5px}
+html .race-finish .rfinish-sector{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 10px;font-size:12.5px;color:var(--muted)}
+html .race-finish .rfinish-sector select{height:28px;font-size:12px}
+html .race-finish .rfinish-detail{margin-top:10px;padding-top:10px}
+html .race-finish .rfinish-detail h4{margin:0 0 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+/* the laps: one slim row each, the buttons small at the right; a long race scrolls inside the card */
+html .race-finish .rv-laps{gap:0;max-height:480px;overflow:auto;margin:0;border-top:1px solid var(--line)}
+html .race-finish .rv-car .rv-laps{margin:6px 0 2px}
+html .race-finish .rv-lap{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;min-height:32px;padding:2px 4px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent)}
+html .race-finish .rv-lap:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+html .race-finish .rv-lap>.num{flex:none;width:26px;text-align:right;font:500 11.5px "Roboto Mono",Consolas,monospace;color:var(--muted)}
+html .race-finish .rv-lap>.rv-t{flex:none;min-width:64px;font:600 13px "Roboto Mono",Consolas,monospace}
+html .race-finish .rv-lap>small{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+html .race-finish .rv-lap>.btn:first-of-type,html .race-finish .rv-lap>.rv-del{margin-left:auto}
+html .race-finish .rv-lap .btn{flex:none;min-height:26px;height:26px;padding:0 9px;border:1px solid var(--line);background:transparent;font-size:12px}
+html .race-finish .rv-lap .btn[data-rv$="invalid"][data-on="0"]{border-color:color-mix(in srgb,#f2b705 55%,var(--line));color:#f2b705}
+html .race-finish .rv-lap.rv-bad{background:color-mix(in srgb,#e5484d 6%,transparent)}
+html .race-finish .rv-del{gap:6px;font-size:12px}
+/* Adjust the result: a quiet title, the pads as small steppers in the colour of their kind */
+html .race-finish .rv-adj{gap:6px}
+html .race-finish .rv-adj>strong{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .race-finish .rv-adj>.muted{font-size:12px}
+html .race-finish .rv-pads{gap:8px}
+html .race-finish .rv-pads .pad{margin:0;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--pc);border-radius:8px;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+html .race-finish .rv-pads .pad-title{margin:0 0 6px;font-size:12.5px}
+html .race-finish .rv-pads .pad-title small{font-size:11px}
+html .race-finish .rv-pads .pad-h .pad-grid{gap:4px;grid-template-columns:repeat(var(--n),minmax(46px,1fr));max-width:calc(var(--n) * 64px)}
+html .race-finish .rv-pads .pad-btn{min-height:28px;height:28px;padding:0;border-radius:6px;font-size:15px;font-weight:600}
+html .race-finish .rv-pads .pad-plus{background:color-mix(in srgb,var(--pc) 24%,var(--panel));color:var(--ink);border-color:color-mix(in srgb,var(--pc) 50%,var(--line))}
+html .race-finish .rv-pads .pad-minus{background:color-mix(in srgb,var(--ink) 7%,var(--panel));color:var(--ink);border-color:var(--line)}
+html .race-finish .rv-pads .pad-val{font:600 12.5px "Roboto Mono",Consolas,monospace}
+html .race-finish .rv-pads .pad-other{height:28px;padding:0 4px;font-size:12px}
+html .race-finish .rfinish-pending{font-size:12.5px;border-left:3px solid #f2b705;border-radius:0 8px 8px 0}
+html .race-finish .rfinish-foot{margin-top:12px}
+/* the Lane Desk on the Race Director page of Live Race (also phones): the race buttons as the Control Strip, the Call button of a lane in its card, the open calls in the race column */
+html #lv-dir>.lv-ctl.rd-strip{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+html #lv-dir>.lv-ctl.rd-strip>[data-cmd="stop"]{margin-left:auto;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));font-weight:600}
+html #lv-dir>.lv-ctl.rd-strip>.btn[aria-pressed="true"][data-cmd="yellow"]{background:#f2b705;color:#1c1504}
+html #lv-dir>.lv-ctl.rd-strip>.btn[aria-pressed="true"][data-cmd="red"]{background:#e5484d;color:#fff}
+html #lv-dir.rd-on>:is(.card,.dirfolder).rd-gone,html .rt-folders.rd-on>.dirfolder.rd-gone{display:none}
+html .rdeck .rd-callrow{display:flex}
+html .rdeck .rd-callrow>.btn{flex:1;min-height:40px;border:1px solid var(--line);background:var(--bg);font-size:13px;font-weight:600}
+html .rdeck .rd-calls .lv-calls{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:12.5px}
+html .rdeck .rd-calls .lv-calls li{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+html .rdeck .rd-calls .lv-calls li>span{flex:1 1 100%}
+html .rdeck .rd-calls .lv-calls .btn{min-height:26px;padding:0 9px;font-size:12px}
+html .rdeck .rd-calls .lv-calls li.muted{font-size:12px}
+/* a phone: the lane cards keep their own view (the lane picked in the strip, Undo at the bottom); the race column and the tabs under them */
+@media (max-width:760px){
+  html .rdeck>:is(#lcpanel,#dir-cards){display:block;grid-column:1 / -1;margin-bottom:10px}
+  html .rdeck .lc{display:flex}
+  html .rdeck .lc-main{display:grid}
+  html .rdeck .lc-strip{display:flex}
+  html .rdeck .lc[data-n="1"] .lc-strip{display:none}
+  html .rdeck .lc-bar,html .rdeck .lc-log{margin:0}
+}

@@ -9,11 +9,36 @@ const test = require('node:test'),
 const H = require('../shared-library-history'),
   { deliverySummary } = require('../paddock-storage');
 const saved = '2026-10-25T12:34:56.789Z';
-const lib = () => ({ sharedLibrary: { version: 1, databaseId: 'library', recoveryId: 'epoch', sourceId: 'source' }, adoptedCarIds: { c: 'canonical-car' } });
-const adopted = () => ({ transport: 'engine', status: 'adopted', baseline: { version: 1, provenance: 'historical', expected: { revision: 1, state: 'active', contentHash: 'a'.repeat(64) } } });
+const lib = () => ({
+  sharedLibrary: { version: 1, databaseId: 'library', recoveryId: 'epoch', sourceId: 'source' },
+  adoptedCarIds: { c: 'canonical-car' }
+});
+const adopted = () => ({
+  transport: 'engine',
+  status: 'adopted',
+  baseline: { version: 1, provenance: 'historical', expected: { revision: 1, state: 'active', contentHash: 'a'.repeat(64) } }
+});
 function race(id) {
-  const session = { id, sessionType: 'qualifying', date: saved, setupName: 'Test race ' + id, trackId: 't', trackName: 'Club', standings: [{ carId: 'c', driverId: 'd', driverName: 'James', laps: 2, best: 6795, pos: 1 }] };
-  const laps = [7021, 6795].map((time, i) => ({ id: id + '-lap-' + i, sessionId: id, carId: 'c', driverId: 'd', trackId: 't', lane: 2, lapNumber: i + 1, time, date: saved }));
+  const session = {
+    id,
+    sessionType: 'qualifying',
+    date: saved,
+    setupName: 'Test race ' + id,
+    trackId: 't',
+    trackName: 'Club',
+    standings: [{ carId: 'c', driverId: 'd', driverName: 'James', laps: 2, best: 6795, pos: 1 }]
+  };
+  const laps = [7021, 6795].map((time, i) => ({
+    id: id + '-lap-' + i,
+    sessionId: id,
+    carId: 'c',
+    driverId: 'd',
+    trackId: 't',
+    lane: 2,
+    lapNumber: i + 1,
+    time,
+    date: saved
+  }));
   return { session, laps };
 }
 // a race whose conversion failed in an older version: the race itself is fine now
@@ -42,6 +67,34 @@ test('the history module: a failed conversion is prepared again, a never-shared 
   assert.equal(H.failed(b.session.paddockDelivery), false);
   H.revise({ laps: b.laps, paddock: {} }, b.session);
   assert.equal(b.session.paddockDelivery.status, 'withdrawn', 'a removed race is not brought back by a later edit');
+});
+
+test('a block saved by an older version (no "prior") of a race that was never sent can be removed and is converted from the start', () => {
+  const e = race('old');
+  e.session.paddockJournal = lib();
+  e.session.paddockDelivery = {
+    transport: 'engine',
+    status: 'attention',
+    guardBlocked: 'Captured laps or driver boundaries overlap or are incomplete.',
+    error: 'x',
+    payload: null,
+    previousPayload: null,
+    guard: null,
+    name: 'hihihihi',
+    sessionId: 'old'
+  };
+  assert.equal(H.neverShared(e.session.paddockDelivery), true);
+  assert.equal(H.reconvert({ laps: e.laps, paddock: {} }, e.session), true);
+  assert.notEqual(e.session.paddockDelivery.error, 'x', 'prepared again, not its old error repeated');
+  const f = race('old2');
+  f.session.paddockDelivery = {
+    transport: 'engine',
+    status: 'attention',
+    payload: null,
+    previousPayload: { format: 'history-v1' },
+    error: 'y'
+  };
+  assert.equal(H.neverShared(f.session.paddockDelivery), false, 'a race the library holds a version of is not removed here');
 });
 
 function source() {

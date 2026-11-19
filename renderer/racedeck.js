@@ -34,9 +34,10 @@
 
   function mount(host, o) {
     if (typeof document === 'undefined' || typeof Element === 'undefined' || !(host instanceof Element)) return null;
-    const q = s => host.querySelector(s),
-      folders = q('.rt-folders'),
-      lc = q('#lcpanel');
+    const dirPage = o.page === 'director', // (the Race Director page of Live Race: the same desk, its own buttons; every click there goes through the page)
+      q = s => host.querySelector(s),
+      folders = q(dirPage ? '#lv-dir' : '.rt-folders'),
+      lc = q(dirPage ? '#dir-cards' : '#lcpanel');
     if (!folders || !lc) return null;
     const getE = () => o.eng(),
       lanes = o.lanes;
@@ -45,18 +46,39 @@
     deck.setAttribute('aria-label', 'Race Control');
     deck.style.setProperty('--n', String(lanes.length));
     deck.dataset.n = String(lanes.length);
-    folders.prepend(deck);
+    const fTrack = q('[data-dirf="track"]'),
+      fDir = q('[data-dirf="director"]');
+    if (dirPage && fDir) fDir.before(deck);
+    else folders.prepend(deck);
     folders.classList.add('rd-on');
+    deck.dataset.page = dirPage ? 'director' : 'race';
     // the hint (press Start first), the Race Director box, and the track buttons when there is nothing to direct (a practice)
     const hint = q('#trkhint'),
       grid = q('#trackgrid');
     if (hint) folders.insertBefore(hint, deck);
     deck.appendChild(lc);
     if (grid) deck.appendChild(grid);
-    const fTrack = q('#fd-track'),
-      fDir = q('#fd-director');
     show(fTrack, false);
     if (fDir) fDir.classList.add('rd-gone'); // (empty now; its hidden state still says whether there is anything to direct)
+
+    // ---- the Control Strip: the race, its clock, then the tools that are there already ----
+    const tools = q(dirPage ? '#lv-dir > .lv-ctl' : '#raceactive .rt-tools'),
+      clock = el('span', 'rd-clock', '0:00');
+    if (tools) {
+      if (o.title) {
+        const who = el('div', 'rd-race');
+        who.append(el('b', null, o.title), el('span', null, o.sub || ''));
+        tools.prepend(who, clock);
+      } else tools.prepend(clock);
+      tools.classList.add('rd-strip');
+    }
+    const clockText = ms => {
+      const s = Math.max(0, Math.floor((Number(ms) || 0) / 1000)),
+        h = Math.floor(s / 3600),
+        m = Math.floor((s % 3600) / 60),
+        x = String(s % 60).padStart(2, '0');
+      return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`;
+    };
 
     // ---- the race column ----
     const box = (cls, title) => {
@@ -91,27 +113,36 @@
       side.rule.b.appendChild(side.ruleRows);
       side.rule.b.hidden = true;
     }
-    const sys = q('#systempanel'),
-      fSys = q('#fd-systems');
+    // the calls that wait (Race Director page): the list in the race column, the Call button of a lane in its card
+    const calls = dirPage ? q('#dir-calls') : null;
+    if (calls) {
+      side.calls = box('rd-calls', 'Calls');
+      const card = calls.closest('.card');
+      side.calls.b.appendChild(calls);
+      if (card) card.classList.add('rd-gone');
+    }
+    const sys = q(dirPage ? '#dir-systems' : '#systempanel'),
+      fSys = q('[data-dirf="systems"]');
     if (sys && fSys) {
       side.sys = box('rd-sys', 'Racing systems');
       side.sys.h.appendChild(el('span', 'rd-bhnote', 'this race only'));
       side.sys.b.appendChild(sys);
-      show(fSys, false);
+      fSys.classList.add('rd-gone'); // (the Race Director page shows its folder again on every update: a class keeps it away)
     }
 
     // ---- the tabs under the desk ----
     const tabs = el('div', 'rd-tabs'),
       bar = el('div', 'rd-tabbar'),
-      panes = el('div', 'rd-panes');
+      panes = el('div', 'rd-panes rd-sheet');
     bar.setAttribute('role', 'tablist');
     bar.setAttribute('aria-label', 'Race details');
     tabs.append(bar, panes);
     deck.after(tabs);
     const tabList = [];
     TABS.forEach(([id, label]) => {
-      const f = q('#fd-' + id);
+      const f = q(`[data-dirf="${id}"]`);
       if (!f) return;
+      if (!f.id) f.id = 'fd-' + id;
       const b = el('button', 'rd-tab', label);
       b.type = 'button';
       b.id = 'rdt-' + id;
@@ -139,7 +170,9 @@
       const b = ev.target.closest('[data-rd-tab]');
       if (b) pick(b.dataset.rdTab);
     });
+    bar.addEventListener('pointerdown', () => bar.classList.remove('rd-kbd'));
     bar.addEventListener('keydown', ev => {
+      bar.classList.add('rd-kbd');
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) return;
       const on = tabList.filter(t => !t.b.hidden),
         i = on.findIndex(t => t.b.getAttribute('aria-selected') === 'true');
@@ -212,29 +245,46 @@
       return f;
     };
 
+    // (Race Director page) the Call button of a lane, in its card
+    const callRows = new Map();
+    const callRow = lane => {
+      if (!dirPage) return null;
+      if (callRows.has(lane)) return callRows.get(lane);
+      const b = q(`[data-cmd="call"][data-lane="${lane}"]`);
+      if (!b) return null;
+      const r = el('div', 'rd-callrow');
+      r.appendChild(b);
+      callRows.set(lane, r);
+      return r;
+    };
     function update() {
       const e = getE(),
         t = o.now(),
         usable = !!fDir && !fDir.hidden;
       deck.dataset.mode = usable ? 'desk' : 'track';
+      if (o.elapsed) set(clock, clockText(o.elapsed()));
       show(lc, usable);
       if (grid) show(grid, !usable);
       // the Lap / Pit / Call buttons into the lane cards (again after the lane cards were drawn anew: a new layout of the pads)
-      for (const tc of o.trkCards()) {
-        const card = usable ? lc.querySelector(`.lc-card[data-lc-lane="${tc.lane}"]`) : null;
+      const trk = o.trkCards ? o.trkCards() : [];
+      for (const lane of lanes) {
+        const card = usable ? lc.querySelector(`.lc-card[data-lc-lane="${lane}"]`) : null,
+          tc = trk.find(x => x.lane === lane);
         if (!card) {
-          if (grid && tc.card.parentNode !== grid) grid.appendChild(tc.card);
+          if (tc && grid && tc.card.parentNode !== grid) grid.appendChild(tc.card);
           continue;
         }
         if (!card.dataset.rdc) {
           card.dataset.rdc = '1';
-          card.style.setProperty('--c', o.color(tc.lane));
+          card.style.setProperty('--c', o.color(lane));
           card.classList.add('rd-lane');
         }
         const head = card.querySelector('.lc-head'),
-          f = factsOf(tc.lane);
-        if (tc.card.parentNode !== card) head.after(tc.card);
-        if (f.box.parentNode !== card) tc.card.after(f.box);
+          f = factsOf(lane),
+          top = tc ? tc.card : callRow(lane);
+        if (top && top.parentNode !== card) head.after(top);
+        const anchor = top || head;
+        if (f.box.previousSibling !== anchor) anchor.after(f.box);
       }
       if (usable) lanes.forEach(l => drawFacts(e, t, l));
       drawSide(e, t);
