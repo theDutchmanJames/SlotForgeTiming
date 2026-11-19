@@ -5210,3 +5210,14 @@ html .audio-editor .audio-mixer :is(input[type=number],input[type=text]:not(#au-
 html .audio-editor .audio-mixer select{max-width:320px;height:32px}
 html body .audio-editor .audio-mixer details.audio-folder{border-left:1px solid var(--line) !important}
 html body .audio-editor .audio-mixer input:is([type=number],[type=text]):not(#au-vtext){width:8em !important}
+/* (2.4.0) the system switches of a race setup: a wide row, the name and its note above, the switches as Toggle Chips under them */
+html .rsform.sy .sy-row.sy-wide>.ss-ctl{justify-content:flex-start}
+html .rsform.sy .sy-row>.ss-ctl>#f-system-switches{width:100%}
+html .rsform.sy #f-system-switches .system-switches{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0}
+html .rsform.sy #f-system-switches .system-switch{display:inline-flex;align-items:center;gap:8px;width:auto;min-height:30px;padding:0 12px;border:1px dashed var(--line);border-radius:15px;background:var(--bg);color:var(--muted);font-size:12.5px;box-shadow:none;transform:none}
+html .rsform.sy #f-system-switches .system-switch::before{content:'';flex:none;width:7px;height:7px;border-radius:50%;border:1.5px solid var(--muted)}
+html .rsform.sy #f-system-switches .system-switch.on{border-style:solid;color:var(--ink)}
+html .rsform.sy #f-system-switches .system-switch.on::before{border-color:#3ecf8e;background:#3ecf8e}
+html .rsform.sy #f-system-switches .system-switch>b{font-weight:500;color:var(--muted)}
+html .rsform.sy #f-system-switches .system-switch.on>b{color:#3ecf8e}
+html .rsform.sy #f-system-switches .system-switch:disabled{opacity:.5}

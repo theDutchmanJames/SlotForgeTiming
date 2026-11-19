@@ -1612,3 +1612,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Scrutineering | The Race Director page of Live Race has the desk after the race and the lap explorer during it; on a phone the laps are two-line cards |
 | 2026-11 | Scrutineering | The race window's Review laps during the race has the same drivers and lap explorer as the Race Director page |
 | 2026-11 | Cue Card | New: a call of an audio set as one card (Plays when, What it says with every line, ▶ and ⋯, race values as chips, Only when…, one more line); Voice & playback quieter |
+| 2026-11 | System Sheet | A field with a control of its own (the system switches of a race setup) is a wide row: the name and note above, the control across the row; the switches are Toggle Chips |

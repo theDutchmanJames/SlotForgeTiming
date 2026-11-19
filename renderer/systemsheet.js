@@ -141,6 +141,18 @@ const SystemSheet = (() => {
       h.classList.add('ss-hint');
       t.append(h);
     });
+    // (2.4.0) what is left of a field the form draws itself: its words go with the name, a box of its own (the system switches of a race setup) is the
+    // control across the whole row. Left where it was, it took the row's first column and squeezed the name to nothing.
+    [...f.children].forEach(x => {
+      if (x === t || x === c || x.classList.contains('sy-gone') || x.matches('input[type=hidden]')) return;
+      if (x.matches('small.muted,small.hint,span.muted,p.muted')) {
+        x.classList.add('ss-hint');
+        t.append(x);
+      } else if (x.matches('div,fieldset,table') && !x.closest('.ss-t,.ss-ctl')) {
+        c.append(x);
+        f.classList.add('sy-wide');
+      }
+    });
     if (!t.childNodes.length && !c.childNodes.length) {
       f.classList.add('sy-row', 'sy-stack');
       return;
