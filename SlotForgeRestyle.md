@@ -48,6 +48,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
 | [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
 | [Scrutineering](#scrutineering) | Finalize race results: the classification as slim rows with a tiny lap chart, a lap explorer with a chart, filters, suspect laps and several laps at once | After the race |
+| [Cue Card](#cue-card) | A call of an audio set: when it plays, every line at once with ▶ and ⋯, race values as chips, one more line | Customization › Audio Settings |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1418,6 +1419,29 @@ html .race-finish .rx-row.rx-k-sus{box-shadow:inset 3px 0 0 var(--rx-sus);backgr
 html .race-finish .rx-table thead th{position:sticky;top:0;font:600 10px "Segoe UI";letter-spacing:.12em;text-transform:uppercase}
 ```
 
+## Cue Card
+
+A call of an audio set, open under its row (`renderer/audiostudio.js`, styles under `.cue`). It reads from top to bottom, with no folders and no
+Variation list:
+
+- **Plays when**: the moment in one plain sentence, and its own settings next to it (the pause before the first light, the gap of a battle…).
+- **What it says**: every line of the call at once, each a row with **▶** (hear it), the text field, and **⋯** (How it plays: *Say it*, *Play a sound
+  file*, *Sound file, then say it*; then *Delete this line*). A sound file shows as a chip with its name, or a quiet *Choose a sound file…* button.
+- **Race values** are chips under the line you are typing in ({driver}, {other}…), with the rest in a short list; *Sounds like: “Alex takes the lead”*
+  shows only when a line has a value, or says what is wrong (a value the call does not know, a file that is missing).
+- **Only when…** is a small dashed pill under a line (solid when conditions are set); it shows on the line you are editing and where it is set.
+- **+ Add another line** (dashed), with one line saying that a line is picked at random each time.
+- **The repeat limit** is one quiet row at the bottom, under a thin line.
+- The row of a call says *n lines* and has ▶ in the accent. An ambient sound has the same card: its files as lines, its options under *Plays*.
+- **Voice & playback**: the groups are quiet (titles in small capitals), the fields as wide as what they hold.
+
+```css
+html .audio-editor fieldset.audcall.cue{display:flex;flex-direction:column;gap:14px;border-left:3px solid var(--accent);border-radius:0 0 10px 10px}
+html .audio-editor .cue-line{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;gap:8px;padding:6px;border:1px solid var(--line);border-radius:9px}
+html .audio-editor .cue-line:focus-within .cue-vars{display:flex}
+html .audio-editor .cue-var{padding:2px 9px;border:1px solid var(--line);border-radius:11px;font:500 11.5px "Roboto Mono",monospace}
+```
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1587,3 +1611,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Scrutineering | Reimagined: the classification as slim rows with a lap chart each, and a lap explorer (chart of every lap, figures, filters, suspect laps, several laps at once, back in the records); one colour per kind of lap |
 | 2026-11 | Scrutineering | The Race Director page of Live Race has the desk after the race and the lap explorer during it; on a phone the laps are two-line cards |
 | 2026-11 | Scrutineering | The race window's Review laps during the race has the same drivers and lap explorer as the Race Director page |
+| 2026-11 | Cue Card | New: a call of an audio set as one card (Plays when, What it says with every line, ▶ and ⋯, race values as chips, Only when…, one more line); Voice & playback quieter |

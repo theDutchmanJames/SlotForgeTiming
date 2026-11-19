@@ -5127,3 +5127,86 @@ html #dir-laps .rx-livetitle{display:none}
   html .race-finish .rx-table tr.rx-row>.rx-acts .btn{margin:2px 4px 0 0}
   html .race-finish .rx-table tr.rx-stint,html .race-finish .rx-table tr.rx-stint>td{display:block}
 }
+/* ==== Cue Card (2.4.0, SlotForgeRestyle.md "Cue Card"): a call of an audio set, open under its row. When it plays, what it says (every line at once: ▶, the text,
+   ⋯ for how it plays and Delete), race values as chips under the line you type in, one more line, the repeat limit. No folders, no variation list. ==== */
+html .audio-editor fieldset.audcall.cue{display:flex;flex-direction:column;gap:14px;margin:0 0 6px;padding:14px 16px 14px 18px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 0 10px 10px;background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html .audio-editor fieldset.audcall.cue>legend,html .audio-editor fieldset.audcall.cue>.audio-enable{display:none}
+html .audio-editor .cue-k{display:block;margin:0 0 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .audio-editor .cue-when>p{margin:0;font-size:13.5px;color:var(--ink)}
+html .audio-editor .cue-opts{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;margin-top:10px}
+html .audio-editor .cue-opts>*{margin:0}
+html .audio-editor .cue-opts .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0}
+html .audio-editor .cue-opts label{display:inline-flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+html .audio-editor .cue-opts .audio-fields{display:flex;flex-wrap:wrap;gap:8px 16px}
+html .audio-editor .cue-opts input:not([type=checkbox]),html .audio-editor .cue-opts select{width:auto;min-width:90px;max-width:260px;height:30px;font-size:13px}
+html .audio-editor .cue-opts small,html .audio-editor .cue-opts .muted{display:block;max-width:70ch;font-size:11.5px;color:var(--muted)}
+/* the lines */
+html .audio-editor .cue-says{display:flex;flex-direction:column;gap:6px}
+html .audio-editor .cue-line{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;align-items:start;gap:8px;padding:6px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+html .audio-editor .cue-line:focus-within{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+html .audio-editor .cue-line .btn.icon{width:32px;min-height:32px;height:32px;padding:0}
+html .audio-editor .cue-play{background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--accent-text,var(--accent))}
+html .audio-editor .cue-main{display:flex;flex-direction:column;gap:6px;min-width:0}
+html .audio-editor .cue-main>input[data-text]{width:100%;height:32px;margin:0;font-size:14px}
+html .audio-editor .cue-file{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:none;min-height:32px}
+html .audio-editor .cue-file[hidden]{display:none}
+html .audio-editor .cue-file input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+html .audio-editor .cue-pick{cursor:pointer}
+html .audio-editor .cue-pick:focus-within{outline:2px solid #4c9aff;outline-offset:2px}
+html .audio-editor .cue-filename{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:12px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));font-size:12.5px}
+html .audio-editor .cue-example{margin:0;font-size:12px;color:var(--muted)}
+html .audio-editor .cue-example[hidden]{display:none}
+html .audio-editor .cue-example.audio-invalid{color:#ff8a8e}
+/* the race values: chips under the line you type in */
+html .audio-editor .cue-vars{display:none;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:12px;color:var(--muted)}
+html .audio-editor .cue-line:focus-within .cue-vars{display:flex}
+html .audio-editor .cue-line[data-mode="file"] .cue-vars{display:none}
+html .audio-editor .cue-vars>span{margin-right:2px}
+html .audio-editor .cue-var{padding:2px 9px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);font:500 11.5px "Roboto Mono",Consolas,monospace;cursor:pointer}
+html .audio-editor .cue-var:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+html .audio-editor .cue-more-vars select{height:26px;max-width:220px;font-size:11.5px}
+html .audio-editor .cue-vars .btn.sm{min-height:26px;height:26px;padding:0 9px;font-size:12px}
+html .audio-editor .cue-vars small{flex-basis:100%;font-size:11px}
+/* Only when… */
+html .audio-editor details.cue-only{margin:0;padding:0;border:0;background:none}
+html .audio-editor details.cue-only>summary{display:inline-flex;gap:6px;padding:2px 9px;border:1px dashed var(--line);border-radius:11px;font-size:12px;color:var(--muted);cursor:pointer;list-style:none}
+html .audio-editor details.cue-only>summary::-webkit-details-marker{display:none}
+html .audio-editor details.cue-only[open]>summary,html .audio-editor details.cue-only:has(.muted:not(:empty))>summary{border-style:solid;color:var(--ink)}
+html .audio-editor details.cue-only>.row{display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 2px;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:12.5px}
+html .audio-editor details.cue-only>.row>.muted{flex-basis:100%;font-size:11.5px}
+/* ⋯ how it plays, and delete */
+html .audio-editor details.cue-menu{position:relative}
+html .audio-editor details.cue-menu>summary{list-style:none;display:inline-grid;place-items:center;width:32px;height:32px;border:1px solid transparent;border-radius:7px;font-size:18px;line-height:1;color:var(--muted);cursor:pointer}
+html .audio-editor details.cue-menu>summary::-webkit-details-marker{display:none}
+html .audio-editor details.cue-menu>summary:hover,html .audio-editor details.cue-menu[open]>summary{background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--ink)}
+html .audio-editor .cue-pop{position:absolute;right:0;top:36px;z-index:20;display:flex;flex-direction:column;gap:2px;width:270px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 12px 30px rgba(0,0,0,.45)}
+html .audio-editor .cue-pophead{margin:2px 6px 4px;font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .audio-editor .cue-radio{display:flex;align-items:flex-start;gap:9px;padding:6px 8px;border-radius:7px;cursor:pointer}
+html .audio-editor .cue-radio:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html .audio-editor .cue-radio input{margin:3px 0 0}
+html .audio-editor .cue-radio span{display:flex;flex-direction:column}
+html .audio-editor .cue-radio b{font-size:13px;font-weight:600}
+html .audio-editor .cue-radio small{font-size:11.5px;color:var(--muted)}
+html .audio-editor .cue-pop hr{width:100%;margin:4px 0;border:0;border-top:1px solid var(--line)}
+html .audio-editor .cue-pop>.btn{justify-content:flex-start}
+/* one more line, and the repeat limit */
+html .audio-editor .cue-add{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:2px}
+html .audio-editor .cue-addbtn{border-style:dashed}
+html .audio-editor .cue-add small{font-size:11.5px;color:var(--muted)}
+html .audio-editor .cue-cool{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0;padding-top:10px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+html .audio-editor .cue-cool input,html .audio-editor .cue-cool select{height:28px;font-size:12.5px}
+html .audio-editor .cue-cool .muted{flex-basis:100%;font-size:11.5px}
+/* the row of a call: ▶ in the accent */
+html .audio-editor [data-audio-rowtest]{color:var(--accent-text,var(--accent))}
+html .audio-editor .cue-vars small[data-audio-value-example]{display:none}
+html .audio-editor .cue-line:not(:focus-within) details.cue-only:not([open]):not(:has(summary .muted)){display:none}
+html .audio-editor .cue-cool input[type=number]{width:7.5em !important}
+/* Voice & playback (2.4.0): quiet groups and fields sized to what they hold (one Cue Card look with the calls) */
+html .audio-editor .audio-mixer .audio-folder{border-left:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html .audio-editor .audio-mixer .audio-folder>summary{background:none}
+html .audio-editor .audio-mixer .audio-folder>summary strong{font:600 10.5px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .audio-editor .audio-mixer .audio-folder .audio-folder{border-color:var(--line);background:none}
+html .audio-editor .audio-mixer :is(input[type=number],input[type=text]:not(#au-vtext)){width:8em;max-width:100%;height:32px}
+html .audio-editor .audio-mixer select{max-width:320px;height:32px}
+html body .audio-editor .audio-mixer details.audio-folder{border-left:1px solid var(--line) !important}
+html body .audio-editor .audio-mixer input:is([type=number],[type=text]):not(#au-vtext){width:8em !important}

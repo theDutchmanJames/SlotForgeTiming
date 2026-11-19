@@ -15,14 +15,18 @@ function audioPreview(box, d) {
     const sample = audioSample(c),
       check = AudioCalls.inspect(line.text, c, sample),
       mode = line.mode || (line.file ? 'file' : 'text');
+    // (2.4.0) only what helps: how a line with race values sounds, a value this call does not have, or a file that is still missing
     el.textContent =
-      mode === 'file'
-        ? line.file
-          ? 'Plays the attached sound file instead of speech.'
-          : 'Attach a sound file to hear this variation.'
-        : check.unknown.length
-          ? 'Unavailable for this call: ' + check.unknown.map(k => '{' + k + '}').join(', ')
-          : 'Example: ' + Announcer.fill(line.text, sample);
+      mode !== 'text' && !line.file
+        ? 'Choose a sound file to hear this line.'
+        : mode === 'file'
+          ? ''
+          : check.unknown.length
+            ? 'This call does not know ' + check.unknown.map(k => '{' + k + '}').join(', ') + ': it will not be said.'
+            : /{[^}]+}/.test(line.text || '')
+              ? 'Sounds like: “' + Announcer.fill(line.text, sample) + '”'
+              : '';
+    el.hidden = !el.textContent;
     el.classList.toggle('audio-invalid', check.unknown.length > 0 && mode !== 'file');
   });
 }
@@ -216,6 +220,14 @@ function audioStudio(box, d) {
   audioFolderBody(log).innerHTML =
     '<button class="btn" data-audio-diagnostics="1">Refresh recent decisions</button><pre id="au-diagnostics"></pre>';
   mixer.appendChild(log);
+  // (2.4.0, SlotForgeRestyle.md "Cue Card") every call as one card that reads from top to bottom: when it plays (and its settings), what it says (every line at
+  // once, each with ▶ to hear it and ⋯ for how it plays, Only when…, Delete), the race values as chips under the line you type in, then one more line and
+  // the repeat limit. The nodes are the ones audioedit drew: its handlers stay as they are.
+  const MODES = [
+    ['text', 'Say it', 'The commentator voice says the line'],
+    ['file', 'Play a sound file', 'Your own recording instead of the voice'],
+    ['both', 'Sound file, then say it', 'Your recording first, then the voice']
+  ];
   [...C, ...A].forEach(c => {
     const ambient = !!c.section,
       enable = body.querySelector(`[data-on="${c.id}"]`),
@@ -223,6 +235,7 @@ function audioStudio(box, d) {
       inner = card.querySelector(':scope > div');
     card.dataset.audioCall = c.id;
     card.dataset.system = audioSystemTone(ambient ? c.section : AudioCalls.category(c));
+    card.classList.add('cue');
     inner.hidden = false;
     const legend = card.querySelector('legend');
     legend.textContent = ambient ? audioAmbientTitle(c) : AudioCalls.title(c);
@@ -230,98 +243,133 @@ function audioStudio(box, d) {
     toggle.className = 'audio-enable';
     toggle.append(enable, document.createTextNode(ambient ? 'Enable this sound' : 'Enable this call'));
     card.insertBefore(toggle, inner);
-    const trigger = audioFolder(
-      c.id + ':trigger',
-      ambient ? 'Playback behaviour' : 'When it plays',
-      ambient ? (c.loop ? 'Looping background' : 'One-shot effect') : 'Triggered by the race event'
-    );
-    audioFolderBody(trigger).innerHTML = `<p>${esc(c.label)}</p>${ambient ? '' : audioTrigger(c, d)}`;
-    const messages = audioFolder(
-      c.id + ':messages',
-      ambient ? 'Sound files' : 'Message & sound',
-      ambient ? 'Your own recordings' : 'What the driver hears'
-    );
     const existing = [...inner.children];
-    card.append(trigger, messages);
+    // ---- when it plays ----
+    const when = document.createElement('div');
+    when.className = 'cue-when';
+    when.innerHTML = `<span class="cue-k">${ambient ? 'Plays' : 'Plays when'}</span><p>${esc(ambient ? c.label + (c.loop ? ' (plays on and on until it ends)' : '') : c.label)}</p>`;
+    const opts = document.createElement('div');
+    opts.className = 'cue-opts';
+    if (!ambient) opts.innerHTML = audioTrigger(c, d);
     existing
       .filter(el => !el.matches('.audline,.audcond,.audcool') && !el.querySelector('[data-addline]'))
-      .forEach(el => audioFolderBody(trigger).appendChild(el));
-    const lines = existing.filter(el => el.matches('.audline'));
-    if (lines.length) {
-      const choice = document.createElement('label');
-      choice.textContent = ambient ? 'Recording' : 'Variation';
-      choice.innerHTML += `<select data-audio-variation="${c.id}">${lines.map((_, n) => `<option value="${n}">${ambient ? 'Recording' : 'Variation'} ${n + 1}</option>`).join('')}</select>`;
-      audioFolderBody(messages).appendChild(choice);
-    }
+      .forEach(el => opts.appendChild(el));
+    if (opts.children.length) when.appendChild(opts);
+    // ---- what it says ----
+    const says = document.createElement('div');
+    says.className = 'cue-says';
+    says.innerHTML = `<span class="cue-k">${ambient ? 'Sound files' : 'What it says'}</span>`;
+    const lines = existing.filter(el => el.matches('.audline')),
+      vars = ambient ? [] : AudioCalls.variablesFor(c),
+      own = ambient ? [] : c.vars.filter(k => vars.includes(k));
     lines.forEach((line, n) => {
       const key = c.id + ':' + n,
         record = d.calls[c.id].lines[n],
-        variation = document.createElement('div');
-      variation.dataset.audioVariationBody = key;
-      variation.className = 'audio-message';
-      audioFolderBody(messages).appendChild(variation);
-      variation.appendChild(line);
-      const condition = existing.find(el => el.dataset.condKey === key);
-      if (condition) variation.appendChild(condition);
-      const remove = line.querySelector('[data-delline]'),
-        actions = audioFolder(key + ':actions', ambient ? 'Recording actions' : 'Variation actions', '', false);
-      audioFolderBody(actions).appendChild(remove);
-      variation.appendChild(actions);
-      line
-        .querySelector('[data-test],[data-ambtest]')
-        ?.replaceChildren(document.createTextNode(ambient ? 'Preview sound' : 'Preview call'));
-      if (ambient) return;
-      const input = line.querySelector('[data-text]'),
-        mode = record.mode || (record.file ? 'file' : 'text'),
-        play = document.createElement('label');
-      play.textContent = 'Play as';
-      play.innerHTML += `<select data-audio-mode="${key}">${[
-        ['text', 'Spoken message'],
-        ['file', 'Sound file'],
-        ['both', 'Sound, then speech']
-      ]
-        .map(([v, t]) => `<option value="${v}"${mode === v ? ' selected' : ''}>${t}</option>`)
-        .join('')}</select>`;
-      line.prepend(play);
-      const textLabel = document.createElement('label');
-      textLabel.className = 'audio-text-label';
-      textLabel.textContent = 'Message';
-      input.before(textLabel);
-      textLabel.appendChild(input);
-      textLabel.hidden = mode === 'file';
-      const file = line.querySelector('.audfile');
-      file.hidden = mode === 'text';
-      if (record.fileName) file.insertAdjacentHTML('afterbegin', `<span>${esc(record.fileName)}</span> `);
-      const picker = audioFolder(key + ':values', 'Insert a race value', 'Definitions and examples', false),
-        vars = AudioCalls.variablesFor(c);
-      audioFolderBody(picker).innerHTML =
-        `<label>Available for this call<select data-audio-value="${key}">${vars.map(k => `<option value="${k}">{${k}} — ${esc(Announcer.VARS[k] || k)}</option>`).join('')}</select></label><small data-audio-value-example="${key}"></small><button type="button" class="btn" data-audio-insert-selected="${key}"${vars.length ? '' : ' disabled'}>Insert value</button>`;
-      picker.hidden = mode === 'file';
-      variation.appendChild(picker);
-      variation.insertAdjacentHTML(
-        'beforeend',
-        `<p class="audio-example" data-message-preview="${key}" aria-live="polite"></p><small>Matching conditional variations take priority. Otherwise an eligible variation is chosen at random.</small>`
-      );
-      if (condition) {
-        const test = document.createElement('button');
-        test.type = 'button';
-        test.className = 'btn';
-        test.dataset.audioEvent = key;
-        test.textContent = 'Check conditions with sample data';
-        condition.appendChild(test);
+        mode = ambient ? 'file' : record.mode || (record.file ? 'file' : 'text'),
+        row = document.createElement('div');
+      row.className = 'cue-line';
+      row.dataset.mode = mode;
+      row.dataset.audioVariationBody = key; // (kept: the place of a line for audioedit)
+      const test = line.querySelector('[data-test],[data-ambtest]'),
+        input = line.querySelector('[data-text]'),
+        file = line.querySelector('.audfile'),
+        remove = line.querySelector('[data-delline]');
+      test.className = 'btn icon cue-play';
+      test.title = ambient ? 'Hear this sound' : 'Hear this line';
+      test.setAttribute('aria-label', test.title);
+      test.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 5l12 7-12 7z" fill="currentColor"/></svg>';
+      const main = document.createElement('div');
+      main.className = 'cue-main';
+      if (input) {
+        input.placeholder = 'What the commentator says';
+        input.hidden = mode === 'file';
+        main.appendChild(input);
       }
+      if (file) {
+        file.classList.add('cue-file');
+        file.hidden = mode === 'text';
+        const pick = file.querySelector('[data-file]');
+        if (pick) {
+          // a quiet "Choose a sound file" button over the file field
+          const lab = document.createElement('label');
+          lab.className = 'btn sm ghost cue-pick';
+          lab.textContent = record.file ? 'Replace the file' : 'Choose a sound file…';
+          pick.before(lab);
+          lab.appendChild(pick);
+        } else if (record.file) {
+          const tag = file.querySelector('.muted');
+          if (tag)
+            tag.outerHTML = `<span class="cue-filename">${Icons.svg('say', { size: 13, stroke: 1.8 })}${esc(record.fileName || 'Sound file')}</span>`;
+          const nofile = file.querySelector('[data-nofile]');
+          if (nofile) {
+            nofile.className = 'btn sm ghost';
+            nofile.textContent = 'Remove';
+          }
+        }
+        main.appendChild(file);
+      }
+      if (!ambient) {
+        main.insertAdjacentHTML('beforeend', `<p class="cue-example" data-message-preview="${key}" aria-live="polite"></p>`);
+        if (vars.length)
+          main.insertAdjacentHTML(
+            'beforeend',
+            `<div class="cue-vars" role="group" aria-label="Race values"><span>Insert</span>${own
+              .map(
+                k =>
+                  `<button type="button" class="cue-var" data-audio-insert="${key}:${k}" title="${esc(Announcer.VARS[k] || k)} · e.g. ${esc(String(Announcer.SAMPLE[k] ?? ''))}">{${esc(k)}}</button>`
+              )
+              .join(
+                ''
+              )}<label class="cue-more-vars"><select data-audio-value="${key}" aria-label="More race values">${vars.map(k => `<option value="${k}">{${k}} · ${esc(Announcer.VARS[k] || k)}</option>`).join('')}</select></label><button type="button" class="btn sm ghost" data-audio-insert-selected="${key}">Insert</button><small data-audio-value-example="${key}"></small></div>`
+          );
+      }
+      const condition = existing.find(el => el.dataset.condKey === key);
+      if (condition) {
+        condition.classList.add('cue-only');
+        const sum = condition.querySelector('summary');
+        if (sum) sum.innerHTML = sum.innerHTML.replace('Conditions&hellip;', 'Only when…').replace('Conditions…', 'Only when…');
+        main.appendChild(condition);
+      }
+      // ⋯ how it plays, and delete
+      const more = document.createElement('details');
+      more.className = 'cue-menu';
+      more.innerHTML = `<summary class="btn icon" title="More for this line" aria-label="More for this line">⋯</summary><div class="cue-pop">${
+        ambient
+          ? ''
+          : `<p class="cue-pophead">How it plays</p>${MODES.map(([v, t, s]) => `<label class="cue-radio"><input type="radio" name="mode-${key}" data-audio-mode="${key}" value="${v}"${mode === v ? ' checked' : ''}><span><b>${t}</b><small>${s}</small></span></label>`).join('')}<hr>`
+      }</div>`;
+      remove.className = 'btn sm danger';
+      remove.textContent = ambient ? 'Delete this sound file' : 'Delete this line';
+      more.querySelector('.cue-pop').appendChild(remove);
+      row.append(test, main, more);
+      says.appendChild(row);
     });
-    const add = inner.querySelector('[data-addline]');
-    add.textContent = ambient ? 'Add a recording' : 'Add variation';
-    audioFolderBody(messages).appendChild(add);
+    const add = inner.querySelector('[data-addline]'),
+      foot = document.createElement('div');
+    foot.className = 'cue-add';
+    add.className = 'btn sm ghost cue-addbtn';
+    add.textContent = ambient ? '+ Add a sound file' : lines.length ? '+ Add another line' : '+ Add a line';
+    foot.appendChild(add);
+    const conds = (d.calls[c.id].lines || []).some(l => l && l.only && Object.keys(l.only).length);
+    foot.insertAdjacentHTML(
+      'beforeend',
+      `<small>${lines.length > 1 ? `One ${ambient ? 'file' : 'line'} is picked at random each time, so the race does not sound the same.` : lines.length ? (ambient ? 'Add more files for variety.' : 'Add more lines for variety: one is picked at random each time.') : ambient ? 'Nothing plays until a file is added.' : 'Nothing is said until a line is added.'}${conds ? ' A line with “Only when” is used first when it matches.' : ''}</small>`
+    );
+    says.appendChild(foot);
+    // the options of an ambient sound (volume, start after, played for…) under its files
+    const ambOpts = inner.querySelector('.ambopts');
+    if (ambOpts) {
+      ambOpts.classList.add('cue-opts');
+      says.appendChild(ambOpts);
+    }
+    card.append(when, says);
     const cool = inner.querySelector('.audcool');
     if (cool) {
-      const repeat = audioFolder(c.id + ':repeat', 'Repeat limits', 'Only if you need them', false);
-      audioFolderBody(repeat).appendChild(cool);
-      card.appendChild(repeat);
+      cool.classList.add('cue-cool');
+      card.appendChild(cool);
     }
     inner.remove();
-    audioVariations(box, c.id);
   });
   box.querySelectorAll('i[data-lucide]').forEach(el => {
     el.outerHTML = Icons.svg({ 'audio-lines': 'say', megaphone: 'say', waves: 'wind', 'sliders-horizontal': 'sliders' }[el.dataset.lucide]);
@@ -373,8 +421,8 @@ function audioSelect(box, d) {
     const say = first ? `“${esc(first.text)}”` : files ? 'A recording' : esc(ambient ? 'No sound file yet' : c.label);
     const meta = ambient
       ? `${files} file${files === 1 ? '' : 's'}`
-      : `${lines.length} sentence${lines.length === 1 ? '' : 's'}${files ? ' · ' + files + ' recording' + (files === 1 ? '' : 's') : ''}`;
-    return `<div class="audio-row${open ? ' open' : ''}${on ? '' : ' off'}" role="listitem" data-row="${c.id}"><label class="audio-sw" title="${on ? 'On: click to switch it off' : 'Off: click to switch it on'}"><input type="checkbox" data-audio-rowon="${c.id}"${on ? ' checked' : ''} aria-label="${esc(title(c))} on"><i></i></label><button type="button" class="audio-rowmain" data-audio-call="${c.id}" aria-expanded="${open}"><b>${esc(title(c))}</b><span>${say}</span></button><span class="audio-rowmeta">${meta}</span><button type="button" class="btn ghost icon sm" data-audio-rowtest="${c.id}" title="Hear it" aria-label="Hear ${esc(title(c))}">${Icons.svg('say', { size: 15, stroke: 1.8 })}</button></div>`;
+      : `${lines.length} line${lines.length === 1 ? '' : 's'}${files ? ' · ' + files + ' sound file' + (files === 1 ? '' : 's') : ''}`;
+    return `<div class="audio-row${open ? ' open' : ''}${on ? '' : ' off'}" role="listitem" data-row="${c.id}"><label class="audio-sw" title="${on ? 'On: click to switch it off' : 'Off: click to switch it on'}"><input type="checkbox" data-audio-rowon="${c.id}"${on ? ' checked' : ''} aria-label="${esc(title(c))} on"><i></i></label><button type="button" class="audio-rowmain" data-audio-call="${c.id}" aria-expanded="${open}"><b>${esc(title(c))}</b><span>${say}</span></button><span class="audio-rowmeta">${meta}</span><button type="button" class="btn ghost icon sm" data-audio-rowtest="${c.id}" title="Hear it" aria-label="Hear ${esc(title(c))}"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 5l12 7-12 7z" fill="currentColor"/></svg></button></div>`;
   };
   let html = '',
     lastGroup = null;
