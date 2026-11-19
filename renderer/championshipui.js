@@ -942,16 +942,38 @@ async function champPanelsFor(boxes, onDone) {
 const champPanelsIn = (root, onDone) => champPanelsFor([...root.querySelectorAll('[data-cpbox]')], onDone);
 
 // ---- Database > Results and Records > Championships: the standings ----
-const champTableHtml = t =>
-  `<div class="wrap"><table class="fields chtable"><thead><tr>${t.columns.map(c => `<th${c.r ? ' class="r"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${t.rows
-    .map(
-      r =>
-        `<tr${r.lead ? ' class="lead"' : ''}>${r.cells.map((c, i) => `<td class="${(t.columns[i] || {}).r ? 'r ' : ''}${c.cls || ''}">${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}</td>`).join('')}</tr>`
-    )
-    .join('')}</tbody></table></div>` +
-  (t.legend && t.legend.length
-    ? `<p class="muted chlegend">${t.legend.map(l => `<span class="${esc(l.cls)}">${esc(l.text)}</span>`).join(' &nbsp;&middot;&nbsp; ')}</p>`
-    : '');
+// (2.4.0, SlotForgeRestyle.md "Title Fight") src: the rows of the standings in the order of the table (drivers or teams): the best score of every round is lit, and the total has a bar
+const champTableHtml = (t, src) => {
+  const first = 3,
+    n = src && src[0] ? src[0].cells.length : 0,
+    top = Array.from({ length: n }, (_, k) =>
+      Math.max(0, ...src.map(r => (r.cells[k].state === 'score' && !r.cells[k].dropped ? r.cells[k].pts : 0)))
+    ),
+    most = src ? Math.max(0, ...src.map(r => r.total)) : 0;
+  const extra = (ri, i) => {
+    const row = src && src[ri],
+      k = i - first;
+    if (!row) return '';
+    if (k >= 0 && k < n) {
+      const x = row.cells[k];
+      return x.state === 'score' && !x.dropped && top[k] > 0 && x.pts === top[k] ? 'chtop' : '';
+    }
+    return '';
+  };
+  const bar = (ri, i) =>
+    src && src[ri] && i === first + n && most > 0 ? `<i class="chbar" style="--w:${Math.round((src[ri].total / most) * 100)}%"></i>` : '';
+  return (
+    `<div class="wrap chwrap"><table class="fields chtable"><thead><tr>${t.columns.map(c => `<th${c.r ? ' class="r"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${t.rows
+      .map(
+        (r, ri) =>
+          `<tr${r.lead ? ' class="lead"' : ''}>${r.cells.map((c, i) => `<td class="${[(t.columns[i] || {}).r ? 'r' : '', c.cls, extra(ri, i)].filter(Boolean).join(' ')}">${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}${bar(ri, i)}</td>`).join('')}</tr>`
+      )
+      .join('')}</tbody></table></div>` +
+    (t.legend && t.legend.length
+      ? `<p class="muted chlegend">${t.legend.map(l => `<span class="${esc(l.cls)}">${esc(l.text)}</span>`).join(' &nbsp;&middot;&nbsp; ')}</p>`
+      : '')
+  );
+};
 
 async function renderChampStandings(box) {
   const selectedId = champView.id,
@@ -990,12 +1012,34 @@ async function renderChampStandings(box) {
     lead = ChampPts.leadText(st),
     more = ChampPts.remainingNote(c, st, D.setups);
   if (champView.classId) t.title = (classChoices.find(x => x.id === champView.classId)?.name || 'Class') + ' · ' + t.title;
-  const board = `<div class="chrounds">${st.board.map(b => `<div class="chrc${b.decided ? '' : ' open'}"><div class="muted">${esc(b.label)}</div>${b.decided ? `<b>${esc(b.winner || '–')}</b>` : `<span class="muted">${esc(b.date || 'not driven')}</span>`}</div>`).join('')}</div>`;
+  const next = st.board.find(b => !b.decided),
+    stateOf = b => (b.decided ? 'done' : b === next ? 'next' : 'later'),
+    tagOf = b => (b.decided ? 'Done' : b === next ? 'Next' : 'Later');
+  const board = `<div class="chrounds">${st.board.map(b => `<div class="chrc${b.decided ? '' : ' open'}${b === next ? ' next' : ''}"><div class="chrc-top"><span class="muted">${esc(b.label)}</span><span class="chrc-tag">${tagOf(b)}</span></div>${b.decided ? `<small class="muted">Winner</small><b>${esc(b.winner || '–')}</b>${b.date ? `<small class="muted">${esc(b.date)}</small>` : ''}` : `<span class="muted">${esc(b.date || 'not driven')}</span>`}</div>`).join('')}</div>`;
+  const doneN = st.board.filter(b => b.decided).length,
+    season = `<div class="chseason"><div class="chs-head"><b>${esc(c.name || 'Championship')}</b><small>${doneN ? `${doneN} of ${st.board.length} rounds driven` : `${st.board.length} ${st.board.length === 1 ? 'round' : 'rounds'}, none driven yet`}</small></div><ol class="chs-track" aria-label="The rounds">${st.board
+      .map(b => `<li class="${stateOf(b)}" title="${esc(b.label + (b.date ? ' · ' + b.date : ''))}"><span>R${b.ri + 1}</span></li>`)
+      .join(
+        ''
+      )}</ol>${next ? `<div class="chs-next"><small>Next round</small><b>${esc(next.label)}</b>${next.date ? `<small>${esc(next.date)}</small>` : ''}</div>` : doneN ? '<div class="chs-next"><small>The season</small><b>Complete</b></div>' : ''}</div>`;
+  const src = which === 'teams' ? st.teams : which === 'drivers' ? st.drivers : null,
+    podium =
+      src && st.decided && src.length
+        ? `<div class="chpod">${src
+            .slice(0, 3)
+            .map(
+              (r, i) =>
+                `<div class="chp chp${i + 1}"><span class="chp-pl">${r.pos}</span><span class="chp-w"><b>${esc(r.name)}</b><small>${esc(which === 'teams' ? r.drivers.join(', ') : [r.teamName, r.wins ? r.wins + (r.wins === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · '))}</small></span><span class="chp-pts"><strong>${esc(ChampPts.fmt(r.total))}</strong><small>${i ? esc(ChampPts.signed(r.behind)) : 'points'}</small></span></div>`
+            )
+            .join('')}</div>`
+        : '';
   box.innerHTML = `<div class="chstbar"><label class="field"><span class="muted">Championship</span><select id="chs-pick" aria-label="Championship">${D.champs.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.name || '(unnamed)')}</option>`).join('')}</select></label>
       ${classChoices.length ? `<label class="field">Classification<select id="chs-class"><option value="">Overall</option>${classChoices.map(x => `<option value="${esc(x.id)}"${champView.classId === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>` : ''}<div class="sub" id="chs-which" role="tablist"></div><button class="btn primary" id="chs-pdf" type="button">Export to PDF</button><span class="muted" id="chs-msg" role="status"></span></div>
+    ${season}
     ${lead || more ? `<p class="chlead">${lead ? `<b>${esc(lead)}.</b> ` : ''}${esc(more)}</p>` : ''}
     ${pending.length ? `<p class="hint2 chpending">${pending.length} ${pending.length === 1 ? 'race of this championship is' : 'races of this championship are'} saved but not awarded yet, so ${pending.length === 1 ? 'it is' : 'they are'} not in the standings. Open ${pending.length === 1 ? 'it' : 'one'} in Racing Records to award the points.</p>` : ''}
-    <section class="chsec"><h3>${esc(t.title)}</h3>${t.note && which !== 'rounds' ? `<p class="hint2">${esc(t.note)}</p>` : ''}${which === 'rounds' ? `<p class="hint2">Winner of each race</p>${board}` : champTableHtml(t)}</section>`;
+    ${podium}
+    <section class="chsec"><h3>${esc(t.title)}</h3>${t.note && which !== 'rounds' ? `<p class="hint2">${esc(t.note)}</p>` : ''}${which === 'rounds' ? `<p class="hint2">Winner of each race</p>${board}` : champTableHtml(t, src)}</section>`;
   renderTabs(byId('chs-which'), [['drivers', 'Drivers'], ...(st.teams ? [['teams', 'Teams']] : []), ['rounds', 'Rounds']], which, id => {
     champView.which = id;
     renderChampStandings(box);

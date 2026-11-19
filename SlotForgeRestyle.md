@@ -51,6 +51,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Cue Card](#cue-card) | A call of an audio set: when it plays, every line at once with ▶ and ⋯, race values as chips, one more line | Customization › Audio Settings |
 | [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
 | [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
+| [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1484,6 +1485,34 @@ html #heatlist table.hl tr.hl-next{box-shadow:inset 0 3px 0 var(--accent)}
 html #finalpick .fp-lane{border-left:5px solid var(--c);background:color-mix(in srgb,var(--c) 12%,var(--panel))}
 ```
 
+## Title Fight
+
+The standings of a championship (`renderer/championshipui.js`: renderChampStandings, champTableHtml; styles under `.chstbar`, `.chseason`, `.chpod`,
+`.chsec`, `.chtable`, `.chrounds`). The championship colour (`--c-ch`, pink; darker in the light themes) is the accent of the page.
+
+- **One [Control Strip](#control-strip)**: the championship (and the classification of a multi-class championship), Drivers / Teams / Rounds, and
+  Export to PDF at the far end.
+- **The season band**: the name in Barlow with *4 of 6 rounds driven*, the rounds as a **track** of segments (driven: filled; next: outlined; later:
+  grey; R1… under them in mono), and on the right *Next round* with its name and date (or *The season · Complete*).
+- **Who leads** is a quiet line with an edge in the championship colour; races saved and not awarded are an amber note.
+- **The first three** as podium cards like the [Race Report](#race-report): the place in a gold, silver or bronze tile, the name with the team and
+  wins (for teams: their drivers), the points in Barlow and the gap under them. Not shown on Rounds or before a race is awarded.
+- **The standings** are a Race Sheet in a box: the title as a kicker, the place in Barlow (1–3 in their colours), the place and the name stay in view
+  when the table scrolls sideways, the numbers in mono, **the best score of every round lit** (gold tint), dropped results struck through, a fastest
+  lap in the championship colour, and **a bar under the points** (its length the share of the leader's points).
+- **Rounds**: a card for every round with its state tag (*Done* green, *Next* in the championship colour with a coloured top, *Later* grey), the
+  winner and the date.
+
+```css
+html .chseason{display:grid;grid-template-columns:minmax(180px,auto) minmax(0,1fr) auto;border-left:4px solid var(--c-ch);background:color-mix(in srgb,var(--c-ch) 6%,var(--panel))}
+html .chs-track>li.done::before{background:var(--c-ch)}
+html .chtable tr td.chtop{background:color-mix(in srgb,#d4a400 16%,var(--panel));font-weight:700}
+html .chbar{display:block;width:var(--w);height:3px;margin:4px 0 0 auto;border-radius:2px;background:var(--c-ch)}
+html .chrc.next{box-shadow:inset 0 3px 0 var(--c-ch)}
+```
+
+The PDF of the standings is unchanged.
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1657,3 +1686,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | System Sheet | A field with a control of its own (the system switches of a race setup) is a wide row: the name and note above, the control across the row; the switches are Toggle Chips |
 | 2026-11 | Race Report | New: a saved race as a row with a date tile and the winner, opened as a report (actions, podium, classification, notes, heats) with the lap times as a table |
 | 2026-11 | Heat Board | New: Next up with Start between heats, the heat list as heat cards, the overall result as a Race Sheet, the lanes of a final as tiles in the lane colours |
+| 2026-11 | Title Fight | New: the championship standings with the season as a band, the first three as podium cards, the best score of every round lit, a bar for the points, the rounds as cards |
