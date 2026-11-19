@@ -777,6 +777,21 @@ class Database {
     const key = { tracks: 'trackId', drivers: 'driverId', slotcars: 'carId' }[entity];
     return key ? this.data.laps.filter(l => l[key] === id).length : 0;
   }
+  // (2.4.0) App Settings > Shared Library: prepare a race whose conversion failed again ('reconvert'), or take one that never reached the library
+  // off the list ('remove'). Returns whether the race changed.
+  libraryResult(sessionId, action) {
+    const H = require('./shared-library-history'),
+      s = this.data.sessions.find(r => r.id === sessionId);
+    if (!s) throw new Error('Not found');
+    const delivery = s.paddockDelivery;
+    if (action === 'remove') H.dismiss(s);
+    else if (action !== 'reconvert' || !H.reconvert(this.data, s)) return false;
+    this.touch(s);
+    this.guard(() => {
+      s.paddockDelivery = delivery;
+    });
+    return true;
+  }
   remove(entity, id) {
     this.check(entity);
     const saved = this.tablesNow(this.removalTables(entity));

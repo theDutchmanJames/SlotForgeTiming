@@ -24,7 +24,9 @@ function deliverySummary(d) {
     warnings: receiptWarnings(d),
     receiptCheckedAt: d.receiptCheckedAt,
     receiptCheckError: d.receiptCheckError || '',
-    transport: d.transport || 'network'
+    transport: d.transport || 'network',
+    convertFailed: require('./shared-library-history').failed(d),
+    neverShared: require('./shared-library-history').neverShared(d)
   };
 }
 class JsonPaddockStorage {

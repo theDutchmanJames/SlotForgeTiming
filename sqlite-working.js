@@ -421,6 +421,9 @@ class WorkingStore extends SqliteStore {
         case 'setLapEligibility':
           result = this.lapEligibility(input);
           break;
+        case 'libraryResult':
+          result = this.libraryResult(input);
+          break;
         case 'setRaceResume':
           result = require('./sqlite-lifecycle').setResume(this, input);
           break;
@@ -703,6 +706,23 @@ class WorkingStore extends SqliteStore {
     this.replace('sessions', s.id, s);
     this.savePaddock(state, before);
     return { sessionId, revision: this.revision('sessions', sessionId) };
+  }
+  // (2.4.0) App Settings > Shared Library: prepare a race whose conversion failed again, or take one that never reached the library off the list
+  libraryResult({ sessionId, action }) {
+    identity(sessionId);
+    if (!['reconvert', 'remove'].includes(action)) throw Error('Unsupported shared-library result action.');
+    const H = require('./shared-library-history'),
+      s = this.get('sessions', sessionId, true)?.value;
+    if (!s) throw Error('Not found');
+    if (action === 'remove') H.dismiss(s);
+    else {
+      const state = { ...this.paddockState(), laps: this.lapsFor(sessionId) },
+        before = JSON.stringify(state.paddock);
+      if (!H.reconvert(state, s)) return { changed: false };
+      this.savePaddock(state, before);
+    }
+    this.replace('sessions', s.id, s);
+    return { changed: true };
   }
   deleteSession({ sessionId, expectedRevision }) {
     identity(sessionId);

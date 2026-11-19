@@ -140,6 +140,9 @@ class DataRepository {
     }
     return this.undone(() => this.db.update(entity, id, patch));
   }
+  async libraryResult(sessionId, action) {
+    return this.undone(() => this.db.libraryResult(sessionId, action));
+  }
   async remove(entity, id) {
     if (entity === 'sessions') return this.removeSession(id);
     await this.undone(() => this.db.remove(entity, id));

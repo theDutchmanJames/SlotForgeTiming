@@ -200,4 +200,29 @@ function withdraw(db, s, reason) {
   (state.withdrawals || (state.withdrawals = [])).push(d);
   s.paddockDelivery = { ...old, status: 'withdrawn' };
 }
-module.exports = { prepare, revise, withdraw, context, generation, HELD };
+// (2.4.0) App Settings > Connections > Shared Library. A race whose conversion failed (its first preparation, or a correction) holds no result to
+// send: Retry prepares it again from the saved race, so a fix in a later version reaches it. Remove takes a race that never reached the library
+// off the list (it stays in Timing, only not shared); a race the library already holds is corrected or deleted in Timing instead.
+const failed = d => d?.transport === 'engine' && d.status === 'attention' && !d.payload && !!d.guardBlocked;
+const neverShared = d => failed(d) && Object.hasOwn(d, 'prior') && !d.prior && !d.previousPayload && !d.guard?.operations?.length;
+function reconvert(db, s) {
+  if (!failed(s.paddockDelivery)) return false;
+  revise(db, s);
+  return true;
+}
+function dismiss(s) {
+  const d = s.paddockDelivery;
+  if (!neverShared(d)) throw Error('This race is already in the shared library. Correct or delete the race in Timing instead.');
+  s.paddockDelivery = {
+    transport: 'engine',
+    name: d.name,
+    sessionId: d.sessionId,
+    databaseId: d.databaseId,
+    payload: null,
+    status: 'withdrawn',
+    dismissed: true,
+    error: d.error,
+    receipt: null
+  };
+}
+module.exports = { prepare, revise, withdraw, context, generation, HELD, failed, neverShared, reconvert, dismiss };

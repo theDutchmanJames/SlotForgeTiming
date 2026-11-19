@@ -77,6 +77,10 @@ class SqliteAppRepository extends SqliteCompatibilityReads {
       return this.get(entity, id);
     });
   }
+  libraryResult(sessionId, action) {
+    const commandId = randomUUID();
+    return this.queue(async () => (await this.commands.execute(commandId, 'libraryResult', { sessionId, action }))?.changed === true);
+  }
   remove(entity, id) {
     const commandId = randomUUID();
     return this.queue(async () => {

@@ -1015,7 +1015,7 @@ async function renderSharedLibraryResults(box, note = '') {
   const rows = view.results
     .map(
       r =>
-        `<div class="paddock-delivery" data-library-result><b>${esc(r.name)}</b><span>${r.status === 'attention' ? 'Needs attention' : 'Waiting to send again'}</span>${r.error ? `<p>${esc(r.error)}</p>` : ''}</div>`
+        `<div class="paddock-delivery" data-library-result><b>${esc(r.name)}</b><span>${r.status === 'attention' ? 'Needs attention' : 'Waiting to send again'}</span>${r.error ? `<p>${esc(r.error)}</p>` : ''}${r.removable && api.libraryResultsRemove ? `<button type="button" class="btn small" data-library-remove="${esc(r.sessionId)}" title="The race stays in Timing; only its copy for the shared library is dropped">Remove from this list</button>` : ''}</div>`
     )
     .join('');
   box.innerHTML = `<section data-settings-group="library-results"><h3>Race results in the shared library</h3><p class="muted">Finished races are sent to the shared slotcar library by themselves. A result that could not be sent is listed here with the reason.</p>
@@ -1028,14 +1028,38 @@ async function renderSharedLibraryResults(box, note = '') {
     let msg;
     try {
       const r = await api.libraryResultsRetry();
+      const conv = r?.converted ? `Converted ${r.converted} race${r.converted === 1 ? '' : 's'} again. ` : '',
+        still = r?.failed
+          ? `${r.failed} race${r.failed === 1 ? '' : 's'} still cannot be converted: remove ${r.failed === 1 ? 'it' : 'them'} from this list, or keep ${r.failed === 1 ? 'it' : 'them'} for a later version. `
+          : '';
       msg = r?.deferred
-        ? 'Results are sent after the race.'
-        : `Sent ${r?.sent || 0} of ${r?.offered || 0} result${r?.offered === 1 ? '' : 's'} offered again.`;
+        ? conv + still + 'Results are sent after the race.'
+        : conv + still + `Sent ${r?.sent || 0} of ${r?.offered || 0} result${r?.offered === 1 ? '' : 's'} offered again.`;
     } catch (error) {
       msg = 'Retry failed: ' + error.message;
     }
     await renderSharedLibraryResults(box, msg);
   };
+  box.querySelectorAll('[data-library-remove]').forEach(x => {
+    x.onclick = async () => {
+      if (
+        !(await Dialog.confirm(
+          'Remove this race from the shared library list? The race stays in Timing; it is only not sent to the shared library.',
+          { ok: 'Remove', danger: true }
+        ))
+      )
+        return;
+      x.disabled = true;
+      let msg;
+      try {
+        await api.libraryResultsRemove(x.dataset.libraryRemove);
+        msg = 'Removed from the list. The race stays in Timing.';
+      } catch (error) {
+        msg = 'Could not remove it: ' + error.message;
+      }
+      await renderSharedLibraryResults(box, msg);
+    };
+  });
 }
 
 async function renderNetworkSettings(box) {

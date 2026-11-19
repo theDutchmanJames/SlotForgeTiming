@@ -142,6 +142,7 @@ contextBridge.exposeInMainWorld('api', {
   libraryRetry: id => call('library:retry', id),
   libraryResults: () => call('library:results'),
   libraryResultsRetry: () => call('library:results-retry'),
+  libraryResultsRemove: id => call('library:results-remove', id),
   libraryResolve: id => call('library:resolve', id),
   paddockCollectionMigration: options => call('paddock:collection-migration', options),
   paddockHistoricalReview: options => call('paddock:historical-review', options),

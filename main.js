@@ -566,12 +566,32 @@ function registerLibraryHandlers() {
       deliveryError: c.deliveryError || '',
       results: all
         .filter(d => d.transport === 'engine' && (d.status === 'attention' || (d.status === 'pending' && d.error)))
-        .map(d => ({ name: d.name, sessionId: d.sessionId, status: d.status, error: d.error }))
+        .map(d => ({ name: d.name, sessionId: d.sessionId, status: d.status, error: d.error, removable: !!d.neverShared }))
     };
   });
-  ipcMain.handle('library:results-retry', e => {
+  // (2.4.0) Retry first prepares the races whose conversion failed again (a later version may convert them), then offers every result again
+  ipcMain.handle('library:results-retry', async e => {
     paddockIdle(e);
-    return library().retryResults();
+    const c = library();
+    let converted = 0,
+      failed = 0;
+    for (const d of (await paddock.storage.summary()).deliveries)
+      if (d.transport === 'engine' && d.convertFailed && d.sessionId) {
+        await records.libraryResult(d.sessionId, 'reconvert');
+        const now = (await paddock.storage.summary()).deliveries.find(x => x.sessionId === d.sessionId && x.transport === 'engine');
+        if (now?.convertFailed) failed++;
+        else converted++;
+      }
+    const r = await c.retryResults();
+    return { ...r, converted, failed };
+  });
+  ipcMain.handle('library:results-remove', async (e, sessionId) => {
+    paddockIdle(e);
+    if (typeof sessionId !== 'string' || !sessionId) throw Error('Not a race result.');
+    const d = (await paddock.storage.summary()).deliveries.find(x => x.sessionId === sessionId && x.transport === 'engine');
+    if (!d?.neverShared) throw Error('This race is already in the shared library. Correct or delete the race in Timing instead.');
+    await records.libraryResult(sessionId, 'remove');
+    return { removed: true };
   });
   ipcMain.handle('library:resolve', async (e, id) => {
     paddockIdle(e);
