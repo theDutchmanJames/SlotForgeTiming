@@ -1085,6 +1085,7 @@ async function renderRace() {
     <div id="calls" class="card calls" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
+    ${heats ? '<section id="heatnext" class="hn" aria-label="The heat that is next" hidden></section>' : ''}
     <div class="rt-folders">
       ${!tokenSession && typeof RaceSystems !== 'undefined' && Object.values(eng.systemsOf()).some(x => x.available) ? folderHtml('systems', 'Racing systems', 'On / Off for this race', 'plain', '<div id="systempanel"></div>') : ''}
       ${resourceState ? folderHtml('resources', 'Resources', 'Supplies, balances and director adjustments', 'teal', '<div id="resource-live"></div>') : ''}
@@ -2120,6 +2121,7 @@ async function renderRace() {
     Heats.listOf(heat, people, { live: ['countdown', 'running', 'paused', 'review'].includes(live.phase), labels: r.labels });
   const drawHeatList = () => {
     if (!heats || !ui('heatlist')) return;
+    drawHeatNext();
     const list = heatListOf(),
       sig = JSON.stringify(
         list.map(x => [x.state, x.drivers.map(d => [d.p, d.lane]), x.rows.map(y => [y.participant, y.pos, y.points, y.tm, y.fin, y.laps])])
@@ -2132,8 +2134,12 @@ async function renderRace() {
       `<table class="fields hl"><thead><tr><th>Heat</th><th>Drivers by lane</th><th>Winner</th><th>${byPts ? 'Points' : tmOn ? 'Times' : 'Laps'}</th>${byPts || tmOn ? '<th>Laps</th>' : ''}</tr></thead><tbody>${list
         .map(x => {
           const lanes =
-            x.drivers.map(d => `${Number.isInteger(d.lane) ? 'Lane ' + (d.lane + 1) + ': ' : ''}${esc(d.name)}`).join(' · ') ||
-            '<span class="muted">decided after the heats</span>';
+            x.drivers
+              .map(
+                d =>
+                  `<span class="hl-lane"${Number.isInteger(d.lane) ? ` style="--c:${esc(HomeStats.laneColor(layout, d.lane))}"` : ''}>${Number.isInteger(d.lane) ? 'Lane ' + (d.lane + 1) + ': ' : ''}${esc(d.name)}</span>`
+              )
+              .join('') || '<span class="muted">decided after the heats</span>';
           const res = x.rows
             .map(
               y =>
@@ -2144,6 +2150,37 @@ async function renderRace() {
         })
         .join('')}</tbody></table>`;
   };
+  // (2.4.0, SlotForgeRestyle.md "Heat Board") the heat that is next, on top while the race waits for it: its name, its drivers by lane, and Start
+  const drawHeatNext = () => {
+    const box = ui('heatnext');
+    if (!heats || !box) return;
+    const nx = ['ready', 'between'].includes(live.phase) ? heatListOf().find(x => x.state === 'next') : null,
+      key = nx
+        ? JSON.stringify([live.phase, nx.name, nx.drivers.map(d => [d.p, d.lane, d.name]), live.phase === 'between' && !heat.picksDone()])
+        : '';
+    if (key === live.heatNextKey) return;
+    live.heatNextKey = key;
+    box.hidden = !nx;
+    if (!nx) {
+      box.innerHTML = '';
+      return;
+    }
+    const done = heatListOf().filter(x => x.state === 'done').length,
+      total = heatListOf().length;
+    box.innerHTML = `<div class="hn-head"><span class="hn-k">${live.phase === 'ready' ? 'First up' : 'Next up'} · ${done} of ${total} done</span><b>${esc(nx.name)}${nx.label ? ` <small>${esc(nx.label)}</small>` : ''}</b></div><div class="hn-lanes">${
+      nx.drivers
+        .map(
+          d =>
+            `<span class="hn-lane"${Number.isInteger(d.lane) ? ` style="--c:${esc(HomeStats.laneColor(layout, d.lane))}"` : ''}><i>${Number.isInteger(d.lane) ? d.lane + 1 : '–'}</i>${esc(d.name)}</span>`
+        )
+        .join('') || '<span class="muted">The lanes are chosen below.</span>'
+    }</div><div class="hn-go">${live.phase === 'between' && !heat.picksDone() ? '<span class="muted">Choose the lanes of the final first.</span>' : `<button type="button" class="btn primary" data-hn="start">Start ${esc(nx.name.replace(/^Heat/, 'heat').replace(/^Final/, 'final'))}</button><span class="muted"><kbd>Space</kbd> starts it too</span>`}</div>`;
+  };
+  if (heats && ui('heatnext'))
+    ui('heatnext').onclick = ev => {
+      const b = ev.target.closest && ev.target.closest('[data-hn="start"]');
+      if (b && (live.phase === 'ready' || live.phase === 'between')) actions.start();
+    };
   if (heats && ui('heatprint'))
     ui('heatprint').onclick = () => {
       const say = t => {
@@ -2430,7 +2467,7 @@ async function renderRace() {
     box.innerHTML = `<strong>Final ${f.name}: choose the lanes</strong>
       <p class="hint2">The best-placed driver of the heat result chooses first. The drivers of this final, best first: ${f.drivers.map((p, i) => `${i + 1}. ${who(p)}`).join(' · ')}.</p>
       ${done ? '<p><strong>All lanes are chosen.</strong> Press Space (or Start) for the final, or change the choices.</p>' : `<p><strong>${who(f.next)}</strong> chooses a lane:</p>`}
-      <p>${grid.map(({ l, x }) => (x ? `<button class="btn" disabled data-fp="taken">Lane ${l + 1}: ${who(x.p)}</button>` : `<button class="btn" data-fp="lane" data-lane="${l}"${done ? ' disabled' : ''}>Lane ${l + 1}</button>`)).join(' ')}</p>
+      <p class="fp-lanes">${grid.map(({ l, x }) => (x ? `<button class="btn fp-lane" style="--c:${esc(HomeStats.laneColor(layout, l))}" disabled data-fp="taken">Lane ${l + 1}: ${who(x.p)}</button>` : `<button class="btn fp-lane" style="--c:${esc(HomeStats.laneColor(layout, l))}" data-fp="lane" data-lane="${l}"${done ? ' disabled' : ''}>Lane ${l + 1}</button>`)).join(' ')}</p>
       <p><button class="btn" data-fp="random"${done ? ' disabled' : ''}>Pick the rest at random</button> <button class="btn" data-fp="clear"${f.picks.length ? '' : ' disabled'}>Clear choices</button></p>`;
   };
   ui('finalpick').onclick = ev => {

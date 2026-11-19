@@ -123,3 +123,14 @@ test('the tables of the race and the results after the race have their own style
   assert.ok(css.includes('html .race-finish .rv-lap{display:flex;flex-wrap:nowrap'));
   assert.ok(css.includes('html .race-finish .rv-pads .pad-plus{'));
 });
+
+test('a heat race: the heat that is next as a card with its drivers by lane and Start; the heat list as cards; the lanes of a final in the lane colours', () => {
+  assert.ok(race.includes('<section id="heatnext" class="hn" aria-label="The heat that is next" hidden></section>'));
+  assert.match(race, /const drawHeatNext = \(\) => \{/);
+  assert.match(race, /data-hn="start"/);
+  assert.match(race, /if \(b && \(live\.phase === 'ready' \|\| live\.phase === 'between'\)\) actions\.start\(\);/);
+  assert.ok(race.includes('<span class="hl-lane"'), 'the words of a lane stay "Lane 1: Alex"');
+  assert.ok(race.includes('class="btn fp-lane"'));
+  assert.ok(css.includes('html #heatlist table.hl>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}'));
+  assert.ok(css.includes('html #raceactive>.hn{display:grid'));
+});

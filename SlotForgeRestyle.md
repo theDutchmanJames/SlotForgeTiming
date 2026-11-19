@@ -50,6 +50,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Scrutineering](#scrutineering) | Finalize race results: the classification as slim rows with a tiny lap chart, a lap explorer with a chart, filters, suspect laps and several laps at once | After the race |
 | [Cue Card](#cue-card) | A call of an audio set: when it plays, every line at once with ▶ and ⋯, race values as chips, one more line | Customization › Audio Settings |
 | [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
+| [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1464,6 +1465,25 @@ html .rr-laps thead th{position:sticky;top:0;background:var(--panel)}
 html .rr-laps td.rr-best{background:color-mix(in srgb,#b07cff 16%,transparent)}
 ```
 
+## Heat Board
+
+A heat race under the race screen (`renderer/race.js`: drawHeatNext, drawHeatList, drawOverall, drawFinalPick; styles under `.hn`, `#heatlist`, `#overall`).
+
+- **Next up**: while the race waits for a heat, a card on top with an accent edge: *First up* / *Next up · 2 of 4 done*, the heat in Barlow, its
+  drivers as lane pills (the number in the lane colour), and **Start heat 2** (Space starts it too). Before a final it says to choose the lanes first.
+- **The heat list** is a grid of **heat cards**: the heat in Barlow with its state tag (*Done* green, *Racing now* filled accent, *Next* accent tint),
+  a row per lane with a dot in the lane colour, then *Winner* and the result and laps in mono. The heat racing or next has an accent top. (The table
+  is kept for screen readers: its rows are the cards.)
+- **The overall result** is a Race Sheet in a box; the places 1–3 in gold, silver and bronze.
+- **Choose the lanes of a final** and **who drives** (teams) are cards with an accent edge; the lanes are tiles in their lane colour.
+
+```css
+html #raceactive>.hn{display:grid;grid-template-columns:minmax(180px,auto) minmax(0,1fr) auto;border-left:4px solid var(--accent);border-radius:10px}
+html #heatlist table.hl>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+html #heatlist table.hl tr.hl-next{box-shadow:inset 0 3px 0 var(--accent)}
+html #finalpick .fp-lane{border-left:5px solid var(--c);background:color-mix(in srgb,var(--c) 12%,var(--panel))}
+```
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1636,3 +1656,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Cue Card | New: a call of an audio set as one card (Plays when, What it says with every line, ▶ and ⋯, race values as chips, Only when…, one more line); Voice & playback quieter |
 | 2026-11 | System Sheet | A field with a control of its own (the system switches of a race setup) is a wide row: the name and note above, the control across the row; the switches are Toggle Chips |
 | 2026-11 | Race Report | New: a saved race as a row with a date tile and the winner, opened as a report (actions, podium, classification, notes, heats) with the lap times as a table |
+| 2026-11 | Heat Board | New: Next up with Start between heats, the heat list as heat cards, the overall result as a Race Sheet, the lanes of a final as tiles in the lane colours |

@@ -5309,3 +5309,74 @@ html .rr-laps thead th,html .rr-laps td{padding-left:18px;padding-right:18px}
 html .rr-actions [data-delsession]{margin-left:auto}
 html .rr-notes{display:grid;gap:4px}
 html .rr-notes>p{margin:0;padding:2px 0 2px 10px;border-left:2px solid color-mix(in srgb,var(--accent) 55%,var(--line));font-size:12.5px}
+/* ==== Heat Board (2.4.0, SlotForgeRestyle.md "Heat Board"): a heat race under the race screen. Next up (the heat the race waits for, with Start), the heat
+   list as heat cards in a grid (the table stays for screen readers and the tests: its rows are the cards), the overall result as a Race Sheet, the lanes
+   of a final as tiles in the lane colours ==== */
+html #raceactive>.hn{display:grid;grid-template-columns:minmax(180px,auto) minmax(0,1fr) auto;align-items:center;gap:10px 18px;margin:12px 0 0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-left:4px solid var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+html #raceactive>.hn[hidden]{display:none}
+html .hn-head{display:flex;flex-direction:column;gap:2px}
+html .hn-k{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text,var(--accent))}
+html .hn-head>b{font:italic 700 24px/1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .hn-head>b small{font:600 12px "Segoe UI",system-ui,sans-serif;font-style:normal;text-transform:none;color:var(--muted)}
+html .hn-lanes{display:flex;flex-wrap:wrap;gap:6px}
+html .hn-lane{--c:var(--muted);display:inline-flex;align-items:center;gap:7px;padding:3px 11px 3px 3px;border:1px solid var(--line);border-radius:16px;background:var(--panel);font-size:13px;font-weight:600}
+html .hn-lane>i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--c);color:#0f1216;font:700 12px/1 "Barlow Condensed","Segoe UI",sans-serif;font-style:normal}
+html .hn-go{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+html .hn-go .btn.primary{min-height:36px;padding:0 16px;font-size:13.5px}
+html .hn-go kbd{display:inline-grid;place-items:center;height:20px;padding:0 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--bg);font:600 11px "Roboto Mono",Consolas,monospace;color:var(--ink)}
+@media (max-width:900px){html #raceactive>.hn{grid-template-columns:1fr}html .hn-go{justify-content:flex-start}}
+/* the heat list: a card for every heat */
+html #heatlistcard{margin-top:12px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+html #heatlistcard>summary{padding:11px 14px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+html #heatlistcard>.wrap,html #heatlistcard>.row{padding:0 14px}
+html #heatlistcard>.row{display:flex;align-items:center;gap:8px;margin:12px 0 14px}
+html #heatlistcard>.row .btn{min-height:30px;font-size:12.5px}
+html #heatlist{overflow:visible}
+html #heatlist table.hl{display:block;width:100%;border:0;background:none}
+html #heatlist table.hl>thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+html #heatlist table.hl>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+html #heatlist table.hl tr{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html #heatlist table.hl tr.hl-current,html #heatlist table.hl tr.hl-next{border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:inset 0 3px 0 var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
+html #heatlist table.hl tr.hl-later{opacity:.85}
+html #heatlist table.hl td{display:block;padding:0;border:0;background:none;font-size:12.5px}
+html #heatlist table.hl td:empty{display:none}
+html #heatlist table.hl td:first-child{display:flex;align-items:baseline;gap:8px;font:italic 700 18px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html #heatlist table.hl td:first-child .muted{font:600 11.5px "Segoe UI",system-ui,sans-serif;font-style:normal;text-transform:none}
+html #heatlist .hl-tag{margin-left:auto;padding:2px 8px;border-radius:10px;background:color-mix(in srgb,var(--ink) 10%,var(--panel));font:600 10px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+html #heatlist tr.hl-current .hl-tag{background:var(--accent-fill,var(--accent));color:#fff}
+html #heatlist tr.hl-next .hl-tag{background:color-mix(in srgb,var(--accent) 22%,var(--panel));color:var(--accent-text,var(--accent))}
+html #heatlist tr.hl-done .hl-tag{background:color-mix(in srgb,#3ecf8e 18%,var(--panel));color:#3ecf8e}
+html #heatlist table.hl td:nth-child(2){display:flex;flex-direction:column;gap:3px}
+html #heatlist .hl-lane{--c:var(--muted);display:flex;align-items:center;gap:8px;font-size:12.5px}
+html #heatlist .hl-lane::before{content:'';flex:none;width:8px;height:8px;border-radius:50%;background:var(--c)}
+html #heatlist table.hl td:nth-child(3):not(:empty)::before{content:'Winner  ';font-weight:400;color:var(--muted)}
+html #heatlist table.hl td:nth-child(3){font-weight:600;padding-top:6px;border-top:1px solid var(--line)}
+html #heatlist table.hl td:nth-child(n+4){font:500 11.5px "Roboto Mono",Consolas,monospace;color:var(--muted)}
+/* the overall result: a Race Sheet in a box, the first three places in their colours */
+html #raceactive>h4{margin:16px 0 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #raceactive>#overallnote{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
+html #raceactive>.wrap:has(#overall){border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow-x:auto}
+html #raceactive table:has(#overall){width:100%;border-collapse:collapse;font-size:12.5px;background:none}
+html #raceactive table:has(#overall) th{padding:7px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left;white-space:nowrap}
+html #raceactive table:has(#overall) td{padding:7px 12px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:none}
+html #raceactive table:has(#overall) tr:last-child td{border-bottom:0}
+html #overall td.num{font-family:"Roboto Mono",Consolas,monospace}
+html #overall td:first-child{width:36px;font:700 14px "Barlow Condensed","Segoe UI",sans-serif}
+html #overall tr:nth-child(-n+3) td:first-child{color:var(--pc,#c4ccd8)}
+html #overall tr:nth-child(1){--pc:#d4a400}
+html #overall tr:nth-child(2){--pc:#c4ccd8}
+html #overall tr:nth-child(3){--pc:#c9824f}
+html #overall tr:nth-child(-n+3) td:nth-child(2){font-weight:600}
+/* choosing the lanes of a final, and the drivers of the teams */
+html #finalpick,html #teampick{margin-top:12px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-left:4px solid var(--accent);border-radius:10px;background:var(--panel)}
+html #finalpick>strong,html #teampick>strong{display:block;font:italic 700 20px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html #finalpick .hint2,html #teampick .hint2{margin:4px 0 8px;font-size:12.5px;color:var(--muted)}
+html #finalpick .fp-lanes{display:flex;flex-wrap:wrap;gap:8px}
+html #finalpick .fp-lane{--c:var(--muted);min-height:52px;min-width:130px;padding:0 14px;border:1px solid color-mix(in srgb,var(--c) 55%,var(--line));border-left:5px solid var(--c);border-radius:9px;background:color-mix(in srgb,var(--c) 12%,var(--panel));font-weight:600;justify-content:flex-start}
+html #finalpick .fp-lane:disabled{opacity:1;background:var(--bg);color:var(--muted)}
+html #finalpick .fp-lane[data-fp="taken"]{color:var(--ink)}
+html #teampick label{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+html #teampick select{height:32px;min-width:200px}
+html .hn-go>.muted{font-size:12px}
+html #heatlist table.hl td{box-shadow:none !important}
+html #heatlist table.hl td:nth-child(5):not(:empty)::before{content:'Laps  ';font-family:"Segoe UI",system-ui,sans-serif}
