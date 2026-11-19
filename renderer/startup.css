@@ -1,1 +1,22 @@
-:root{color-scheme:light dark;font:14px system-ui,sans-serif;color:#e8e6e1;background:#171c23}*{box-sizing:border-box}body{margin:0}main{padding:25px 24px;text-align:center}.brand{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 22px}.icon{display:block;border-radius:12px}.wordmark{display:block;object-fit:contain}.slogan{display:block;text-align:left;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#aeb9c9;margin-top:5px}h1{font-size:20px;margin:0 0 8px}p{margin:0 0 18px}.status{font-size:13px}.note{color:#aeb9c9;font-size:11px;line-height:1.5;margin:15px 0 0}.progress{height:3px;max-width:280px;margin:auto;overflow:hidden;background:#343c49;border-radius:3px}.progress:before{content:"";display:block;width:35%;height:100%;background:#ee414c;animation:prepare 1.6s ease-in-out infinite alternate}@keyframes prepare{from{transform:translateX(-100%)}to{transform:translateX(290%)}}@media(prefers-reduced-motion:reduce){.progress:before{animation:none;margin:auto}}@media(prefers-color-scheme:light){:root{background:#f5f6f8;color:#242b35}.note,.slogan{color:#536174}.progress{background:#d7dde5}}
+/* The window while the app opens (2.4.0, SlotForgeRestyle.md "Start Lights"): the checkered strip on top, the brand, the title in Barlow Condensed, five
+   start lights that come on one after the other while the database is prepared (held when motion is reduced), a quiet note */
+@font-face{font-family:'SF Barlow';src:url('fonts/barlowcondensed/BarlowCondensed-BoldItalic.ttf') format('truetype');font-weight:700;font-style:italic}
+:root{color-scheme:light dark;font:14px "Segoe UI",system-ui,sans-serif;color:#e8e6e1;background:#171c23;--a:#e5484d;--off:#262d38;--ring:#343c49}
+*{box-sizing:border-box}
+body{margin:0;border-top:3px solid var(--a)}
+.check{height:6px;background:repeating-conic-gradient(#e8e6e1 0 25%,transparent 0 50%) 0 0/6px 6px;opacity:.18}
+main{padding:18px 24px 20px;text-align:center}
+.brand{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 16px}
+.icon{display:block;border-radius:12px}
+.wordmark{display:block;object-fit:contain}
+.slogan{display:block;text-align:left;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#aeb9c9;margin-top:5px}
+h1{margin:0 0 6px;font:italic 700 24px/1 'SF Barlow','Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.3px}
+p{margin:0}
+.status{font-size:12.5px;color:#c9cfd8}
+.lights{display:flex;justify-content:center;gap:9px;margin:14px auto 0}
+.lights i{width:20px;height:20px;border-radius:50%;background:var(--off);box-shadow:inset 0 0 0 2px var(--ring);animation:lamp 2.6s ease-in-out infinite}
+.lights i:nth-child(2){animation-delay:.3s}.lights i:nth-child(3){animation-delay:.6s}.lights i:nth-child(4){animation-delay:.9s}.lights i:nth-child(5){animation-delay:1.2s}
+@keyframes lamp{0%,8%{background:var(--off);box-shadow:inset 0 0 0 2px var(--ring)}18%,62%{background:var(--a);box-shadow:inset 0 0 0 2px #ff7a7e,0 0 10px color-mix(in srgb,var(--a) 55%,transparent)}75%,100%{background:var(--off);box-shadow:inset 0 0 0 2px var(--ring)}}
+.note{color:#aeb9c9;font-size:11px;line-height:1.5;margin:14px 0 0}
+@media(prefers-reduced-motion:reduce){.lights i{animation:none}.lights i:nth-child(-n+3){background:var(--a);box-shadow:inset 0 0 0 2px #ff7a7e}}
+@media(prefers-color-scheme:light){:root{background:#f5f6f8;color:#242b35;--off:#e3e7ec;--ring:#c8cfd8}.check{background-image:repeating-conic-gradient(#242b35 0 25%,transparent 0 50%)}.status{color:#3d4652}.note,.slogan{color:#536174}}

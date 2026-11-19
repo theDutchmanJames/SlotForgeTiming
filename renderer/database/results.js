@@ -274,9 +274,16 @@ async function renderResultsPool(box, pool, supplied = null) {
     .map(x => (Array.isArray(x.standings) ? x : { ...x, standings: [] })); // (a session from a hand-made file may have no list of results: it shows with an empty table)
   const laps = allLaps.filter(l => !!l.token === tokenPool); // (the two pools never mix)
   if (!sessions.length) {
+    // (2.4.0, SlotForgeRestyle.md "Race Report") an empty page is a card: a picture, what comes here, where it comes from
+    const card = (icon, title, text) =>
+      `<div class="rr-empty"><span class="rr-emptyico" aria-hidden="true">${typeof Icons !== 'undefined' ? Icons.svg(icon, { size: 26, stroke: 1.6 }) : ''}</span><h3>${title}</h3><p class="muted">${text}</p></div>`;
     box.innerHTML = tokenPool
-      ? '<p class="muted">No token results yet. Open a Time Token Session from the Home tab: every stint (one driver on one lane for one paid time) is saved here when it ends.</p>'
-      : '<p class="muted">No results yet. Run a race from the Home tab and every lap is saved here.</p>';
+      ? card(
+          'tokens',
+          'No stints yet',
+          'No token results yet. Open a Time Token Session from the Home tab: every stint (one driver on one lane for one paid time) is saved here when it ends.'
+        )
+      : card('flag', 'No races yet', 'No results yet. Run a race from the Home tab and every lap is saved here.');
     return;
   }
   const name = (list, id, ent) => {

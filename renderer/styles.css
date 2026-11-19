@@ -5817,3 +5817,54 @@ html .pd-sec>.pd-page-output{margin:0;padding:0;min-height:0;border:0;background
 html dialog.historical-dialog>header.hr-head{display:block;position:static}
 html dialog.historical-dialog>header.hr-head>h2{text-align:left}
 html dialog.historical-dialog>.hr-foot{flex-direction:row}
+
+/* (2.4.0, SlotForgeRestyle.md "Workshop Window") Circuit design: the body is focused when the window opens (so it opens at the top), it draws no ring; the
+   Circuit file is a drop card with the real file input over it */
+html .track-design-dialog .td-body:focus{outline:none}
+html .track-design-dialog .td-file{position:relative}
+html .track-design-dialog .td-drop{position:relative;display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--accent) 5%,var(--bg));color:var(--ink);cursor:pointer}
+html .track-design-dialog .td-drop:hover{background:color-mix(in srgb,var(--accent) 10%,var(--bg));border-color:var(--accent)}
+html .track-design-dialog .td-file:focus-within .td-drop{outline:3px solid #4c9aff;outline-offset:2px}
+html .track-design-dialog .td-drop-i{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:9px;background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--accent-text,var(--accent))}
+html .track-design-dialog .td-drop-t{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+html .track-design-dialog .td-drop-t b{font-size:13.5px}
+html .track-design-dialog .td-drop-t small{font-size:12px;color:var(--muted)}
+html .track-design-dialog .td-drop-b{flex:none;pointer-events:none}
+html .track-design-dialog .td-drop>input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+html .track-design-dialog .td-drop>input[type=file]:disabled{cursor:progress}
+/* (2.4.0, SlotForgeRestyle.md "Race Report") the record tables: a note in place of Remove ("Recorded by another source") wraps as a small grey line,
+   so the table fits its folder */
+html :is(.dbfolder[data-folder^="results:"],.dbfolder[data-folder^="tresults:"]) td.actions{white-space:normal;min-width:84px;max-width:150px}
+html :is(.dbfolder[data-folder^="results:"],.dbfolder[data-folder^="tresults:"]) td.actions>small{display:block;font-size:11.5px;line-height:1.3;color:var(--muted)}
+
+/* (2.4.0, SlotForgeRestyle.md "Race Report") Results and Records with nothing in it: a calm card, as Plugin Pages has */
+html .rr-empty{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:860px;padding:40px 24px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 30%,var(--panel));text-align:center}
+html .rr-empty>h3{margin:6px 0 0;font:italic 700 22px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .rr-empty>p{max-width:60ch;margin:0;font-size:13.5px;line-height:1.5}
+html .rr-emptyico{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--muted)}
+/* ==== Race folders (2.4.0, SlotForgeRestyle.md "Lane Desk"): the race screen with the Lane Desk off (App Settings › Race Director › folders). The folders
+   as cards in the look of the rest: a thin edge and a pale tint of their colour, the title in Barlow, the tables of the systems as a Race Sheet, the lap,
+   pit and call buttons tinted instead of solid, the pads a size smaller ==== */
+html .rt-folders:not(.rd-on){display:flex;flex-direction:column;gap:10px}
+html .rt-folders:not(.rd-on)>.dbfolder.dirfolder{margin:0;border:1px solid var(--line);border-left:3px solid var(--fc);border-radius:12px;background:var(--panel);overflow:hidden}
+html .rt-folders:not(.rd-on)>.dbfolder.dirfolder>summary{padding:10px 14px 10px 36px;background:color-mix(in srgb,var(--fc) 7%,var(--panel))}
+html .rt-folders:not(.rd-on)>.dbfolder.dirfolder[open]>summary{border-bottom:1px solid var(--line)}
+html .rt-folders:not(.rd-on)>.dbfolder.dirfolder>summary strong{font:italic 700 17px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase;letter-spacing:.2px}
+html .rt-folders:not(.rd-on)>.dbfolder.dirfolder>summary .muted{font-size:12px}
+html .rt-folders:not(.rd-on)>.dbfolder.dirfolder>.df-body{padding:12px 14px 14px}
+/* the lap, pit and call buttons: tinted in their colour */
+html .rt-folders:not(.rd-on) .trk-card{border-radius:10px}
+html .rt-folders:not(.rd-on) .trk-btn.trk-lap{background:color-mix(in srgb,#3ecf8e 20%,var(--panel));border:1px solid color-mix(in srgb,#3ecf8e 55%,var(--line));color:var(--ink)}
+html .rt-folders:not(.rd-on) .trk-btn.trk-pit{background:color-mix(in srgb,#f08a24 14%,var(--panel));border:1px solid color-mix(in srgb,#f08a24 50%,var(--line))}
+html .rt-folders:not(.rd-on) .trk-btn.trk-call{background:color-mix(in srgb,#f5c211 12%,var(--panel));border:1px solid color-mix(in srgb,#f5c211 50%,var(--line))}
+html .rt-folders:not(.rd-on) .trk-btn:active{transform:translateY(1px)}
+/* the pads of Adjust: a size smaller */
+html .rt-folders:not(.rd-on) .adjpanel .pad-btn{min-height:32px}
+html .rt-folders:not(.rd-on) .adjpanel .pad{border-radius:10px}
+/* the tables of the systems (Balance of Power, weather, tyres, damage, failures): a Race Sheet */
+html .rt-folders:not(.rd-on) table.boptable{width:100%;border:1px solid var(--line);border-radius:10px;border-collapse:separate;border-spacing:0;background:var(--panel);overflow:hidden;font-size:12.5px}
+html .rt-folders:not(.rd-on) table.boptable th{padding:7px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left;white-space:nowrap}
+html .rt-folders:not(.rd-on) table.boptable td{padding:6px 12px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:none}
+html .rt-folders:not(.rd-on) table.boptable tr:last-child td{border-bottom:0}
+html .rt-folders:not(.rd-on) table.boptable td:first-child{width:40px;font:700 15px "Barlow Condensed","Segoe UI",sans-serif}
+html .rt-folders:not(.rd-on) table.boptable select{height:30px}

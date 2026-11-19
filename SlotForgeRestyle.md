@@ -739,6 +739,10 @@ when the editor has many sections that benefit from a side list.
 
 ---
 
+**Circuit design** (2.4.0): the Circuit file is a **drop card** (a dashed edge in the accent tint, an icon, *Choose a Circuit file, or drop it
+here* with the size under it, a Browse… button); the real file input lies over the card, so a click and a dropped file both work. The body of the window
+is focused when it opens (so it opens at the top) and draws no ring.
+
 ## Folder
 
 A collapsible group (`<details>`) for forms, settings and results: quiet box, Barlow title on the left,
@@ -1310,6 +1314,10 @@ html #view .wz-hwopt.wz-on{border-color:var(--accent);background:color-mix(in sr
 
 The start-up window (`startup.html`) already has the logo, the wordmark and a thin red bar; it stays as it is.
 
+**The startup window** (`renderer/startup.html`, `startup.css`, 460 × 270): a 3 px accent rule and a faint checkered strip on top, the brand, *Starting
+Timing…* in Barlow Condensed bold italic, and five **start lights** that come on one after the other while the database is prepared (three held on when
+motion is reduced), the note under them. The page may load the app's own fonts (`font-src 'self'`).
+
 ## Lane Check
 
 The sensor test (`renderer/sensortest.js`): Home's **Test sensors** window and step 5 of the setup guide. A connection pill on top (green when the
@@ -1385,6 +1393,10 @@ html .rdeck .rd-fr{display:grid;grid-template-columns:62px minmax(0,1fr) auto;mi
 html .rd-tab[aria-selected="true"]{background:var(--panel);font-weight:600;box-shadow:inset 0 2px 0 var(--accent)}
 html .rd-keys kbd{min-width:20px;height:20px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;font:600 11px "Roboto Mono",monospace}
 ```
+
+**With the Lane Desk off** (App Settings › Race Director › folders) the race folders are cards in the same look: a 3 px edge and a 7% tint of their
+colour, the title in Barlow Condensed bold italic, the tables of the systems (Balance of Power, weather, tyres, damage, failures) as a Race Sheet in a box,
+the Lap, Pit and Call buttons tinted in their colour instead of solid, the pads of Adjust a size smaller.
 
 ## Race Sheet
 
@@ -1473,6 +1485,10 @@ html .rr-p{display:grid;grid-template-columns:34px minmax(0,1fr) auto;border:1px
 html .rr-laps thead th{position:sticky;top:0;background:var(--panel)}
 html .rr-laps td.rr-best{background:color-mix(in srgb,#b07cff 16%,transparent)}
 ```
+
+**The record tables** (track records, personal bests): a note in place of Remove (*Recorded by another source*, *Not yet in the shared library*) wraps
+as a small grey line, so the table fits its folder. **An empty page** (no races, no stints) is a dashed card: a 52 px icon tile, *No races yet* or *No
+stints yet* in Barlow, and the words of where they come from.
 
 ## Heat Board
 
@@ -1895,3 +1911,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Plugin Desk, Dealership Sheet, Review Sheet, Performance Gauges | New: the smaller pages. A plugin page with a head, a status pill and boxes; Dealership Mode with a status pill and no squeezed rows; Historical Review as a sheet with tags, pills and Submit in the foot; the Performance line as gauges |
 | 2026-11 | Race Report PDF | New: the race PDF in the look of SlotForge: page one with the podium, race notes, laps per lane and the race lap by lap; a page for every driver with the lap chart, per lane, through the race, the spread and the lap sheet; Colour or Monochrome |
 | 2026-11 | Race Report PDF | The heat list, the championship standings, the racing rules and the QR code in the same look; PDF prints: Colour or Monochrome in App Settings |
+| 2026-11 | Start Lights, Workshop Window, Race Report, Lane Desk | The last screens: the startup window with start lights, the Circuit file as a drop card, the record tables fit, an empty Results and Records as a card, the race folders with the Lane Desk off |
