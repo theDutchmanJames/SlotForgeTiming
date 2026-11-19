@@ -13,7 +13,7 @@ ok('standings show position, driver, car, laps, best lap and total time', h.incl
 ok('names are escaped (no HTML injection)', h.includes('Sam &lt;b&gt;') && !h.includes('Sam <b>'));
 ok('lap times start on a new page', /class="page2"/.test(h) && h.includes('page-break-before: always') && h.indexOf('All lap times') > h.indexOf('Results'));
 ok('every lap time is listed', ['5.200', '5.000', '5.800', '6.400', '5.600'].every(t => h.includes(t)));
-ok('the fastest lap of each driver is bold', h.includes('<b>5.000</b>') && h.includes('<b>5.600</b>') && !h.includes('<b>5.200</b>'));
+{ const lp = h.split('class="page2"')[1] || ''; ok('the fastest lap of each driver is bold (on the pages of every lap time)', lp.includes('<b>5.000</b>') && lp.includes('<b>5.600</b>') && !lp.includes('<b>5.200</b>')); }
 ok('lap table header repeats on every page', h.includes('thead { display: table-header-group; }'));
 ok('a driver with fewer laps leaves an empty cell', /<tr><td>3<\/td><td>5\.800<\/td><td><\/td><\/tr>/.test(h));
 ok('no points column in a normal race', !h.includes('<th>Points</th>'));
@@ -120,7 +120,7 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   ok('...the total time has the adjustment in it (16.000 and 5 s is 21.000)', x.includes('<td>21.000</td>') && !x.includes('<td>16.000</td>') && plain.includes('<td>16.000</td>'));
   ok('...a deduction counts the other way (16.000 and -2.5 s is 13.500)', sessionHtml({ session: { ...session, standings: [{ ...st[0], adjMs: -2500 }, st[1]] }, laps }).includes('<td>13.500</td>'));
   ok('...a result that was not adjusted has no note at all', !plain.includes('adjusted'));
-  ok('...the note is safe', !sessionHtml({ session: { ...session, standings: [{ ...st[0], adjLaps: '<b>1</b>' }, st[1]] }, laps }).includes('<b>1</b>'));
+  ok('...the note is safe', !(sessionHtml({ session: { ...session, standings: [{ ...st[0], adjLaps: '<b>1</b>' }, st[1]] }, laps }).split('<section class="rp-class">')[1] || 'x<b>1</b>').split('</section>')[0].includes('<b>1</b>'));
   const hs = { ...session, sessionType: 'heats', resultBy: 'points', heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 15, adjPoints: 5 }, { pos: 2, driverName: 'Sam', laps: 3, points: 8, adjLaps: -1, adjMs: 2000 }] }] };
   const hh = sessionHtml({ session: hs, laps });
   ok('a heat of a heat race says what was adjusted, with the points', hh.includes('Alex (5 laps, 15 pts, adjusted: +5 pts)') && hh.includes('Sam (3 laps, 8 pts, adjusted: −1 lap, +2 s)'));

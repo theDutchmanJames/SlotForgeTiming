@@ -59,6 +59,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Dealership Sheet](#dealership-sheet) | Dealership Mode: the connection as a status pill, rows with several controls stacked, the long words folded | App Settings › Connections › Dealership Mode |
 | [Review Sheet](#review-sheet) | Historical Review: the race as a head, the notice as a callout, the drivers tagged, Submit in the foot, the decisions as pills | Results and Records (a Paddock race) |
 | [Performance Gauges](#performance-gauges) | The Performance line as a row of small gauges, each with a health colour | Race tab (App Settings › General, Performance line) |
+| [Race Report PDF](#race-report-pdf) | The race on paper: page one as clubs post a race, then a page for every driver with the lap chart of Scrutineering; Colour or Monochrome | Results and Records › Export to PDF |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1670,6 +1671,56 @@ html .pg{display:inline-flex;flex-direction:column;min-width:92px;padding:5px 10
 html .pg-bad{--pc:#e5484d;background:color-mix(in srgb,#e5484d 8%,var(--panel))}
 ```
 
+## Race Report PDF
+
+The race on paper (`renderer/racereport.js`, put together by `Report.sessionHtml` in `renderer/report.js`; the fonts and the wordmark are put in by
+`pdfAssets` in `main.js`). A4 portrait, 10–11 mm margins, 8.6 pt body: dense, as a club sheet is. The page is white either way, and colour is only in
+thin lines and pale tints. Looked at what clubs post on the forums (SlotForum, SlotRacer, SlotBlog, HomeRacingWorld, the BSCRA sheets): the order and
+total laps, the margins, the best lap and **its lane**, the fastest lap of the night, the laps per lane, the heats, and the stories (offs, a newcomer
+improving, the strongest finish).
+
+**Page one**
+- **The head**: a 3 pt accent rule, *Race report · Race* as a kicker, the race name in Barlow Condensed bold italic 25 pt, the meta line; on the right
+  the SlotForge wordmark and a date tile (the day in Barlow, the month small). A **checkered strip** under it.
+- **The podium**: three cards (second, winner, third; the winner wider), a 3 pt top and a place tile in gold, silver and bronze, the name in Barlow,
+  the car, the laps in mono and the gap (or the best lap of the winner).
+- **Results**: a Race Sheet (the heads small capitals over a 1 pt rule, zebra rows, the place in Barlow in its podium colour, **the lane colour as a
+  bar on the left** of every row).
+- **Race notes**: tiles with an icon and a 2.4 pt accent edge: fastest lap (who, the time in purple, the lap and lane), winning margin, closest fight
+  (not the winner's), most consistent, fastest lane (the lowest median), strongest finish, offs, out of the race.
+- **Laps per lane**: a row per driver, a column per lane (a lane disc in its colour): the laps and the best on that lane, the fastest on every lane in
+  purple, *Lane best* under it. Beside the notes with up to four lanes, under them with more.
+- **The race lap by lap**: the place of every driver after every lap (P1 on top), a line per driver in its lane colour, the names in finishing order in
+  a column on the right; who led, and how many laps.
+- Then the heats (cards in two columns), the driver swaps and the tyre stints.
+
+**A page for every driver** (one page, never more: a page is 275 mm high and what does not fit is cut)
+- **The head**: the place in a 44 pt tile (gold, silver, bronze or plain), *Driver report · 2 of 6*, the name in Barlow 23 pt, the car, the team, the
+  lane disc; the race on the right.
+- **Six tiles**: laps, best lap (purple; the lap and lane), average, median, spread, the gap behind the winner (or *Winner*).
+- **Every lap**: the chart of Scrutineering on paper: every lap left to right, faster higher, the median dashed, the best lap a purple dot, an off a
+  pale red column with an ×, a pit stop a triangle, **the lane of every lap as a strip** along the bottom with its number.
+- **Per lane** (the disc, laps, best, average), **Through the race** (start, middle and end: the average and best, and ▲ how much faster the end was),
+  **Lap spread** (a histogram of the clean laps, the fastest bar purple).
+- **Place lap by lap** and **Gap to the leader** (two small charts), for a race without heats.
+- **The heats** of the driver (place, laps, lane), and a **note line** with the best three laps, the offs, the pit stops, the penalties and who was
+  ahead and behind.
+- **The lap sheet**: every lap in narrow columns (4 to 12, as many as the laps need), the best purple on a tint, an off struck, a pit lap in italics;
+  past 240 laps the ten fastest and the ten slowest.
+- Every lap time (the table at the end) is a choice in Export to PDF, off to begin with.
+
+**Colour or Monochrome** (Export to PDF › *Print in*, remembered): Monochrome sets every colour to black and greys: a lane is an outlined number, the
+best lap is bold and underlined, the podium tiles are outlined (the winner's thicker), the lines of the race lap by lap are told apart by their
+dashes, an off is hatched, the lane strip alternates dark and light grey.
+
+```css
+body { font: 8.6pt/1.35 "Segoe UI", Arial, sans-serif; --a: #e5484d; --best: #7c3aed; --gold: #d4a400; --silver: #9aa4b2; --bronze: #c9824f; }
+h1 { font: italic 700 25pt/1 "SF Barlow", "Barlow Condensed", sans-serif; text-transform: uppercase; }
+.rp-check { height: 5pt; background: repeating-conic-gradient(#15181d 0 25%, #fff 0 50%) 0 0 / 5pt 5pt; }
+.rp-class td:first-child { box-shadow: inset 2.4pt 0 0 var(--c, transparent); }
+.rp-dpage { break-before: page; height: 275mm; overflow: hidden; }
+```
+
 ## Parc Fermé
 
 Choosing a car (`renderer/paddockbrowser.js`, **Browse cars** on Home). A [Workshop Window](#workshop-window) with a **sticky head** (eyebrow
@@ -1830,3 +1881,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Token Desk | New: the time tokens as a card for every lane (lane colour, a large clock, the buttons as a grid, the state as the edge), a line of what the lanes are doing, the folder first; the penalties folder as a Race Sheet |
 | 2026-11 | Live Pages | New: the Live Race pages that follow the race; a sticky Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as pills, a head card and tiles, the rules as a page, an empty page as a card |
 | 2026-11 | Plugin Desk, Dealership Sheet, Review Sheet, Performance Gauges | New: the smaller pages. A plugin page with a head, a status pill and boxes; Dealership Mode with a status pill and no squeezed rows; Historical Review as a sheet with tags, pills and Submit in the foot; the Performance line as gauges |
+| 2026-11 | Race Report PDF | New: the race PDF in the look of SlotForge: page one with the podium, race notes, laps per lane and the race lap by lap; a page for every driver with the lap chart, per lane, through the race, the spread and the lap sheet; Colour or Monochrome |

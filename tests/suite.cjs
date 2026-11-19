@@ -254,6 +254,7 @@ module.exports = [
   ['libraryresults.test.js', 'node-test'],
   ['racedeck.test.js', 'node-test'],
   ['finishdesk.test.js', 'node-test'],
+  ['racereport.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],
   ['distancescreen.test.js', 'plain'],

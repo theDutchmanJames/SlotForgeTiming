@@ -93,6 +93,35 @@ function guardWindow(w) {
 }
 // The PDF window may read only the report file it was given (and inline data): no other file, no network
 const pdfFiles = new Set();
+// (2.4.0) the fonts and the wordmark of SlotForge in a report: the print window loads nothing but the file and inline data, so they go in as data
+let pdfAssetCache = null;
+function pdfAssets(html) {
+  if (!html.includes('/*SF-PDF-FONTS*/') && !html.includes('<!--SF-PDF-WORDMARK-->')) return html;
+  if (!pdfAssetCache) {
+    const read = (...p) => {
+      try {
+        return fs.readFileSync(path.join(__dirname, 'renderer', ...p));
+      } catch {
+        return null;
+      }
+    };
+    const face = (family, file, weight, style) => {
+      const b = read('fonts', ...file);
+      return b
+        ? `@font-face{font-family:'${family}';src:url(data:font/ttf;base64,${b.toString('base64')}) format('truetype');font-weight:${weight};font-style:${style}}`
+        : '';
+    };
+    const mark = read('assets', 'brand', 'slotforge-wordmark-light.svg');
+    pdfAssetCache = {
+      fonts:
+        face('SF Barlow', ['barlowcondensed', 'BarlowCondensed-BoldItalic.ttf'], 700, 'italic') +
+        face('SF Barlow', ['barlowcondensed', 'BarlowCondensed-Bold.ttf'], 700, 'normal') +
+        face('SF Mono', ['robotomono', 'RobotoMono[wght].ttf'], '100 700', 'normal'),
+      mark: mark ? mark.toString('utf8').replace(/<?xml[^>]*>/, '') : 'SlotForge'
+    };
+  }
+  return html.split('/*SF-PDF-FONTS*/').join(pdfAssetCache.fonts).split('<!--SF-PDF-WORDMARK-->').join(pdfAssetCache.mark);
+}
 function pdfRequest(d, done) {
   let ok = /^(data|blob):/i.test(d.url);
   if (!ok && /^file:/i.test(d.url)) {
@@ -890,7 +919,7 @@ function registerExportHandlers() {
   // Turns a report (HTML) into a PDF: print it in a hidden window, then ask where to save it.
   ipcMain.handle('pdf:export', async (event, html, name) => {
     const tmp = path.join(app.getPath('temp'), `slotforge-timing-${Date.now()}.html`);
-    fs.writeFileSync(tmp, html);
+    fs.writeFileSync(tmp, pdfAssets(String(html)));
     // The report is static HTML: no script, no node, its own memory-only session that may load nothing but this file and inline data, and no navigation or new windows
     const printWin = new BrowserWindow({
       show: false,

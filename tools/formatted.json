@@ -197,6 +197,7 @@
     "renderer/racelimit.js",
     "renderer/racesystems.js",
     "renderer/railform.js",
+    "renderer/racereport.js",
     "renderer/report.js",
     "renderer/resources.js",
     "renderer/resourceui.js",

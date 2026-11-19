@@ -7,6 +7,7 @@
   const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
   const IC = typeof module !== 'undefined' ? require('./icons.js') : root.Icons;
   const VR = typeof module !== 'undefined' ? require('./virtualrival.js') : root.VirtualRival;
+  const RR = typeof module !== 'undefined' ? require('./racereport.js') : root.RaceReport; // (2.4.0: the look of the race report on paper)
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const LABEL = {
     practice: 'Free practice',
@@ -36,7 +37,7 @@
   // What goes in the PDF. options (all optional, everything is in when it is left out): results (the table), heats (the summary of the heats and finals), tyres (the tyre stints of a race with Tyre Wear; tyreWorn: the laps on worn out tyres end the bar in red), laps (the page with every lap time),
   // columns (the keys of the columns of the table, as Stats.SESSION_COLUMNS names them; the default is the ones that are on until turned off).
   // tracks and cars (the lists from the database) give the length and scale for the speeds; unit ('kmh' or 'mph', the setting speedUnit) is the unit they are written in; distUnit ('m' or 'ft', the setting distanceUnit, 1.27.0) is the one of the distance.
-  const DEFAULT_OPTIONS = { results: true, heats: true, tyres: true, laps: true };
+  const DEFAULT_OPTIONS = { results: true, heats: true, tyres: true, laps: true, drivers: true, mode: 'colour' }; // (2.4.0: drivers, a page for every driver; mode, 'colour' or 'mono')
   // One cell of the results table. plain: as text (CSV, a message), else as HTML (the PDF, the web page). (2.3.0: shared by both)
   function cellMaker({ session, figs, cols, unit, distUnit, finArg }, plain) {
     const e = plain ? v => String(v ?? '') : esc,
@@ -99,7 +100,12 @@
       !opt.results || !cols.length
         ? ''
         : `<table${cols.length > 8 ? ' class="wide"' : ''}><thead><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>` +
-          session.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') +
+          session.standings
+            .map(
+              (x, i) =>
+                `<tr${RR && Math.round(Number(x.lane)) > 0 ? ` style="--c:${RR.laneColor(x.lane)}"` : ''}>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`
+            )
+            .join('') +
           '</tbody></table>' +
           (ST.notes(cols.map(c => c.key)).length
             ? `<p class="sub">${ST.notes(cols.map(c => c.key))
@@ -158,15 +164,17 @@
         return `${isHeats ? `<h2>${esc(HT.raceName(g))}</h2>` : ''}<table class="laps"><thead><tr><th>Lap</th>${g.cols.map(c => `<th>${esc(c.s.driverName)}<br><span class="sub">${esc(c.s.carName)}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
       })
       .join('');
+    // (2.4.0, SlotForgeRestyle.md "Race Report PDF") page one: the head, the podium, the classification, the race notes and the laps per lane, then the
+    // heats, swaps and tyres; then a page for every driver; then every lap time when it is chosen. Colour or Monochrome (opt.mode).
+    const mono = opt.mode === 'mono',
+      racing = session.sessionType !== 'tokens' && !!RR,
+      rows = session.standings || [],
+      F = racing ? RR.facts(session, laps, figs) : null,
+      drivers =
+        racing && opt.drivers ? rows.map((x, i) => ({ x, i })).filter(({ x, i }) => !x.virtual && F.per[i] && F.per[i].list.length) : [];
+    const meta = `${esc(LABEL[session.sessionType] || '')} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}${session.endedBy ? ' &middot; ' + esc(session.endedBy) : ''}${rows.length ? ` &middot; ${rows.length} ${rows.length === 1 ? 'driver' : 'drivers'}` : ''}`;
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(session.setupName)}</title><style>
-      @page { size: A4; margin: 15mm; }
-      body { font: 11pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
-      h1 { font-size: 22pt; margin: 0 0 4px; } h2 { font-size: 14pt; margin: 18px 0 6px; }
-      .meta { color: #444; margin: 0 0 14px; } .sub { color: #666; font-weight: normal; font-size: 9pt; }
-      table { border-collapse: collapse; width: 100%; margin-bottom: 8px; } th, td { border-bottom: 1px solid #ccc; padding: 5px 8px; text-align: left; font-variant-numeric: tabular-nums; }
-      th { background: #eee; } .laps td, .laps th { text-align: right; } .laps td:first-child, .laps th:first-child { text-align: left; }
-      .wide th, .wide td { font-size: 9pt; padding: 4px 5px; }
-      thead { display: table-header-group; } tr { page-break-inside: avoid; }
+      ${RR ? RR.css(mono) : '@page { size: A4; margin: 15mm; } thead { display: table-header-group; } .page2 { page-break-before: always; }'}
       .tys-row { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; border-bottom: 1px solid #ccc; page-break-inside: avoid; } .tys-head { color: #666; font-size: 8pt; padding-bottom: 2px; }
       .tys-nm { flex: none; width: 70px; font-weight: bold; padding-top: 4px; } .tys-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; } .tys-grp { font-size: 8pt; color: #666; }
       .tys-strip { display: flex; gap: 3px; } .tys-seg { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -174,16 +182,19 @@
       .tys-bar span { position: relative; z-index: 1; } .tys-worn { position: absolute; right: 0; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #e5484d 0 4px, #a01e24 4px 8px); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .tys-end { font-size: 8pt; color: #555; text-align: right; white-space: nowrap; } .tys-ok { color: #1c7d52; } .tys-warn { color: #a36a00; } .tys-crit, .tys-bad { color: #c0262d; font-weight: bold; }
       .tys-sum { flex: none; width: 170px; display: grid; grid-template-columns: 34px 52px 1fr; gap: 2px 6px; font-size: 9pt; text-align: right; padding-top: 4px; } .tys-head .tys-sum { padding-top: 0; } .tys-head .tys-sum b { font-weight: normal; white-space: nowrap; }
-      .page2 { page-break-before: always; } .foot { color: #777; font-size: 9pt; margin-top: 16px; }
-    </style></head><body>
-      <h1>${esc(session.setupName)}</h1>
-      <p class="meta">${esc(LABEL[session.sessionType] || '')} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}${session.endedBy ? ' &middot; ' + esc(session.endedBy) : ''}</p>
-      ${standings ? '<h2>' + (session.virtualRivals?.length ? 'Physical-field standings' : 'Results') + '</h2>' + standings : ''}${opt.results && VR ? VR.historyHtml(session) : ''}${opt.results ? (typeof module !== 'undefined' ? require('./multiclass.js') : MultiClass).resultsHtml(session.classStandings || [], session.multiclass) : ''}${heatSummary}${stintSheet}${tyreSheet}
+    </style></head><body class="${mono ? 'pdf-mono' : 'pdf-colour'}">${RR ? RR.defs(mono) : ''}
+      <main class="rp-page1">${RR ? RR.head({ session, kicker: 'Race report' + (LABEL[session.sessionType] ? ' · ' + LABEL[session.sessionType] : ''), title: session.setupName || 'Race', sub: meta, right: '<span class="rp-mark"><!--SF-PDF-WORDMARK--></span>' }) : `<h1>${esc(session.setupName)}</h1><p class="meta">${meta}</p>`}
+      ${racing && opt.results ? RR.podium(session, rows, figs) : ''}
+      ${standings ? '<section class="rp-class"><h2>' + (session.virtualRivals?.length ? 'Physical-field standings' : 'Results') + '</h2>' + standings + '</section>' : ''}
+      ${racing && opt.results ? RR.middle(F, rows, session, mono) : ''}
+      <div class="rp-extra">${opt.results && VR ? VR.historyHtml(session) : ''}${opt.results ? (typeof module !== 'undefined' ? require('./multiclass.js') : MultiClass).resultsHtml(session.classStandings || [], session.multiclass) : ''}${heatSummary ? `<section class="rp-heats">${heatSummary}</section>` : ''}${stintSheet ? `<section class="rp-section">${stintSheet}</section>` : ''}${tyreSheet ? `<section class="rp-section">${tyreSheet}</section>` : ''}</div>
+      <footer class="rp-foot"><span>Made with SlotForge Timing</span><span>${drivers.length ? `Page 1 · a page for every driver follows (${drivers.length})` : ''}</span></footer></main>
+      ${drivers.map(({ x, i }) => RR.driverPage({ session, x, i, rows, fig: figs[i], F, count: drivers.length, raceTitle: session.setupName || 'Race', mono })).join('')}
       ${
         opt.laps
-          ? `<div class="page2"><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.${laps.some(l => l.pit) ? ' A lap with a pit stop is in italics.' : ''}</p>${lapPages || '<p>No laps were recorded.</p>'}
+          ? `<div class="page2"><span class="rp-k">Every lap time</span><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.${laps.some(l => l.pit) ? ' A lap with a pit stop is in italics.' : ''}</p>${lapPages || '<p>No laps were recorded.</p>'}
       <p class="foot">Made with SlotForge Timing</p></div>`
-          : '<p class="foot">Made with SlotForge Timing</p>'
+          : ''
       }</body></html>`;
   }
 

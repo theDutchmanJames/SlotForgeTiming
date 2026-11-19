@@ -65,16 +65,20 @@ const tyreStintsSection = s => {
 function pdfChoice(session, figs) {
   const cols = Stats.sessionColumns(session, figs),
     screen = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
-  const pages = { results: true, heats: true, tyres: true, laps: true, ...(state.settings.pdfPages || {}) };
+  // (2.4.0) a page for every driver, and Colour or Monochrome; every lap time is a choice now (the driver pages have the lap sheet)
+  const pages = { results: true, heats: true, tyres: true, laps: false, drivers: true, ...(state.settings.pdfPages || {}) };
+  let mode = state.settings.pdfMode === 'mono' ? 'mono' : 'colour';
   const picked = new Set(cols.filter(c => screen.includes(c.key)).map(c => c.key));
   const items = [
     ['results', 'Results table'],
     ...(session.heatResults ? [['heats', session.finals ? 'Heats and finals' : 'Heats']] : []),
     ...(Stats.tyreStints(session, 'm').length ? [['tyres', 'Tyre stints']] : []),
-    ['laps', 'Every lap time (page 2 onwards)']
+    ...(session.sessionType === 'tokens' ? [] : [['drivers', 'A page for every driver']]),
+    ['laps', 'Every lap time (a table at the end)']
   ];
   dlg.innerHTML = `<h3>Export to PDF</h3><p class="muted">Choose what goes in the PDF.</p>
     <fieldset class="vsgroup"><legend>Include</legend>${items.map(([k, t]) => `<label class="vschip"><input type="checkbox" data-pdfpage="${k}"${pages[k] ? ' checked' : ''}> ${esc(t)}</label>`).join('')}</fieldset>
+    <fieldset class="vsgroup pdfmode"><legend>Print in</legend><label class="vschip"><input type="radio" name="pdfmode" data-pdfmode="colour"${mode === 'colour' ? ' checked' : ''}> Colour</label><label class="vschip"><input type="radio" name="pdfmode" data-pdfmode="mono"${mode === 'mono' ? ' checked' : ''}> Monochrome <span class="muted">(saves ink)</span></label></fieldset>
     <fieldset class="vsgroup"><legend>Columns of the results table</legend>${cols.map(c => `<label class="vschip"><input type="checkbox" data-pdfcol="${esc(c.key)}"${picked.has(c.key) ? ' checked' : ''}> ${esc(c.label)}</label>`).join('')}</fieldset>
     <div class="row"><button class="btn" type="button" data-pdfall="1">All columns</button><button class="btn" type="button" data-pdfall="0">No columns</button></div>
     <p class="muted">The columns start as your View settings have them. The choice of pages is remembered for the next time.</p>
@@ -94,6 +98,7 @@ function pdfChoice(session, figs) {
       const t = ev.target || {},
         d = t.dataset || {};
       if (d.pdfpage) pages[d.pdfpage] = !!t.checked;
+      if (d.pdfmode && t.checked !== false) mode = d.pdfmode === 'mono' ? 'mono' : 'colour';
       if (d.pdfcol) {
         if (t.checked) picked.add(d.pdfcol);
         else picked.delete(d.pdfcol);
@@ -124,13 +129,13 @@ function pdfChoice(session, figs) {
         err.textContent = 'Pick at least one column, or leave the results table out.';
         return;
       }
-      const chosen = { results: !!pages.results, heats: !!pages.heats, tyres: !!pages.tyres, laps: !!pages.laps };
+      const chosen = { results: !!pages.results, heats: !!pages.heats, tyres: !!pages.tyres, laps: !!pages.laps, drivers: !!pages.drivers };
       try {
-        state.settings = await api.setSettings({ pdfPages: chosen });
+        state.settings = await api.setSettings({ pdfPages: chosen, pdfMode: mode });
       } catch {
         /* remembering the choice is not needed for the PDF */
       }
-      finish({ ...chosen, columns: cols.filter(c => picked.has(c.key)).map(c => c.key) });
+      finish({ ...chosen, mode, columns: cols.filter(c => picked.has(c.key)).map(c => c.key) });
     };
     if (!dlg.open) dlg.showModal();
   });
