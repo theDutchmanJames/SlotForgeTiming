@@ -57,12 +57,12 @@ ok('resize ne moves the top edge up, the bottom stays put', r.x === 100 && r.y =
 
 // default layout
 const L = Wd.defaultLayout();
-ok('default layout: 16:9 with ' + L.widgets.length + ' widgets', L.ratioW === 16 && L.ratioH === 9 && L.widgets.length === 4 + 6 * 8 + 5);
+ok('default layout: 16:9 with ' + L.widgets.length + ' widgets', L.ratioW === 16 && L.ratioH === 9 && L.widgets.length === 4 + 7 + 8 * 8 + 5); // (2.4.0: a header row with the names of the columns, eight lanes of a lane colour and seven cells)
 ok('default layout: everything fits inside the canvas', L.widgets.every(g => g.x >= 0 && g.y >= 0 && g.x + g.w <= W && g.y + g.h <= Wd.heightOf(L)));
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 let clash = 0; for (let i = 0; i < L.widgets.length; i++) for (let j = i + 1; j < L.widgets.length; j++) if (overlap(L.widgets[i], L.widgets[j])) clash++;
 ok('default layout: no widgets overlap', clash === 0);
-ok('default layout: lane widgets cover lanes 1 to 6', [...new Set(L.widgets.filter(g => g.lane !== null).map(g => g.lane))].length === 6);
+ok('default layout: lane widgets cover lanes 1 to 8, with no title of their own (the header row names the columns)', [...new Set(L.widgets.filter(g => g.lane !== null).map(g => g.lane))].length === 8 && L.widgets.filter(g => g.lane !== null).every(g => g.showTitle === false) && L.widgets.filter(g => g.type === 'textrace').map(g => g.opt.text).join() === 'Pos,Driver,Lap,Lap time,Last lap,Best lap,Gap');
 ok('heightOf follows the proportions', Wd.heightOf({ ratioW: 16, ratioH: 9 }) === 563 || Wd.heightOf({ ratioW: 16, ratioH: 9 }) === 562);
 
 // ---- batch A ----

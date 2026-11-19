@@ -6124,3 +6124,135 @@ html .ro-tvcount small{font-size:14px;letter-spacing:.12em;text-transform:upperc
 html .ro-tvcount b{font:500 44px var(--ro-mono)}
 html .lv-body.ro-tvbody{padding:0;overflow:hidden}
 html .ro-tv .ro-title .ro-st tbody tr:nth-child(-n+3){display:none} /* (the first three are the podium cards above it) */
+
+/* ---- 2.4.0 Race Control (SlotForgeRestyle.md): the race window while a race is on (racecontrol.js). A bar that stays on top with a stripe in the colour
+   of the flag, the state in words, the clock, the controls (whatever the layout has), the timing status and Tools; the call that waits as a decision;
+   the order as a timing tower; the race screen as a monitor (Hide, S, M, L). --rc is the colour of the state. ---- */
+html #raceactive.rc-on>.rt-title{display:none}
+html .rc-bar{--rc:#8a93a0;position:sticky;top:61px;z-index:30;margin:-20px -20px 14px;background:var(--bg);border-bottom:1px solid var(--line)}
+html .rc-bar .rc-flag{height:6px;background:var(--rc)}
+html .rc-bar .rc-in{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:20px;padding:12px 20px;background:linear-gradient(90deg,color-mix(in srgb,var(--rc) 13%,var(--panel)),var(--panel) 45%)}
+html .rc-bar .rc-state{display:flex;align-items:center;gap:12px;min-width:0}
+html .rc-bar .rc-dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--rc);box-shadow:0 0 0 5px color-mix(in srgb,var(--rc) 25%,transparent)}
+html .rc-bar[data-state="green"] .rc-dot,html .rc-bar[data-state="countdown"] .rc-dot{animation:rcPulse 1.6s ease-in-out infinite}
+@keyframes rcPulse{50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--rc) 8%,transparent)}}
+@media (prefers-reduced-motion:reduce){html .rc-bar .rc-dot{animation:none!important}}
+html .rc-bar .rc-words{min-width:0}
+html .rc-bar .rc-race{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rc-bar .rc-k{font-size:11px;font-weight:600;line-height:1.3;letter-spacing:.14em;text-transform:uppercase;color:var(--rc)}
+html .rc-bar .rc-t{font:italic 700 28px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;color:var(--ink)}
+html .rc-bar .rc-s{font-size:12.5px;color:var(--muted);margin-top:3px}
+html .rc-bar .rc-msg:empty,html .rc-bar .rc-msg #msg:empty{display:none}
+html .rc-bar .rc-msg{margin-top:3px;font-size:12.5px}
+html .rc-bar .rc-msg #msg{color:var(--ink)}
+html .rc-bar .rc-clock{padding:0 20px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+html .rc-bar .rc-clock b{display:block;font:500 40px/1 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+html .rc-bar .rc-clock small{display:block;margin-top:4px;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .rc-bar .rc-ctl{display:flex;gap:8px;align-items:center}
+html .rc-bar .rc-ctl .btn{height:44px;min-width:88px;display:flex;flex-direction:column;justify-content:center;gap:1px;line-height:1.1;font-weight:600}
+html .rc-bar .rc-ctl .btn kbd{font:600 10px 'SF Roboto Mono',Consolas,monospace;color:var(--muted);border:0;padding:0;background:none;box-shadow:none}
+html .rc-bar .rc-ctl .btn.primary kbd{color:color-mix(in srgb,var(--on-accent) 75%,transparent)}
+html .rc-bar .rc-ctl .btn.rc-yellow{border-color:color-mix(in srgb,#f5c518 60%,var(--line));color:#f5c518}
+html .rc-bar .rc-ctl .btn.rc-yellow.on{background:#f5c518;border-color:#f5c518;color:#1d1600}
+html .rc-bar .rc-ctl .btn.rc-yellow.on kbd{color:#5a4a00}
+html .rc-bar .rc-ctl .btn.rc-redf{border-color:color-mix(in srgb,#e5484d 60%,var(--line));color:#ff6b6b}
+html .rc-bar .rc-ctl .btn.rc-redf.on{background:#e5484d;border-color:#e5484d;color:#fff}
+html .rc-bar .rc-ctl .btn.rc-redf.on kbd{color:#ffd9da}
+html .rc-bar .rc-ctl .btn.rc-stop,html .rc-bar .rc-ctl .btn.rc-quiet{background:none;border-color:transparent;min-width:64px}
+html .rc-bar .rc-ctl .btn.rc-stop{color:var(--accent-text,var(--accent))}
+html .rc-bar .rc-ctl .btn:disabled{opacity:.4}
+html:is([data-theme="light"],[data-theme="ocean"]) .rc-bar .rc-ctl .btn.rc-yellow:not(.on){color:#8a6400}
+html:is([data-theme="light"],[data-theme="ocean"]) .rc-bar .rc-ctl .btn.rc-redf:not(.on){color:#c42b2b}
+html .rc-bar .rc-more{display:flex;gap:8px;align-items:center}
+html .rc-bar .rc-pills{display:contents}
+html .rc-bar .rc-pill{display:flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap}
+html .rc-bar .rc-pill i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+html .rc-bar .rc-pill.sim{border-color:#f2b705;color:#f2b705}
+html .rc-bar .rc-pill.sim i{background:#f2b705}
+html .rc-bar .rc-tools{position:relative}
+html .rc-bar .rc-tools>summary{list-style:none;cursor:pointer;height:34px;display:flex;align-items:center}
+html .rc-bar .rc-tools>summary::-webkit-details-marker{display:none}
+html .rc-bar .rc-tools>summary::after{content:'▾';margin-left:6px;font-size:11px;color:var(--muted)}
+html .rc-bar .rc-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:260px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.35)}
+html .rc-bar .rc-menu .rt-tools{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0;padding:0;border:0;background:none;box-shadow:none;position:static}
+html .rc-bar .rc-menu .rt-tools>*{margin:0}
+html .rc-bar .rc-menu .rt-tools .btn{justify-content:flex-start;width:100%}
+html .rc-bar .rc-menu :is(.rd-race,.rd-clock,#stopbtn,#tmstatus){display:none!important}
+html .rc-bar .rc-menu label{display:flex;align-items:center;gap:8px;padding:6px 4px}
+/* the call that waits */
+html #calls.rc-calls{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:0;border:0;background:none;box-shadow:none}
+html #calls.rc-calls[hidden]{display:none}
+html .rc-call{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px 20px;align-items:center;padding:16px 20px;border-radius:14px;border:1px solid color-mix(in srgb,#f5c518 55%,var(--line));border-left:6px solid #f5c518;background:color-mix(in srgb,#f5c518 9%,var(--panel))}
+html .rc-cl-lane{width:62px;height:62px;border-radius:14px;display:grid;place-items:center;background:var(--c);color:#111;font:italic 700 40px/1 'SF Barlow Condensed','Bahnschrift',sans-serif}
+html .rc-call h3{margin:0;font:italic 700 26px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;color:var(--ink)}
+html .rc-call p{margin:4px 0 0;color:var(--muted);font-size:13px}
+html .rc-cl-t{font:500 13px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .rc-cl-acts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+html .rc-cl-acts .btn{height:38px}
+html .rc-cl-acts .btn.rc-redb{color:#ff6b6b;border-color:color-mix(in srgb,#e5484d 50%,var(--line))}
+html .rc-cl-acts input{height:38px;flex:1 1 240px;min-width:200px}
+/* the order and the race screen */
+html .rc-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;margin:0 0 14px;align-items:start}
+html .rc-row[data-size="s"]{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+html .rc-row[data-size="l"]{grid-template-columns:minmax(0,1fr)}
+html .rc-row[data-size="l"] .rc-mon{order:-1}
+html .rc-row[data-size="hide"]{grid-template-columns:minmax(0,1fr) auto}
+html .rc-order,html .rc-mon{border:1px solid var(--line);border-radius:14px;background:var(--panel);min-width:0;overflow:hidden}
+html .rc-oh,html .rc-mh{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 14px;border-bottom:1px solid var(--line)}
+html .rc-oh b,html .rc-mh b{font:italic 700 16px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .rc-oh small,html .rc-mh small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .rc-mh .rc-live{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#ff6b6b}
+html .rc-mh .rc-live i{width:8px;height:8px;border-radius:50%;background:#e5484d}
+html .rc-mh .rc-seg{margin-left:auto;display:flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px}
+html .rc-mh .rc-seg button{padding:3px 10px;border:0;border-radius:6px;background:none;font-size:12px;color:var(--muted);cursor:pointer}
+html .rc-mh .rc-seg button.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);font-weight:600}
+html .rc-mh .rc-fs{height:28px}
+html .rc-mon .rc-mb{padding:8px}
+html .rc-mon .rc-mb .rt-stage{margin:0}
+html .rc-mon[data-size="hide"] .rc-mb{display:none}
+html .rc-mon[data-size="hide"] :is(.rc-live,small){display:none}
+html .rc-tw{display:flex;flex-direction:column;gap:4px;padding:10px}
+html .rc-tr{display:grid;grid-template-columns:34px 5px minmax(0,1fr) auto 50px 64px 64px 84px;align-items:center;gap:10px;padding:7px 10px;border-radius:9px;background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html .rc-p{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font:italic 700 20px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;background:color-mix(in srgb,var(--ink) 9%,var(--panel))}
+html .rc-p.p1{background:#d4a400;color:#1d1600}
+html .rc-p.p2{background:#c4ccd8;color:#15181d}
+html .rc-p.p3{background:#c07a3e;color:#1c0e02}
+html .rc-strp{width:5px;height:30px;border-radius:3px;background:var(--c,var(--muted))}
+html .rc-n{min-width:0}
+html .rc-n b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .rc-n small{display:block;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .rc-chips{display:flex;gap:4px}
+html .rc-chip{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+html .rc-chip.call{background:#f5c518;color:#1d1600}
+html .rc-chip.pit{background:color-mix(in srgb,#f08a24 22%,transparent);color:#f5a04a}
+html .rc-chip:is(.dq,.out){background:color-mix(in srgb,#ff6b6b 18%,transparent);color:#ff6b6b}
+html .rc-v{text-align:right;font:500 15px 'SF Roboto Mono',Consolas,monospace}
+html .rc-v small{display:block;font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-family:'SF Inter',sans-serif}
+html .rc-v.fl{color:#c79bff}
+html .rc-g{justify-self:end;padding:2px 8px;border-radius:999px;font:600 12px 'SF Roboto Mono',Consolas,monospace;background:color-mix(in srgb,#ff6b6b 16%,transparent);color:#ff6b6b;white-space:nowrap}
+html .rc-g.lead{background:none;color:var(--muted)}
+html .rc-empty{padding:16px}
+html:is([data-theme="light"],[data-theme="ocean"]) :is(.rc-v.fl){color:#7a3fd1}
+@media (max-width:1180px){
+  html .rc-bar .rc-in{grid-template-columns:minmax(0,1fr) auto;row-gap:10px}
+  html .rc-bar .rc-ctl{grid-column:1/-1}
+  html .rc-row,html .rc-row[data-size]{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:700px){html .rc-tr{grid-template-columns:30px 5px minmax(0,1fr) 46px 64px}html .rc-tr>:nth-child(4),html .rc-tr>:nth-child(7){display:none}}
+html .rc-bar .rc-in{grid-template-columns:minmax(280px,1fr) auto auto auto}
+html .rc-bar #tmstatus{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .rc-mh .rc-live,html .rc-mh b{white-space:nowrap}
+html .rc-mh small{flex:1 1 auto;min-width:0}
+html #racehost>p.muted:has(~ #raceactive.rc-on:not([hidden])){display:none}
+@media (max-width:1320px){
+  html .rc-bar .rc-in{grid-template-columns:minmax(0,1fr) auto auto;row-gap:10px}
+  html .rc-bar .rc-ctl{grid-column:1/-1;grid-row:2}
+}
+html .rc-bar .rc-words{flex:1 1 auto}
+html #calls.rc-calls{width:100%;max-width:none;margin-left:0;margin-right:0}
+/* (the monitor is small: a cell that is crowded at this size still shows its value, without the editor's "Enlarge widget" hint) */
+html .rc-mon .lw.wf-crowded>.lw-val{visibility:visible}
+html .rc-mon .lw.wf-crowded::before{display:none}
+html .rc-bar .rc-menu .rt-tools .btn{text-align:left}
+html .rc-bar .rc-menu label{justify-content:flex-start}
+html #calls.rc-calls{align-items:stretch}

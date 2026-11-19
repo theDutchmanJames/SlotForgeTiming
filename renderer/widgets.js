@@ -2086,7 +2086,8 @@
     return { x: b.x - srcBox.x, y: b.y - srcBox.y };
   };
 
-  // The built-in layout: a header, one row per lane (up to six), and the race controls.
+  // The built-in layout: a header, one row per lane (up to eight) under a row with the names of the columns, and the race controls (which the race
+  // window and the second screen leave out: the Race Control bar has them, 2.4.0).
   function defaultLayout() {
     const L = { id: 'default', name: 'Default layout', ratioW: 16, ratioH: 9, widgets: [], guides: { v: [], h: [] }, laneColors: [] };
     const add = (type, x, y, w, h, lane) => {
@@ -2099,18 +2100,32 @@
     add('info', 220, 10, 330, 60);
     add('flag', 560, 10, 200, 60);
     add('lights', 770, 10, 220, 60);
-    for (let lane = 0; lane < 6; lane++) {
-      const y = 90 + lane * 65,
-        h = 58;
-      add('position', 10, y, 60, h, lane);
-      add('driverflag', 75, y, 60, h, lane);
-      add('name', 140, y, 210, h, lane);
-      add('lap', 355, y, 95, h, lane);
-      add('laptime', 455, y, 135, h, lane);
-      add('lastlap', 595, y, 135, h, lane);
-      add('bestlap', 735, y, 135, h, lane);
-      add('gap', 875, y, 115, h, lane);
+    // (2.4.0) eight lanes; the names of the columns once, as a header row, so a cell has no title of its own over its value
+    const COLS = [
+      ['position', 30, 60, 'Pos'],
+      ['name', 95, 255, 'Driver'],
+      ['lap', 355, 95, 'Lap'],
+      ['laptime', 455, 135, 'Lap time'],
+      ['lastlap', 595, 135, 'Last lap'],
+      ['bestlap', 735, 135, 'Best lap'],
+      ['gap', 875, 115, 'Gap']
+    ];
+    COLS.forEach(([, x, w, text]) => {
+      add('textrace', x, 78, w, 22);
+      const g = L.widgets[L.widgets.length - 1];
+      g.opt = { text };
+      g.textSize = '9';
+      g.textColor = '#98a0ab';
+    });
+    for (let lane = 0; lane < 8; lane++) {
+      const y = 104 + lane * 47,
+        h = 43;
+      add('lanecolor', 10, y, 14, h, lane);
+      COLS.forEach(([type, x, w]) => add(type, x, y, w, h, lane));
     }
+    L.widgets.forEach(g => {
+      if (g.lane !== null && g.lane !== undefined) g.showTitle = false;
+    });
     add('start', 10, 490, 150, 62);
     add('pause', 170, 490, 170, 62);
     add('stop', 350, 490, 120, 62);

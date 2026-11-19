@@ -28,7 +28,10 @@ This is a flow across several screens, not one screen.
   in the flow (or awarded by default, with Undo), the standings with movement arrows, then *Next round*; the race report on
   the second screen at the same time.
 
-### 2. Race window during the race · Remake
+### 2. Race window during the race · Remake · **Done (2.4.0, "Race Control")**
+The bar on top (state, flag stripe, clock, the controls whatever the layout has, Tools), a track call as a decision (Resume racing, Give or Take a lap,
+Red flag, a note in the log), the order as a timing tower, the race screen as a monitor (Hide, S, M, L), a default layout for eight lanes. Still open:
+the Race Director as folders (App Settings) next to the Lane Desk.
 - Start, Pause, Yellow and Red exist only as widgets in the layout (widgets.js:2114) or as keys. A layout without them leaves
   only the keyboard. The toolbar has Stop but no Start.
 - There are two Race Director forms, lane cards or folders, switched in App Settings. Every panel exists twice.
@@ -148,7 +151,7 @@ Verdicts here are about the design only: **Design remake** · **Design rework** 
 
 | Page | Design verdict | What you see |
 |---|---|---|
-| Race window, running | Design remake | Cell labels overlap their values ("Race clock" over the time); "Lap time -2:07.543" in the biggest font; an empty "Drive…" column; Start/Pause/Stop/Yellow/Red look alike, Stop and Red not marked as dangerous; display buttons and the director panel duplicate each other; lane cards below the fold |
+| Race window, running | Design remake | Cell labels overlap their values ("Race clock" over the time); an empty "Drive…" column; Start/Pause/Stop/Yellow/Red look alike, Stop and Red not marked as dangerous; display buttons and the director panel duplicate each other; lane cards below the fold |
 | Race window, after Finalize | Design remake | The race board greyed out, "Lap time 0.000", every control disabled; the only confirmation a small grey line |
 | Race window, between heats | Design rework | "Next up heat 2" is good, but there are two Start buttons; the board is sorted by grid position (3, 2, 4, 1); heat list and overall result are at the very bottom |
 | Finalize review | Good | Clear and ranked, the lap sparklines work. "Delete all data" sits right next to Finalize at the same size, and again at the bottom |

@@ -211,18 +211,18 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('editor opens: toolbar, palette, canvas, side panel', ed.includes('id="e-name"')&&ed.includes('id="canvas"')&&ed.includes('data-add="bestlap"')&&ed.includes('id="side"'));
   say('palette groups are folders in one fixed order, Race on top: Race, Driver, Slotcar, Team and Swaps, Position and Progress, Lap Times and Records, Delta Timers, Tyres, Weather, Custom, Controls (closed to begin with)', ['Race','Driver','Slotcar','Team and Swaps','Position and Progress','Lap Times and Records','Delta Timers','Tyres','Weather','Controls'].every((g, i, a) => i === 0 || ed.indexOf('data-pal="' + a[i-1] + '"') < ed.indexOf('data-pal="' + g + '"')) && ['Race','Driver','Slotcar','Team and Swaps','Position and Progress','Lap Times and Records','Delta Timers','Tyres','Weather','Controls'].every(g=>ed.includes('data-pal="'+g+'"><summary>'+g+'</summary>')) && !ed.includes('data-pal="Driver" open'));
   const canvas=E('canvas').innerHTML;
-  say('canvas shows the default layout widgets ('+(canvas.match(/class="lw[ "]/g)||[]).length+')', (canvas.match(/class="lw[ "]/g)||[]).length===57);
+  say('canvas shows the default layout widgets ('+(canvas.match(/class="lw[ "]/g)||[]).length+')', (canvas.match(/class="lw[ "]/g)||[]).length===80);
   say('snapping is on by default', run('state.editing.snap')===true);
   // add, adjust, save
   say('nothing changed yet -> not dirty (copy of default counts as new)', run('editorDirty()')===true);
   run("editorAdd('clock')");
-  say('added widget is selected and drawn', run('state.editing.draft.widgets.length')===58 && E('side').innerHTML.includes('Race clock') && E('side').innerHTML.includes('Text colour'));
+  say('added widget is selected and drawn', run('state.editing.draft.widgets.length')===81 && E('side').innerHTML.includes('Race clock') && E('side').innerHTML.includes('Text colour'));
   E('side').oninput({target:{id:'s-size',value:'45',type:'number',dataset:{}}});
-  say('text size setting applies', run('state.editing.draft.widgets[57].textSize')===45 && E('canvas').innerHTML.includes('font-size:4.5cqw'));
+  say('text size setting applies', run('state.editing.draft.widgets[80].textSize')===45 && E('canvas').innerHTML.includes('font-size:4.5cqw'));
   E('side').oninput({target:{dataset:{color:'bgColor'},value:'#112233',type:'color'}});
-  say('background colour setting applies', run('state.editing.draft.widgets[57].bgColor')==='#112233' && E('canvas').innerHTML.includes('background:#112233'));
+  say('background colour setting applies', run('state.editing.draft.widgets[80].bgColor')==='#112233' && E('canvas').innerHTML.includes('background:#112233'));
   E('side').onchange({target:{dataset:{theme:'bgColor'},checked:true}});
-  say('"theme default" clears the colour', run('state.editing.draft.widgets[57].bgColor')==='');
+  say('"theme default" clears the colour', run('state.editing.draft.widgets[80].bgColor')==='');
   // widget settings: grouped like folders, border shade and transparency
   { const side=E('side').innerHTML, at=g=>side.indexOf('data-side="'+g+'"');
     say('the settings are grouped: Title, then Text, then Background and border', at('title')>=0 && at('title')<at('text') && at('text')<at('frame') && side.includes('<summary>Background and border</summary>') && side.includes('<summary>Title</summary>') && side.includes('<summary>Text</summary>'));
@@ -278,7 +278,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     unfake();
     const css=fs.readFileSync(R+'renderer/styles.css','utf8');
     say('...the style sheet keeps a height for the panels too (for the moment before the page has measured), and they scroll inside themselves', /\.ed-pal,\.ed-side\{position:sticky;top:8px;max-height:calc\(100vh - 16px\);overflow-y:auto\}/.test(css)); }
-  const w57=()=>run('state.editing.draft.widgets[57]');
+  const w57=()=>run('state.editing.draft.widgets[80]');
   say('a new widget has no border or transparency setting and looks as before', w57().borderMode===undefined && w57().transparency===undefined && !E('canvas').innerHTML.includes('color-mix'));
   say('...the border choice shows "Theme default" and the shade slider is switched off', /id="s-bmode"[^>]*><option value="" selected>Theme default/.test(E('side').innerHTML) && /id="s-bshade" type="range"[^>]*disabled/.test(E('side').innerHTML) && /id="s-trans" type="range"[^>]*value="0"/.test(E('side').innerHTML));
   E('side').onchange({target:{id:'s-bmode',value:'shade',dataset:{}}});
@@ -296,11 +296,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('side').oninput({target:{id:'s-trans',value:'40',type:'range',dataset:{}}});
   say('transparency fades the background (and the border with it)', w57().transparency===40 && E('canvas').innerHTML.includes('background:color-mix(in srgb, #336699 60%, transparent);border-color:transparent') && E('s-trans-v').textContent==='40%');
   say('...but not the title or the value', !/class="lw-(title|val)"[^>]*color-mix/.test(E('canvas').innerHTML) && !/<span class="lw-(title|val)"[^>]*opacity/.test(E('canvas').innerHTML));
-  run("state.editing.sel=[state.editing.draft.widgets[0], state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  run("state.editing.sel=[state.editing.draft.widgets[0], state.editing.draft.widgets[80]]"); E('side').innerHTML=run('sideHtml()');
   say('with two widgets selected that differ, the border choice says (different) and the slider does not change them until it is moved', E('side').innerHTML.includes('<option value="" selected>(different)</option>') && run('state.editing.draft.widgets[0].borderMode')===undefined);
   E('side').oninput({target:{id:'s-trans',value:'10',type:'range',dataset:{}}});
   say('moving a slider with several widgets selected changes all of them', run('state.editing.draft.widgets[0].transparency')===10 && w57().transparency===10);
-  run("state.editing.draft.widgets[0].transparency=0; state.editing.sel=[state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  run("state.editing.draft.widgets[0].transparency=0; state.editing.sel=[state.editing.draft.widgets[80]]"); E('side').innerHTML=run('sideHtml()');
   E('side').onchange({target:{id:'s-bmode',value:'bogus',dataset:{}}});
   say('an unknown border choice is ignored', w57().borderMode==='off');
   E('side').onchange({target:{id:'s-bmode',value:'',dataset:{}}}); E('side').oninput({target:{id:'s-trans',value:'0',type:'range',dataset:{}}});
@@ -326,17 +326,17 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('...in half steps, so 2.3 becomes 2.5', w57().borderWidth===2.5 && E('canvas').innerHTML.includes('border-width:0.25cqw'));
   E('side').oninput({target:{id:'s-bwidth',value:'99',type:'number',dataset:{}}});
   say('...40 is the most', w57().borderWidth===40 && E('canvas').innerHTML.includes('border-width:4cqw'));
-  run("state.editing.sel=[state.editing.draft.widgets[0], state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  run("state.editing.sel=[state.editing.draft.widgets[0], state.editing.draft.widgets[80]]"); E('side').innerHTML=run('sideHtml()');
   say('with two widgets that differ, the thickness field says (different) and the border choice too', /id="s-bwidth"[^>]*placeholder="different"/.test(E('side').innerHTML) && E('side').innerHTML.includes('<option value="" selected>(different)</option>'));
   E('side').oninput({target:{id:'s-bwidth',value:'3',type:'number',dataset:{}}});
   say('...and typing one changes them both', run('state.editing.draft.widgets[0].borderWidth')===3 && w57().borderWidth===3);
-  run("state.editing.draft.widgets[0].borderWidth=''; state.editing.sel=[state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  run("state.editing.draft.widgets[0].borderWidth=''; state.editing.sel=[state.editing.draft.widgets[80]]"); E('side').innerHTML=run('sideHtml()');
   E('side').oninput({target:{id:'s-bwidth',value:'',type:'number',dataset:{}}});
   say('emptying the thickness goes back to the standard thin line', w57().borderWidth==='' && !E('canvas').innerHTML.includes('border-width'));
   E('side').oninput({target:{id:'s-trans',value:'40',type:'range',dataset:{}}});
   say('a see-through widget has a custom border that fades too, and --wf (the solidity, for the depth) follows the transparency', E('canvas').innerHTML.includes('border-color:color-mix(in srgb, #ffcc00 60%, transparent)') && /--wf:0\.6[;"]/.test(E('canvas').innerHTML));
   E('side').oninput({target:{id:'s-trans',value:'0',type:'range',dataset:{}}});
-  E('side').onchange({target:{id:'s-bmode',value:'',dataset:{}}}); run("delete state.editing.draft.widgets[57].borderColor"); run("delete state.editing.draft.widgets[57].borderWidth");
+  E('side').onchange({target:{id:'s-bmode',value:'',dataset:{}}}); run("delete state.editing.draft.widgets[80].borderColor"); run("delete state.editing.draft.widgets[80].borderWidth");
   say('back to the Theme default: the widget looks as before', !E('canvas').innerHTML.includes('border-width') && !E('canvas').innerHTML.includes('color-mix'));
   // rounded corners: one setting for the layout (top bar), an override per widget
   say('the top bar has a Rounded corners field, empty = the classic corners', /id="e-lradius"[^>]*placeholder="classic" value=""/.test(run('view.innerHTML')));
@@ -351,14 +351,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('e-lradius').oninput({target:{value:''}});
   say('empty goes back to the classic corners', run('state.editing.draft.radius')==='' && !E('canvas').innerHTML.includes('border-radius'));
   E('e-lradius').oninput({target:{value:'20'}});
-  run("state.editing.sel=[state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  run("state.editing.sel=[state.editing.draft.widgets[80]]"); E('side').innerHTML=run('sideHtml()');
   say('a widget offers Rounded corners, empty = as the layout', /id="s-radius" type="number" min="0" max="50" step="0.5" value="" placeholder="as the layout"/.test(E('side').innerHTML));
   E('side').oninput({target:{id:'s-radius',value:'50',type:'number',dataset:{}}});
-  say('a widget\'s own setting wins over the layout\'s: 50 is fully round', w57().radius===50 && new RegExp('data-i="57" style="[^"]*border-radius:'+(50*Math.min(w57().w,w57().h)/1000)+'cqw').test(E('canvas').innerHTML));
+  say('a widget\'s own setting wins over the layout\'s: 50 is fully round', w57().radius===50 && new RegExp('data-i="80" style="[^"]*border-radius:'+(50*Math.min(w57().w,w57().h)/1000)+'cqw').test(E('canvas').innerHTML));
   E('side').oninput({target:{id:'s-radius',value:'0',type:'number',dataset:{}}});
-  say('a widget can be square in a round layout (0 is a setting, not empty)', w57().radius===0 && new RegExp('data-i="57" style="[^"]*border-radius:0cqw').test(E('canvas').innerHTML));
+  say('a widget can be square in a round layout (0 is a setting, not empty)', w57().radius===0 && new RegExp('data-i="80" style="[^"]*border-radius:0cqw').test(E('canvas').innerHTML));
   E('side').oninput({target:{id:'s-radius',value:'',type:'number',dataset:{}}});
-  say('emptying it goes back to following the layout', w57().radius==='' && new RegExp('data-i="57" style="[^"]*border-radius:'+(20*Math.min(w57().w,w57().h)/1000)+'cqw').test(E('canvas').innerHTML));
+  say('emptying it goes back to following the layout', w57().radius==='' && new RegExp('data-i="80" style="[^"]*border-radius:'+(20*Math.min(w57().w,w57().h)/1000)+'cqw').test(E('canvas').innerHTML));
   // page background: a picture behind the widgets, with filters
   const gid=id=>document.getElementById(id), PICT='data:image/png;base64,iVBORw0KGgo=';
   say('the top bar has a Background button, not pressed while there is no picture', /id="e-background" aria-pressed="false"/.test(run('view.innerHTML')));
@@ -395,7 +395,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   gid('bg-wtrans').oninput({target:{value:'35'}});
   say('the layout setting is kept and shown', run('state.editing.draft.widgetTransparency')===35 && gid('bg-wtrans-v').textContent==='35%');
   say('...every widget that has no setting of its own gets it (background and border)', (E('canvas').innerHTML.match(/background:color-mix\(in srgb, var\(--panel\) 65%, transparent\)/g)||[]).length>=50);
-  say('...but a widget that has its own transparency keeps it (widget 57 has its own 0, solid)', wt(57).transparency===0 && !new RegExp('data-i="57" style="[^"]*color-mix').test(E('canvas').innerHTML));
+  say('...but a widget that has its own transparency keeps it (widget 80 has its own 0, solid)', wt(80).transparency===0 && !new RegExp('data-i="80" style="[^"]*color-mix').test(E('canvas').innerHTML));
   gid('bgform').onsubmit({preventDefault(){}});
   run("state.editing.sel=[state.editing.draft.widgets[3]]"); E('side').innerHTML=run('sideHtml()');
   say('a widget without its own setting says "Same as the layout" (ticked), the slider is off and shows the layout\'s 35%', /id="s-transfollow" checked/.test(E('side').innerHTML) && /id="s-trans" type="range"[^>]*value="35"[^>]*disabled/.test(E('side').innerHTML));
@@ -409,7 +409,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('a widget can be solid in a see-through layout (its own 0)', wt(3).transparency===0 && !new RegExp('data-i="3" style="[^"]*color-mix').test(E('canvas').innerHTML));
   E('side').onchange({target:{id:'s-transfollow',checked:true,dataset:{}}});
   say('a newly added widget follows the layout', (()=>{ run("editorAdd('clock')"); const w=run('state.editing.sel[0]'); const r=w.transparency===undefined && /id="s-transfollow" checked/.test(E('side').innerHTML); run("state.editing.draft.widgets.pop(); state.editing.sel=[]"); return r; })());
-  run("state.editing.sel=[state.editing.draft.widgets[57]]"); // back to the clock for the lines below
+  run("state.editing.sel=[state.editing.draft.widgets[80]]"); // back to the clock for the lines below
   E('side').oninput({target:{id:'s-radius',value:'50',type:'number',dataset:{}}});
   run("state.editing.sel=[]");
   run("editorAdd('bestlap')");
@@ -509,14 +509,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   run("state.editing.draft.widgets.splice(-3); state.editing.sel = []"); // leave the layout as it was for the tests below
   await run('editorSave()');
   const saved=calls.find(c=>c[0]==='add'&&c[1]==='layouts');
-  say('layout saved to the database with 60 widgets', saved && saved[2].name==='My layout' && saved[2].widgets.length===60 && saved[2].ratioW===16);
-  say('saved widgets keep their settings', saved[2].widgets[57].textSize===45);
-  say('the layout\'s corner radius and a widget\'s own radius are saved', saved[2].radius===20 && saved[2].widgets[57].radius===50);
+  say('layout saved to the database with 83 widgets', saved && saved[2].name==='My layout' && saved[2].widgets.length===83 && saved[2].ratioW===16);
+  say('saved widgets keep their settings', saved[2].widgets[80].textSize===45);
+  say('the layout\'s corner radius and a widget\'s own radius are saved', saved[2].radius===20 && saved[2].widgets[80].radius===50);
   say('the layout\'s widget transparency is saved', saved[2].widgetTransparency===35);
   run('state.editing.draft.widgetTransparency=0'); // back to solid for the tests below
   say('the page background picture and its filters are saved with the layout', saved[2].bgImage===PICT && saved[2].bgBlur===40 && saved[2].bgFit==='cover' && saved[2].bgBrightness===100 && saved[2].bgSaturation===100);
   run('state.editing.draft.bgImage=""'); // back to no picture for the tests below
-  run('state.editing.draft.radius=""; state.editing.draft.widgets[57].radius=""'); // back to the classic corners for the tests below
+  run('state.editing.draft.radius=""; state.editing.draft.widgets[80].radius=""'); // back to the classic corners for the tests below
   say('not dirty after saving', run('editorDirty()')===false);
   // change proportions
   E('e-ratio').onchange({target:{value:'4:3'}});
@@ -524,12 +524,12 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('widgets still fit after changing proportions', run("state.editing.draft.widgets.every(g=>g.y+g.h<=Widgets.heightOf(state.editing.draft))"));
   // remove a widget
   run('state.editing.sel=[state.editing.draft.widgets[0]]'); E('side').onclick({target:{closest:()=>({id:'s-del'})}});
-  say('remove widget', run('state.editing.draft.widgets.length')===59);
+  say('remove widget', run('state.editing.draft.widgets.length')===82);
   // leave editor, list shows the saved layout, then edit it
   run("editorLeave()"); await run('render()');
   say('saved layout appears in the list', E('setupbox').innerHTML.includes('My layout') && E('setupbox').innerHTML.includes('data-edit="L1"'));
   await E('setupbox').onclick({target:{closest:()=>({dataset:{edit:'L1'}})}}); await new Promise(r=>setTimeout(r,20));
-  say('editing a saved layout loads its widgets', run('state.editing.id')==='L1' && run('state.editing.draft.widgets.length')===60 && run('editorDirty()')===false);
+  say('editing a saved layout loads its widgets', run('state.editing.id')==='L1' && run('state.editing.draft.widgets.length')===83 && run('editorDirty()')===false);
   // race setup can now choose it
   run("editorLeave(); state.tab='setup'"); await run('render()'); run("state.refs.layouts=state.refs.layouts||[]; openForm('racesetups', null)");
   say('race setup form lists the saved layout', E('dlg').innerHTML.includes('My layout'));

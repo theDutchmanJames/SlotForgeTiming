@@ -49,10 +49,10 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   await wait(50); run('state.autoFinalize = true'); // the race review is tested at the end
   // ---------- a race by laps on the default layout ----------
   await openRace({ name: 'Sprint', sessionType: 'race', laps: 3, endRule: 'all', layout: '' }, store.tracks[0], rows(1, 2));
-  say('default layout: 25 widgets for a 2-lane track (lanes 3-6 left out)', run('live.nodes.length') === 25 && run('live.nodes').every(n => n.w.lane === null || n.w.lane < 2));
+  say('default layout: 32 widgets for a 2-lane track (lanes 3-8 left out; 2.4.0: a header row and a lane colour)', run('live.nodes.length') === 32 && run('live.nodes').every(n => n.w.lane === null || n.w.lane < 2));
   say('4 lane buttons -> only 2 on this track', run('live.lapBtns.length') === 2);
   say('before the start: flag widget says Pre-Race, names show', flagIs('Pre-Race') && run("live.nodes.find(n=>n.w.type==='name'&&n.w.lane===0).val.innerHTML") === 'Alex');
-  say('nickname and flag icon of the driver', run("live.nodes.find(n=>n.w.type==='driverflag'&&n.w.lane===0).val.innerHTML").includes('fi-nl'));
+  say('2.4.0: the default layout has no column for a flag (a driver without one left it empty); the flag widget is tested in boardall, rows and timing', !run('live.nodes').some(n => n.w.type === 'driverflag'));
   say('pause button is disabled before the start, start is enabled', node('pause').val.disabled === true && node('start').val.disabled === false);
   key(' ');
   say('Space starts the countdown', phase() === 'countdown');
@@ -126,9 +126,9 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   await openRace({ name: 'Chosen', sessionType: 'practice', layout: 'L1' }, store.tracks[0], rows(1, 2));
   say('...and widgets for lanes the track lacks are hidden', run('live.nodes.length') === 1 && run('live.nodes')[0].w.type === 'clock');
   await openRace({ name: 'Gone', sessionType: 'practice', layout: 'deleted-id' }, store.tracks[0], rows(1, 2));
-  say('a missing layout falls back to the default', run('live.nodes.length') === 25);
+  say('a missing layout falls back to the default', run('live.nodes.length') === 32);
   await openRace({ name: 'Wide', sessionType: 'practice', layout: '' }, store.tracks[1], rows(1, 2, 3, 4));
-  say('4-lane track: default layout shows 41 widgets', run('live.nodes.length') === 41);
+  say('4-lane track: default layout shows 48 widgets', run('live.nodes.length') === 48);
 
   // ---------- heats ----------
   saved.length = 0; store.laps = [];

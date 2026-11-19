@@ -309,7 +309,13 @@
       case 'call':
         return ['flags', 'Track call requested', 'Awaiting the Race Director'];
       case 'callend':
-        return ['flags', 'Track call resolved', x.how === 'penalty' ? 'Penalty assigned' : 'Dismissed'];
+        return [
+          'flags',
+          'Track call resolved',
+          ({ penalty: 'Penalty assigned', lapplus: 'A lap given', lapminus: 'A lap taken', red: 'Red flag', resume: 'Racing resumed' }[
+            x.how
+          ] || 'Dismissed') + (x.note ? ' · ' + x.note : '')
+        ]; // (2.4.0: the decisions of Race Control, and what happened in words)
       case 'pitstart':
         return ['pits', 'Entered the pits', ''];
       case 'pitend':

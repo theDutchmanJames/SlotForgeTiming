@@ -1074,11 +1074,12 @@ async function renderRace() {
     : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
+  const rcOn = !tokenSession && typeof RaceControl !== 'undefined'; // (2.4.0: Race Control; a Time Token Session keeps its tool bar)
   const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
-  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"><button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
+  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"${rcOn ? ' class="rc-on"' : ''}>${rcOn ? '<div id="rcbar" class="rc-bar" role="region" aria-label="Race control"></div>' : ''}<button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
     ${rulePlan ? `<p class="muted" id="race-rule-summary">Plugin rules: <strong>${esc(rulePlan.name)}</strong> · v${esc(rulePlan.version)} · frozen for this race. Raw lap timing is unchanged.</p>` : ''}
-    <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
+    ${rcOn ? '<div class="rc-row" id="rcrow"><section class="rc-order" aria-label="The order of the race"><div class="rc-oh"><b>Order</b><small id="rcorderline"></small></div><div id="rctower"></div></section><section class="rc-mon" id="rcmon" aria-label="The race screen"><div class="rc-mh" id="rcmonhead"></div><div class="rc-mb">' : ''}<div class="rt-stage"><div class="canvas live" id="canvas"></div></div>${rcOn ? '</div></section></div>' : ''}
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
       <button class="btn" id="audio-summary" hidden>Announce summary</button><button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
     <p id="perfline" class="muted perfline" hidden role="status" aria-label="Performance"></p><div id="perfvis" class="perfvis" hidden aria-hidden="true"></div>
@@ -1141,7 +1142,10 @@ async function renderRace() {
     msgEl = ui('msg'); // (read on every refresh and share: found once)
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
-  live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type](), imageSets });
+  live.nodes = LiveCanvas.build(ui('canvas'), rcOn ? Widgets.withoutControls(layout, lanes).layout : layout, lanes, {
+    onButton: type => actions[type](),
+    imageSets
+  }); // (2.4.0: with Race Control the bar has the controls: the race screen leaves its own out, as the second screen does)
   // the Performance line (App Settings > General > Performance, 1.60.0): a small line under the buttons with the frames a second, the time of a screen update and the CPU of the app, when it is switched on
   const syncPerfLine = () => {
     if (typeof PerfUI === 'undefined') return;
@@ -2043,6 +2047,7 @@ async function renderRace() {
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
+    if (live.rc) rcDraw(); // (2.4.0: Race Control)
     if (live.afterTv && !['between', 'review', 'finished'].includes(live.phase)) live.afterTv = null; // (the next heat started: the second screen follows the race again)
     if (live.roShown === 'break') {
       if (live.phase !== 'between') roShow('');
@@ -2097,6 +2102,26 @@ async function renderRace() {
     if (key === live.callsKey) return;
     live.callsKey = key;
     ui('calls').hidden = !open.length;
+    if (rcOn) {
+      // (2.4.0, Race Control) a call as a decision: the lane in its colour, who called and when, and what the Race Director can do
+      ui('calls').classList.add('rc-calls');
+      ui('calls').innerHTML = RaceControl.callsHtml(
+        open.map(c => {
+          const car = eng.cars[c.car];
+          return {
+            id: c.id,
+            lane: car.lane,
+            name: car.driverName,
+            color: roColor(car.lane),
+            at: rcClock(eng.elapsed(c.t)).replace(/\.\d$/, ''),
+            lap: eng.lapsOf(car) + 1,
+            dq: !!car.dq
+          };
+        }),
+        { penalty: penCfg.on }
+      );
+      return;
+    }
     ui('calls').innerHTML = open.length
       ? '<strong>Calls</strong> ' +
         open
@@ -2109,7 +2134,10 @@ async function renderRace() {
   };
   ui('calls').onclick = ev => {
     const b = ev.target.closest && ev.target.closest('[data-call]');
-    if (b) actions.callResolve(Number(b.dataset.id), b.dataset.call);
+    if (!b) return;
+    // (2.4.0) from Race Control: what happened, in words, goes with the decision, and racing resumes when it was the last call
+    const note = ui('calls').querySelector(`[data-call-note="${b.dataset.id}"]`);
+    actions.callResolve(Number(b.dataset.id), b.dataset.call, rcOn ? { note: note ? note.value : '', resume: true } : undefined);
   };
   const drawOverall = () => {
     if (!heats) return;
@@ -2693,6 +2721,161 @@ async function renderRace() {
     state.homeMsgAt = Date.now();
     state.tab = 'home';
     render();
+  }
+
+  // ---- (2.4.0, SlotForgeRestyle.md "Race Control") the bar on top of the race page (racecontrol.js): the state in words with the colour of its flag,
+  // the clock, the controls whatever the layout has, the timing status and Tools (the tool bar of before, in a menu); the order as a timing tower;
+  // the race screen as a monitor at a size you choose. A Time Token Session keeps its tool bar.
+  function rcInit() {
+    const bar = ui('rcbar');
+    if (!bar || typeof RaceControl === 'undefined') return;
+    bar.innerHTML = RaceControl.shell(`${setup.name || ''} · ${limitFull} · ${r.track.name}`);
+    const menu = bar.querySelector('[data-rc-menu]'),
+      tools = host.querySelector('#raceactive .rt-tools');
+    if (menu && tools) menu.appendChild(tools);
+    const msg = ui('msg'),
+      slot = bar.querySelector('[data-rc-msg]');
+    if (msg && slot) slot.appendChild(msg);
+    const tm = ui('tmstatus'),
+      pills = bar.querySelector('.rc-more');
+    if (tm && pills) pills.insertBefore(tm, pills.firstChild);
+    if (ui('calls') && ui('rcrow')) ui('rcrow').before(ui('calls')); // (a call that waits comes first, right under the bar)
+    live.rc = { parts: {}, size: RaceControl.sizeOf(state.settings.raceMonitor) };
+    rcMonitor();
+    bar.onclick = ev => {
+      const b = ev.target.closest && ev.target.closest('[data-rc]');
+      if (!b || b.disabled) return;
+      const act = b.dataset.rc;
+      b.blur();
+      if (act === 'home') return ui('back').click();
+      if (act === 'stop') return actions.stop();
+      if (['start', 'pause', 'yellow', 'red'].includes(act)) return actions[act]();
+    };
+    // (a click in the Tools menu closes it again; Escape too)
+    const det = bar.querySelector('[data-rc-tools]');
+    if (det)
+      det.addEventListener('click', ev => {
+        if (ev.target.closest && ev.target.closest('.rc-menu button')) det.open = false;
+      });
+    rcDraw();
+  }
+  // the monitor: its head (the sizes, full screen) and its size; the size is remembered for the next race
+  function rcMonitor() {
+    const mon = ui('rcmon');
+    if (!mon || !live.rc) return;
+    mon.dataset.size = live.rc.size;
+    ui('rcrow').dataset.size = live.rc.size;
+    ui('rcmonhead').innerHTML = RaceControl.monitorHead(live.rc.size, layout.name || '');
+    ui('rcmonhead').onclick = async ev => {
+      const s = ev.target.closest && ev.target.closest('[data-rc-size]'),
+        f = ev.target.closest && ev.target.closest('[data-rc="fullscreen"]');
+      if (f) return ui('fsbtn').click();
+      if (!s) return;
+      live.rc.size = RaceControl.sizeOf(s.dataset.rcSize);
+      rcMonitor();
+      try {
+        state.settings = await api.setSettings({ raceMonitor: live.rc.size });
+      } catch (x) {
+        /* the size stays for this race */
+      }
+    };
+  }
+  const rcClock = ms => {
+    const s = Math.max(0, Math.floor((Number(ms) || 0) / 100)) / 10,
+      m = Math.floor(s / 60),
+      x = (s % 60).toFixed(1).padStart(4, '0');
+    return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${x}` : `${m}:${x}`;
+  };
+  // drawn with every update of the page; each part only when its words change
+  function rcDraw() {
+    const bar = ui('rcbar');
+    if (!bar || !live.rc) return;
+    // (at most about seven times a second, unless the phase, the flag or the calls change: the clock does not need more, the race needs the time)
+    const quick = `${live.phase}|${eng.flag}|${!!live.restarting}|${eng.calls.filter(c => c.open).length}`,
+      wall = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (quick === live.rc.quick && wall - (live.rc.at || 0) < 140) return;
+    live.rc.quick = quick;
+    live.rc.at = wall;
+    const t = now(),
+      st = eng.standings(),
+      lead = st[0] && st[0].car,
+      limitLaps = Number(eng.lapLimit) > 0 ? Number(eng.lapLimit) : 0,
+      ledLaps = lead ? eng.lapsOf(lead) : 0,
+      second = st[1] && st[1].car;
+    const gapOf = (a, b) => {
+      const la = eng.lapsOf(a),
+        lb = eng.lapsOf(b);
+      if (!la && !lb) return ''; // (nobody has a lap yet: no gap)
+      if (la !== lb) return `+${la - lb} ${la - lb === 1 ? 'lap' : 'laps'}`;
+      return Number.isFinite(b.total) && Number.isFinite(a.total) && b.total >= a.total
+        ? '+' + ((b.total - a.total) / 1000).toFixed(3)
+        : '';
+    };
+    const lapLine =
+      lead && ledLaps
+        ? `${limitLaps ? `Lap ${Math.min(ledLaps + 1, limitLaps)} of ${limitLaps}` : `Lap ${ledLaps + 1}`} · ${lead.driverName} leads${second && gapOf(lead, second) ? ' by ' + gapOf(lead, second).replace(/^\+/, '') : ''}`
+        : '';
+    const calls = eng.calls
+      .filter(c => c.open)
+      .map(c => ({ lane: eng.cars[c.car].lane, name: eng.cars[c.car].driverName, at: rcClock(eng.elapsed(c.t)).replace(/\.\d$/, '') }));
+    const S = RaceControl.stateOf({
+      phase: live.phase,
+      flag: eng.flag,
+      restarting: !!live.restarting,
+      calls,
+      lapLine,
+      picking: heats && live.phase === 'between' && !heat.picksDone()
+    });
+    const left = limitLaps ? Math.max(0, limitLaps - ledLaps) : 0;
+    const P = RaceControl.parts({
+      state: S,
+      clock: rcClock(eng.elapsed(t)),
+      clockNote: limitLaps ? `${left} ${left === 1 ? 'lap' : 'laps'} to go` : String(limitFull || ''),
+      controls: RaceControl.controlsOf(S, { flag: eng.flag, picking: heats && live.phase === 'between' && !heat.picksDone() }),
+      sim: !!(ui('sim') && ui('sim').checked)
+    });
+    bar.style.setProperty('--rc', RaceControl.COLOR[S.key] || RaceControl.COLOR.done);
+    bar.dataset.state = S.key;
+    ['state', 'clock', 'ctl', 'pills'].forEach(k => {
+      if (live.rc.parts[k] === P[k]) return;
+      live.rc.parts[k] = P[k];
+      const el = bar.querySelector(`[data-rc-part="${k}"]`);
+      if (el) el.innerHTML = P[k];
+    });
+    // the order of the race (only drawn again when the places, laps or times change)
+    const tw = ui('rctower');
+    if (tw) {
+      const fastest = st.reduce((m, x) => (Number(x.car.best) > 0 && x.car.best < m ? x.car.best : m), Infinity);
+      const rows = st.map(x => {
+        const c = x.car,
+          i = eng.cars.indexOf(c),
+          chips = [];
+        if (eng.calls.some(k => k.open && k.car === i)) chips.push({ text: 'Call', kind: 'call' });
+        if (c.pit) chips.push({ text: 'Pit', kind: 'pit' });
+        if (c.dq) chips.push({ text: 'DQ', kind: 'dq' });
+        else if (c.retired) chips.push({ text: 'Out', kind: 'out' });
+        return {
+          pos: x.pos,
+          name: c.driverName,
+          car: c.carName,
+          lane: c.lane,
+          color: roColor(c.lane),
+          laps: eng.lapsOf(c),
+          last: c.laps.length ? c.laps[c.laps.length - 1] : null,
+          best: Number(c.best) > 0 ? c.best : null,
+          gap: lead && c !== lead ? gapOf(lead, c) : '',
+          chips
+        };
+      });
+      const html = RaceControl.towerHtml(rows, { fastest: Number.isFinite(fastest) ? fastest : null });
+      if (live.rc.tower !== html) {
+        live.rc.tower = html;
+        tw.innerHTML = html;
+      }
+      const line = ui('rcorderline'),
+        lt = lapLine ? lapLine.split(' · ')[0].toLowerCase() : live.phase === 'ready' ? 'the grid' : '';
+      if (line && line.textContent !== lt) line.textContent = lt;
+    }
   }
 
   // ---- (2.4.0, SlotForgeRestyle.md "Chequered Flag") the screens after a race (raceover.js): Race over, the title fight of a championship, the break
@@ -3743,9 +3926,11 @@ async function renderRace() {
       const i = eng.cars.findIndex(c => c.lane === lane);
       if (i >= 0 && eng.call(i, now())) update();
     },
-    callResolve(id, how) {
-      // the Race Director's decision on a call: 'penalty' (one point) or 'dismiss'
-      if (!['running', 'paused'].includes(live.phase) || !eng.resolveCall(id, how, now())) return;
+    callResolve(id, how, o) {
+      // the Race Director's decision on a call: 'penalty' (one point) or 'dismiss'; with Race Control (2.4.0) also a lap given or taken, the red flag,
+      // resume, with a note and racing resumed after the last call (o: { note, resume })
+      if (!['running', 'paused'].includes(live.phase) || !eng.resolveCall(id, how, now(), o || {})) return;
+      if (how === 'red') syncPhase();
       if (eng.status === 'finished') engineFinished();
       else update();
     },
@@ -4656,6 +4841,7 @@ async function renderRace() {
       weather: st => actions.weather(st),
       tyreNext: (l, code) => actions.tyreNext(l, code)
     });
+  rcInit();
 
   // ---- a race that was interrupted can be carried on (1.9.0) ----
   // While a single race runs (or waits in the review), a snapshot of it goes to a file every few seconds and whenever something changes (a lap, a swap, a flag, a pause). After a crash or a power cut the Home tab

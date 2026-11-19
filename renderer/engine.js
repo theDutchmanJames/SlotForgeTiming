@@ -409,7 +409,8 @@
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
     };
     R.twTeams = {}; // the sets that are left of a team that shares them (Tyre Wear): { teamId: { H: 2, M: 1, ... } }
-    let callId = 0;
+    let callId = 0,
+      callYellow = false; // (2.4.0: the yellow flag that is out was raised by a call)
     const log = (type, i, t, data) => {
       const event = {
         type,
@@ -796,6 +797,7 @@
           R.yellowAt = R.status === 'paused' ? R.pausedAt : t; // (2.4.0: raised in a pause it starts when the race does; the resume moves it with the clock)
         }
       }
+      if (R.flag !== was) callYellow = false; // (the Race Director set the flag himself: a call no longer takes it in)
       if (R.flag !== was) log('raceflag', -1, t, { flag: R.flag, by: 'director' });
       scEdge(t);
     };
@@ -807,6 +809,7 @@
         R.cars.forEach(c => tempUpdate(c, t));
         R.flag = 'yellow';
         R.yellowAt = R.status === 'paused' ? R.pausedAt : t;
+        callYellow = true; // (the yellow of a call: settling the last call can take it in again, see resolveCall)
         log('raceflag', -1, t, { flag: 'yellow', by: 'call' });
         scEdge(t);
       }
@@ -819,12 +822,29 @@
       return c;
     };
     // The Race Director decides: how = 'penalty' (one penalty point for that car; only with a penalty system) or 'dismiss'. A call that cannot be settled stays waiting.
-    R.resolveCall = (id, how, t) => {
+    // (2.4.0, Race Control) more decisions: 'lapplus' / 'lapminus' (a lap given or taken, as the Laps pad does), 'red' (the red flag goes out), 'resume'
+    // (nothing else); o.note: what happened, in words (kept with the call and in the log); o.resume: when no other call waits and the yellow came from
+    // a call, the yellow goes in again (racing resumes). Without o.resume a decision leaves the flag as it is (the Race Director page, as before).
+    R.resolveCall = (id, how, t, o = {}) => {
       const c = R.calls.find(x => x.id === id && x.open);
-      if (!c || !['penalty', 'dismiss'].includes(how) || (how === 'penalty' && !R.addPoints(c.car, 1, t))) return false;
+      if (!c || !['penalty', 'dismiss', 'resume', 'lapplus', 'lapminus', 'red'].includes(how)) return false;
+      if (how === 'penalty' && !R.addPoints(c.car, 1, t)) return false;
+      if ((how === 'lapplus' || how === 'lapminus') && !R.adjust(c.car, { laps: how === 'lapplus' ? 1 : -1 }, t)) return false;
       c.open = false;
       c.how = how;
-      log('callend', c.car, t, { id, how });
+      const note = typeof o.note === 'string' ? o.note.trim().slice(0, 120) : '';
+      if (note) c.note = note;
+      log('callend', c.car, t, { id, how, ...(note ? { note } : {}) });
+      if (how === 'red') {
+        if (R.flag !== 'red') R.setFlag('red', t);
+      } else if (o.resume && R.flag === 'yellow' && callYellow && !R.calls.some(x => x.open)) {
+        R.cars.forEach(x => tempUpdate(x, t));
+        R.flag = '';
+        R.yellowAt = null;
+        callYellow = false;
+        log('raceflag', -1, t, { flag: '', by: 'call' });
+        scEdge(t);
+      }
       return true;
     };
     // running time of the current lap for car i

@@ -52,6 +52,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
 | [Heat Board](#heat-board) | A heat race under the race screen: Next up with Start, the heats as cards, the overall result, the lanes of a final as tiles | Race tab (heat races) |
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
+| [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
 | [Token Desk](#token-desk) | The time tokens of a Time Token Session: a card for every lane with the clock large, the buttons as a grid, the state as the edge | Race tab and Live Race › Tokens (Time Token Sessions) |
@@ -1689,6 +1690,44 @@ html .pg{display:inline-flex;flex-direction:column;min-width:92px;padding:5px 10
 html .pg-bad{--pc:#e5484d;background:color-mix(in srgb,#e5484d 8%,var(--panel))}
 ```
 
+## Race Control
+
+The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
+under it is unchanged. A Time Token Session keeps its tool bar.
+
+- **The bar** (`.rc-bar`, sticky under the main menu): a 6 px **stripe in the colour of the flag** across the page (grey ready, amber lights, green,
+  yellow, red, blue paused) and a soft tint of it behind the state. From left to right:
+  - the race (name, length, track) as a small line, the **state** as a kicker in the flag colour and a title in Barlow (*Ready · Grid is set*,
+    *Green flag · Racing*, *Yellow flag · Track call · lane 1*, *Red flag · Race stopped*, *Paused · Clock stopped*), one line of what is happening or
+    what to do, and the status line of the race (`#msg`) under it;
+  - the **clock** in 40 px Roboto Mono with laps to go;
+  - the **controls**, whatever the layout has: one primary (Start, Resume, Start next), Pause, **Yellow** and **Red** outlined in their colour and filled
+    while that flag is out, Stop as red text; each says its key (Space, Y, R, S); what the state cannot do is dimmed;
+  - the timing status pill, an amber *Simulated* pill when simulated cars are on, and **Tools** (a menu with the tool bar of before: Simulated cars,
+    Full screen widgets, Review laps, Announce summary, Back to Home).
+- **A track call** (`.rc-call`): a card with a 6 px yellow edge, the lane number in its lane colour, *Track call · lane 1 · Anna* in Barlow, when it was
+  called and on which lap, then **Resume racing** (primary), Penalty point (with a penalty system), Give a lap, Take a lap, Red flag, and a field for
+  what happened (it goes in the log). Settling the last call takes in the yellow that the call raised; a yellow the Race Director raised stays.
+- **The order** (`.rc-order`): the race as a timing tower: the place in gold, silver, bronze, the lane stripe, name and car, chips (*Call* yellow, *Pit*
+  orange, *DQ* / *Out* red), laps, last and best lap in Roboto Mono (the fastest of all in purple), the gap as a red chip.
+- **The race screen** (`.rc-mon`): the layout as a monitor, marked *On screen* in red, with **Hide · S · M · L** (remembered, `raceMonitor`) and full
+  screen. It leaves the layout's own buttons out, as the second screen does (`Widgets.withoutControls`). S: the order two thirds; M: 5 to 4; L: the
+  monitor full width above the order; Hide: the head only.
+- **The default layout** has eight lanes: a header row with the names of the columns (*Pos, Driver, Lap, Lap time, Last lap, Best lap, Gap*), then a row
+  per lane (a lane colour and seven cells without a title of their own).
+
+```css
+html .rc-bar{position:sticky;top:61px;z-index:30;margin:-20px -20px 14px;border-bottom:1px solid var(--line)}
+html .rc-bar .rc-flag{height:6px;background:var(--rc)}
+html .rc-bar .rc-in{display:grid;grid-template-columns:minmax(280px,1fr) auto auto auto;background:linear-gradient(90deg,color-mix(in srgb,var(--rc) 13%,var(--panel)),var(--panel) 45%)}
+html .rc-bar .rc-ctl .btn.rc-yellow.on{background:#f5c518;color:#1d1600}
+html .rc-call{border-left:6px solid #f5c518;background:color-mix(in srgb,#f5c518 9%,var(--panel))}
+html .rc-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px}
+html .rc-tr{display:grid;grid-template-columns:34px 5px minmax(0,1fr) auto 50px 64px 64px 84px}
+```
+
+---
+
 ## Chequered Flag
 
 The screens after a race (`renderer/raceover.js`, wired in `race.js`: roStart, roBreak, roOver; styles under `.ro-`). The race page is hidden while one is
@@ -1972,3 +2011,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Update Window | New: the update check of every SlotForge app (from Circuit): the window with What's new, Skip and Download, Settings › Updates; the notice on Home is gone |
 | 2026-11 | Chequered Flag | New: the screens after a race (Race over, a championship race with the title fight as big as the race, the break between heats, Event over) replace the frozen race page; the points of a championship race are awarded on Finalize, with Undo |
 | 2026-11 | Chequered Flag | The screens after a race on the second screen: without buttons, one 16:9 screen zoomed to the window, a line along the bottom; Race Results › After the race chooses it or the Results Wall |
+| 2026-11 | Race Control | New: the bar on top of the race window (state, flag stripe, clock, the controls whatever the layout has, Tools), a track call with Resume racing, Give or Take a lap and a note, the order as a timing tower, the race screen as a monitor (Hide, S, M, L); the default layout has eight lanes and a header row |
