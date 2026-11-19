@@ -1246,7 +1246,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('the review is now the director\'s final-results page, with drivers and the unserved penalty', E('finishreview').hidden === false && E('raceactive').hidden === true && E('review').innerHTML.includes('Finalize race results') && E('review').innerHTML.includes('Stop-and-Go 5') && E('review').innerHTML.includes('Finalize'));
   say('the review has the winner\'s cup in front of the winner (once)', (E('review').innerHTML.match(/<svg class="trophy"/g) || []).length === 1 && E('review').innerHTML.includes('rfinish-card winner'));
   await until(() => sent.dyn && sent.dyn.phase === 'review'); await wait(150); cbs.dyn.forEach(f => f(plain(sent.dyn)));
-  say('the Director page shows the review too', E('dir-review').innerHTML.includes('Race review'));
+  say('the Director page shows the review too', E('dir-review').innerHTML.includes('Finalize race results'));
   const rv = (op, o = {}) => E('review').onclick({ target: { closest: () => ({ dataset: { rv: op, ...o } }) } });
   rv('laps', { car: '1' }); say('laps can be opened', E('review').innerHTML.includes('Mark invalid'));
   rv('deltry', { car: '1', lap: '0' }); say('deleting a lap asks how', E('review').innerHTML.includes('From the records only') && E('review').innerHTML.includes('From the race too'));
@@ -1307,7 +1307,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...and 5 seconds on his time: the review says +5 s', run(`live.engine().cars[${second}].adjMs`) === 5000 && E('review').innerHTML.includes('adjusted: +5 s, +5 pts'));
     const host5 = document.createElement('div'); await run('LiveView.mount')(host5, {}); run('LiveView.go')('director');
     await until(() => sent.dyn && sent.dyn.phase === 'review' && sent.dyn.cars && sent.dyn.cars[second] && sent.dyn.cars[second].adjPoints === 5 && sent.dyn.cars[second].adjMs === 5000, 3000); await wait(100); cbs.dyn.forEach(f => f(plain(sent.dyn)));
-    say('the Director page has the same Points column, with the adjusted points (the championship comes with what is shared)', E('dir-review').innerHTML.includes('<th class="rv-champ">Points</th>') && E('dir-review').innerHTML.includes('adjusted: +5 s, +5 pts') && /<td class="num rv-champ">13<\/td>/.test(E('dir-review').innerHTML));
+    say('the Director page has the same Points column, with the adjusted points (the championship comes with what is shared)', E('dir-review').innerHTML.includes('<span>Points</span><b>13</b>') && E('dir-review').innerHTML.includes('adjusted: +5 s, +5 pts'));
     run('LiveView.unmount')(); run('state.autoFinalize = true'); rvh('finalize'); await until(() => ['between', 'finished'].includes(phase()));
     els.sim.checked = true; let hn = 0;
     while (phase() !== 'finished' && hn++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }

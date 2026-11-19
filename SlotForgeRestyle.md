@@ -1405,6 +1405,8 @@ Finalize race results, after the race (`renderer/review.js` finishHtml, styles u
   where it was after every change; stint rows in an Endurance race.
 - **One colour per kind of lap**, the same in the charts and as the 3px mark at the left of a row: clean grey, best purple, pit orange, flag amber,
   suspect magenta, invalid red, not in the records dim. A suspect, invalid or removed lap also gets a faint full-height column in the chart.
+- **The Race Director page** of Live Race has the same: after the race the whole desk, during the race the drivers as small cards (lane tile, laps,
+  last and best, their lap chart) and the explorer for the one picked. On a phone every lap is a small two-line card.
 - **Suspect** (found by the screen, nothing is changed by itself): a lap shorter than 0.6 × the median (*counted twice?*) or longer than 1.75 × the
   median without a pit stop, flag or pause (*about 2 laps: a crossing missed?*). When the best lap is suspect the figures say it goes in the records.
 
@@ -1583,3 +1585,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Scrutineering | New: Finalize race results with a gold stripe for the winner, slim lap rows with small buttons, quiet Adjust pads |
 | 2026-11 | Pit Wall | The shared library's light shows the results waiting to be sent in amber with their number ("1 to send"), never as a red "Library" |
 | 2026-11 | Scrutineering | Reimagined: the classification as slim rows with a lap chart each, and a lap explorer (chart of every lap, figures, filters, suspect laps, several laps at once, back in the records); one colour per kind of lap |
+| 2026-11 | Scrutineering | The Race Director page of Live Race has the desk after the race and the lap explorer during it; on a phone the laps are two-line cards |

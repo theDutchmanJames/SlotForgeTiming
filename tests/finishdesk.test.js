@@ -126,3 +126,32 @@ test('the page keeps where the lap list was scrolled to', () => {
   Review.render(root, '<div></div>');
   assert.equal(fresh.scrollTop, 480);
 });
+
+test('during the race (Race Director page): the drivers with their little chart, the explorer for the one picked, Close closes it', async () => {
+  Review.reset();
+  const r = race();
+  let h = Review.lapDeskHtml(r, {});
+  assert.equal((h.match(/class="rx-pickrow/g) || []).length, 3);
+  assert.ok(h.includes('Review laps') && h.includes('Bjorn') && !h.includes('class="rx"'));
+  const root = {};
+  Review.bind(
+    root,
+    () => {},
+    () => {}
+  );
+  const click = (dataset, inNav) =>
+    root.onclick({ target: { closest: () => ({ dataset, disabled: false, closest: () => (inNav ? {} : null) }) } });
+  await click({ rv: 'laps', excl: '1', car: '1' });
+  h = Review.lapDeskHtml(r, {});
+  assert.ok(h.includes('data-rx="1"') && h.includes('Mark invalid'));
+  await click({ rv: 'laps', excl: '1', car: '1', close: '1' }, true);
+  assert.equal(Review.ui.open.size, 0, 'Close closes the explorer');
+  r.cars[0].done = true;
+  Review.ui.open.add(0);
+  Review.ui.del = '0:3';
+  assert.ok(
+    !Review.lapDeskHtml(r, {}).includes('From the race too'),
+    'a car that finished only takes a lap out of the records during the race'
+  );
+  Review.reset();
+});

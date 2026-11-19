@@ -289,7 +289,7 @@ const Review = (() => {
               : '';
         const acts =
           ui.del === `${i}:${k}`
-            ? `<span class="rv-del">Remove lap ${k + 1}: <button class="btn sm" data-rv="removelap" data-car="${i}" data-lap="${k}" data-recalc="0">From the records only</button> <button class="btn sm danger" data-rv="removelap" data-car="${i}" data-lap="${k}" data-recalc="1">From the race too (recalculate)</button> <button class="btn sm" data-rv="delcancel">Cancel</button></span>`
+            ? `<span class="rv-del">Remove lap ${k + 1}: <button class="btn sm" data-rv="removelap" data-car="${i}" data-lap="${k}" data-recalc="0">From the records only</button> ${o.mid && c.done ? '' : `<button class="btn sm danger" data-rv="removelap" data-car="${i}" data-lap="${k}" data-recalc="1">From the race too (recalculate)</button> `}<button class="btn sm" data-rv="delcancel">Cancel</button></span>`
             : `${f.red ? '' : `<button class="btn sm" data-rv="invalid" data-car="${i}" data-lap="${k}" data-on="${f.inv ? 0 : 1}">${f.inv ? 'Mark valid' : 'Mark invalid'}</button>`}${f.rem ? `<button class="btn sm" data-rv="restorelap" data-car="${i}" data-lap="${k}">Back in the records</button>` : `<button class="btn sm" data-rv="deltry" data-car="${i}" data-lap="${k}">Delete…</button>`}`;
         const pace = paceTag(c, k);
         return `${head}<tr class="rx-row rx-k-${f.kind}${k === bestAt && !bestSus ? ' rx-best' : ''}${ui.checked.has(k) ? ' rx-picked' : ''}${ui.focus === k ? ' rx-on' : ''}" data-rx-lap="${k}">
@@ -306,7 +306,7 @@ const Review = (() => {
       next = st[(at + 1) % st.length].index;
     return `<section class="rx" data-rx="${i}" aria-label="Laps of ${esc(c.driverName)}">
       <header class="rx-head"><div class="rx-who seg" role="group" aria-label="Driver">${who}</div>
-        <span class="rx-nav">${st.length > 1 ? `<button type="button" class="btn icon sm" data-rv="laps" data-excl="1" data-car="${prev}" aria-label="The driver before" title="The driver before">‹</button><button type="button" class="btn icon sm" data-rv="laps" data-excl="1" data-car="${next}" aria-label="The next driver" title="The next driver">›</button>` : ''}<button type="button" class="btn sm ghost" data-rv="laps" data-excl="1" data-car="${i}" aria-expanded="true">Close</button></span></header>
+        <span class="rx-nav">${st.length > 1 ? `<button type="button" class="btn icon sm" data-rv="laps" data-excl="1" data-car="${prev}" aria-label="The driver before" title="The driver before">‹</button><button type="button" class="btn icon sm" data-rv="laps" data-excl="1" data-car="${next}" aria-label="The next driver" title="The next driver">›</button>` : ''}<button type="button" class="btn sm ghost" data-rv="laps" data-excl="1" data-car="${i}" data-close="1" aria-expanded="true">Close</button></span></header>
       <div class="rx-stats">${stat('Laps', n)}${stat('Best', hasBest ? fmt(c.best) : '–', bestAt >= 0 ? `lap ${bestAt + 1}${bestSus ? ' · <em class="rx-warn">suspect: it goes in the records</em>' : ''}` : '')}${stat('Median', med ? fmt(Math.round(med)) : '–')}${stat('Average', avg ? fmt(Math.round(avg)) : '–', 'clean laps')}${stat('Consistency', sd ? '±' + (sd / 1000).toFixed(3) : '–', 'spread of clean laps')}${stat('Marked', counts.marked, counts.sus ? `${counts.sus} suspect` : '')}</div>
       <div class="rx-chartbox">${lapChart(c, { cls: 'rx-chart', h: 100, med, sc, click: true, car: i, focus: ui.focus, label: `Lap times of ${c.driverName}: a bar for every lap` })}
         <p class="rx-legend"><span class="rx-k-ok">Clean</span><span class="rx-best">Best</span><span class="rx-k-pit">Pit</span><span class="rx-k-flag">Flag</span><span class="rx-k-sus">Suspect</span><span class="rx-k-bad">Invalid</span><span class="rx-k-out">Not in the records</span><span class="rx-medl">Median</span><span class="rx-tip">A bar shows its lap in the list.</span></p></div>
@@ -382,6 +382,28 @@ const Review = (() => {
         : explorerHtml(eng, pick, { color });
     return `<section class="rfinish"><header class="rfinish-head"><div><p class="eyebrow">DIRECTOR'S FINAL CHECK</p><h2>Finalize race results</h2><p class="muted">Review the classification, laps and penalties. Nothing is saved until you finalize.</p></div><div class="rfinish-headactions"><span class="rfinish-check">${invalid ? `${invalid} lap${invalid === 1 ? '' : 's'} marked` : 'All laps checked'}${pending ? ` · ${pending} penalty${pending === 1 ? '' : 'ies'} waiting` : ''}</span><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></div></header>
       <div class="rfinish-grid rf-list" role="list" aria-label="Classification">${st.map(row).join('')}</div>${explorer}<footer class="rfinish-foot"><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></footer></section>`;
+  }
+  // (2.4.0) During the race, on the Race Director page: every driver with the little chart of their laps, and the lap explorer for the one that is picked.
+  // The same commands as the review laps of the race window (a lap marked invalid, taken out of the records, or back in them).
+  function lapDeskHtml(eng, o = {}) {
+    const color = o.color || (() => 'var(--muted)'),
+      pick = [...ui.open].filter(k => eng.cars[k]).pop();
+    const st = eng.standings ? eng.standings() : eng.cars.map((car, index) => ({ car, index }));
+    const rows = st
+      .map(x => {
+        const c = x.car,
+          i = x.index,
+          med = cleanMedian(c),
+          last = c.laps.length ? fmt(c.laps[c.laps.length - 1]) : '–',
+          best = c.best === null || c.best === undefined ? '–' : fmt(c.best),
+          marked = new Set([...c.invalid, ...c.removed]).size;
+        return `<button type="button" class="rx-pickrow${pick === i ? ' on' : ''}" data-rv="laps" data-excl="1" data-car="${i}" aria-pressed="${pick === i}" style="--c:${esc(color(c.lane))}">
+          <span class="rx-pl">${c.lane + 1}</span><span class="rx-pw"><b>${esc(c.driverName)}</b><small>${c.laps.length} ${c.laps.length === 1 ? 'lap' : 'laps'} · last ${last} · best ${best}${marked ? ` · ${marked} marked` : ''}</small></span>
+          ${lapChart(c, { cls: 'rf-sparkline', h: 28, med, sc: !!eng.safetyCar, label: `Laps of ${c.driverName}` })}</button>`;
+      })
+      .join('');
+    return `<div class="race-finish rx-live"><h3 class="rx-livetitle">Review laps</h3><p class="muted rx-livenote">Pick a driver to go through their laps while the race goes on: mark a lap invalid, take it out of the records or put it back. The review after the race stays.</p>
+      <div class="rx-picks">${rows}</div>${pick === undefined ? '' : explorerHtml(eng, pick, { color, mid: true })}</div>`;
   }
   // The review page is drawn again after every change: the lap list keeps where it was scrolled to, and a lap picked in the chart comes into view.
   function render(root, h) {
@@ -524,7 +546,7 @@ const Review = (() => {
           // (the finishing desk: the laps of one driver at a time; the driver buttons of the explorer always open, the others open and close)
           const was = set.has(key);
           set.clear();
-          if (!was || (b.closest && b.closest('.rx-who,.rx-nav'))) set.add(key);
+          if (d.close !== '1' && (!was || (b.closest && b.closest('.rx-who,.rx-nav')))) set.add(key);
           ui.checked.clear();
           ui.focus = null;
           ui.del = null;
@@ -638,6 +660,6 @@ const Review = (() => {
     }
     return false;
   }
-  return { html, finishHtml, lapsHtml, stintsHtml, bind, apply, reset, render, boughtText, ui, lapFacts, median };
+  return { html, finishHtml, lapsHtml, lapDeskHtml, stintsHtml, bind, apply, reset, render, boughtText, ui, lapFacts, median };
 })();
 if (typeof module !== 'undefined') module.exports = Review;

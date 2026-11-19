@@ -1831,7 +1831,8 @@ async function renderRace() {
   // A correction of a lap during the race: mark it invalid (or valid again) or take it out. Only these two; the rest is for the review after the race.
   // A lap that is driven after the paid time is up stays invalid; a car that has finished only takes a lap out of the records.
   const lapFix = c => {
-    if (!c || (c.op !== 'invalid' && c.op !== 'removelap') || !Number.isInteger(c.car) || !Number.isInteger(c.lap)) return false;
+    if (!c || !['invalid', 'removelap', 'restorelap'].includes(c.op) || !Number.isInteger(c.car) || !Number.isInteger(c.lap)) return false;
+    if (c.op === 'restorelap' && tokens) return false; // (2.4.0: back in the records, from the lap explorer; a Time Token Session keeps its own lap list)
     const car = eng.cars[c.car];
     if (!car || c.lap < 0 || c.lap >= car.laps.length) return false;
     const recalc = c.op === 'removelap' && !!c.recalc;

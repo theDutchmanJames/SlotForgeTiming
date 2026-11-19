@@ -489,7 +489,7 @@ const LiveView = (() => {
         ${st.cfg.pitControl ? folder('pitstops', 'Pit stops', 'Service countdown and car release', 'teal', '<div id="dir-pithold"></div>') : ''}
         ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
-        <div id="dir-review" class="card rv" hidden></div></div>`;
+        <div id="dir-review" class="card rv race-finish" hidden></div></div>`;
       adjPanel =
         st.tokenUi || useCards
           ? null
@@ -774,14 +774,20 @@ const LiveView = (() => {
           eng.cars.map(c => [c.laps.length, c.best, c.invalid, c.removed, c.dq, c.done, c.driverName]),
           [...R.open],
           R.del,
+          R.filter,
+          [...R.checked],
+          R.focus,
           d.tokens ? d.tokens.lates || 0 : 0
         ]);
       if (sig !== lapsSig) {
         lapsSig = sig;
-        const h = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null });
+        // (2.4.0) the lap explorer, as in the review after the race; a Time Token Session keeps the list of every lane (with its laps after the paid time)
+        const h = tv
+          ? Review.lapsHtml(eng, { late: (i, n) => tv.lateAt(eng.cars[i].lane, n) })
+          : Review.lapDeskHtml(eng, { color: l => HomeStats.laneColor(st.layout, l) });
         if (h !== lapsHtml) {
           lapsHtml = h;
-          $('dir-laps').innerHTML = h;
+          Review.render($('dir-laps'), h);
         }
       }
     } else {
@@ -793,11 +799,11 @@ const LiveView = (() => {
       // (drawn again only when it changed, so what you type in the field of a pad stays)
       const h = st.tokenUi
         ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>'
-        : Review.html(eng, { champ: d.champ, settings: padSettings() });
+        : Review.finishHtml(eng, { champ: d.champ, settings: padSettings(), color: l => HomeStats.laneColor(st.layout, l) }); // (2.4.0: the same finishing desk as the race window)
       rv.hidden = false;
       if (h !== rvShown) {
         rvShown = h;
-        rv.innerHTML = h;
+        Review.render(rv, h);
       }
     } else if (!rv.hidden) {
       rv.hidden = true;
