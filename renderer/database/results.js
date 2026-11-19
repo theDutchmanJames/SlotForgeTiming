@@ -224,7 +224,9 @@ async function renderHistoryPool(box, pool) {
           const paging = document.createElement('div');
           paging.className = 'row history-laps';
           paging.innerHTML = `<span>Lap times ${detail.total ? offset + 1 : 0}–${Math.min(detail.total, offset + 100)} of ${detail.total}</span><button class="btn" data-laps-prev ${offset ? '' : 'disabled'}>Previous laps</button><button class="btn" data-laps-next ${offset + 100 < detail.total ? '' : 'disabled'}>Next laps</button>`;
-          card.querySelector('.sessbody').prepend(paging);
+          const lh = card.querySelector('.rr-laphead');
+          if (lh) lh.after(paging);
+          else card.querySelector('.sessbody').prepend(paging); // (2.4.0: right above the lap times they page)
           paging.onclick = ev => {
             ev.stopPropagation();
             if (rendered !== subRun) return;
@@ -321,8 +323,16 @@ async function renderResultsPool(box, pool, supplied = null) {
   const headline = (s, win, cup) => {
     if (!win) return '';
     if (Stats.WINNER_TYPES.includes(s.sessionType))
-      return Number(win.pos) === 1 ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : '';
-    return Number(win.best) > 0 ? ' · Fastest: ' + esc(win.driverName) : '';
+      return Number(win.pos) === 1
+        ? '<span class="rr-win"><small>Winner: </small>' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) + '</span>'
+        : '';
+    return Number(win.best) > 0 ? '<span class="rr-win"><small>Fastest: </small>' + esc(win.driverName) + '</span>' : '';
+  };
+  // (2.4.0) the head of a saved race in the list: a date tile, the name, and what kind of race on which track
+  const sumHead = (s, extra) => {
+    const d = s.date ? new Date(s.date) : null,
+      ok = d && Number.isFinite(d.getTime());
+    return `<span class="rr-date"${ok ? ` title="${esc(dateText(s.date))}"` : ''}><b>${ok ? d.getDate() : '–'}</b><small>${ok ? esc(d.toLocaleString([], { month: 'short' })) : ''}</small></span><span class="rr-what"><b>${esc(extra ? extra.name : s.setupName || 'Time token stint')}</b><small>${ok ? esc(d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' : ''}${esc(extra ? extra.line : [SESSION_LABEL[s.sessionType] || '', s.trackName || ''].filter(Boolean).join(' · '))}</small></span>`;
   };
   const sessionCards = [...sessions]
     .reverse()
@@ -330,7 +340,7 @@ async function renderResultsPool(box, pool, supplied = null) {
       const win =
         typeof VirtualRival !== 'undefined' ? VirtualRival.savedStandings(s).find(x => x.pos === 1) || s.standings[0] : s.standings[0];
       if (s.historySummary)
-        return `<details class="card sess" data-sid="${esc(s.id)}"><summary data-history-open="${esc(s.id)}">${esc(dateText(s.date))} · ${esc(s.setupName || 'Time token stint')} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${headline(s, win, Icons.trophy({ size: 16 }))}</summary><div class="sessbody">Open to load results.</div></details>`;
+        return `<details class="card sess" data-sid="${esc(s.id)}"><summary data-history-open="${esc(s.id)}">${sumHead(s)}${headline(s, win, Icons.trophy({ size: 16 }))}</summary><div class="sessbody">Open to load results.</div></details>`;
       if (tokenPool) {
         // a stint: one driver, one lane, one paid time
         const x = win || {},
@@ -363,7 +373,7 @@ async function renderResultsPool(box, pool, supplied = null) {
             .join(' · ') || 'no laps'
         }</span></p>
         <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-        return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
+        return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${sumHead(s, { name: x.driverName || 'Guest', line: `Lane ${t.lane} · ${boughtText(t.bought)} · ${x.laps} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${s.trackName || ''}` })}</summary><div class="sessbody">${body}</div></details>`;
       }
       const pts = s.resultBy === 'points';
       const fin = Stats.heated(s) && !!s.finals,
@@ -421,26 +431,83 @@ async function renderResultsPool(box, pool, supplied = null) {
             return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)));
         }
       };
+      // (2.4.0, SlotForgeRestyle.md "Race Report") an opened race: the actions on top, the podium, the classification, the notes, the heats, and the lap
+      // times as a table (a row per lap, a column per driver) instead of lines of text
+      const notes = [
+        Stats.heated(s) && s.scoring && Heats.scoringText(s.scoring, pts) ? Heats.scoringText(s.scoring, pts) : '',
+        fin ? Heats.finalsSaid(s.finals) : '',
+        Stats.weatherText(s),
+        Stats.resumeText(s),
+        Stats.compareText(s)
+      ].filter(Boolean);
+      const podium =
+        Stats.WINNER_TYPES.includes(s.sessionType) && s.standings.length > 1
+          ? `<div class="rr-podium">${s.standings
+              .filter(x => Number(x.pos) >= 1 && Number(x.pos) <= 3)
+              .slice(0, 3)
+              .map(
+                x =>
+                  `<div class="rr-p rr-p${esc(x.pos)}"><span class="rr-pl">${esc(x.pos)}</span><span class="rr-pw"><b>${esc(x.driverName)}</b><small>${esc(x.carName || '')}</small></span><span class="rr-pf"><b>${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'}</b><small>${esc(RaceEngine.fmtTime(typeof x.total === 'number' ? x.total + (x.penalty || 0) + (x.adjMs || 0) : null))}${x.best ? ' · best ' + esc(RaceEngine.fmtTime(x.best)) : ''}</small></span></div>`
+              )
+              .join('')}</div>`
+          : '';
+      const lapKey = l => `${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}`;
+      const per = s.standings.map(x =>
+          Stats.ownLaps(x, laps)
+            .filter(l => l.sessionId === s.id)
+            .sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber)
+        ),
+        rowsOf = [],
+        seenRow = new Set();
+      per.forEach(list =>
+        list.forEach(l => {
+          const k = lapKey(l);
+          if (!seenRow.has(k)) {
+            seenRow.add(k);
+            rowsOf.push({ k, h: l.heat || 0, n: l.lapNumber });
+          }
+        })
+      );
+      rowsOf.sort((a, b) => a.h - b.h || a.n - b.n);
+      const byKey = per.map(list => new Map(list.map(l => [lapKey(l), l]))),
+        bestOf = per.map(list => {
+          const ok = list.filter(l => !l.invalid && !l.tooSlow && !l.pit && Number(l.time) > 0);
+          return ok.length ? Math.min(...ok.map(l => l.time)) : null;
+        });
+      const lapCell = (l, i) => {
+        if (!l) return '<td class="rr-none">–</td>';
+        const t = esc(RaceEngine.fmtTime(l.time));
+        if (l.invalid || l.tooSlow)
+          return `<td><s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s></td>`;
+        if (l.pit) return `<td><em title="Lap with a pit stop">${t}</em></td>`;
+        return bestOf[i] === l.time
+          ? `<td class="rr-best" title="Best lap of ${esc(s.standings[i].driverName)}"><b>${t}</b></td>`
+          : `<td>${t}</td>`;
+      };
+      const lapTable = rowsOf.length
+        ? `<div class="rr-lapwrap"><table class="rr-laps"><thead><tr><th>Lap</th>${s.standings.map(x => `<th>${esc(x.driverName)}</th>`).join('')}</tr></thead><tbody>${rowsOf
+            .map(r => `<tr><td class="rr-n">${esc(r.k)}</td>${byKey.map((m, i) => lapCell(m.get(r.k), i)).join('')}</tr>`)
+            .join(
+              ''
+            )}</tbody></table></div><p class="rr-legend"><span class="rr-lg-best">Best lap of a driver</span><span class="rr-lg-pit">Pit stop</span><span class="rr-lg-bad">Invalid or too slow</span></p>`
+        : '<p class="muted">No laps</p>';
+      const actions = `<div class="rr-actions">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${!s.readOnly && api.paddockHistoricalReview ? `<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>` : ''}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
       const body =
+        actions +
         (!s.readOnly && s.champ && typeof s.champ === 'object' && s.champ.id
           ? `<div class="chpanelbox" data-cpbox="${esc(s.id)}"></div>`
           : '') +
+        podium +
         (s.virtualRivals?.length ? '<h4>Physical-field standings</h4>' : '') +
-        `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
+        `<div class="rr-classwrap"><table class="fields rr-class"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
         s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') +
-        '</table>' +
+        '</table></div>' +
         (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
         (typeof resourceHistoryHtml === 'function' ? resourceHistoryHtml(s) : '') +
         (typeof VirtualRival !== 'undefined' ? VirtualRival.historyHtml(s) : '') +
         (typeof MultiClass !== 'undefined' ? MultiClass.resultsHtml(s.classStandings || [], s.multiclass) : '') +
         statNote(cols.map(c => c.key)) +
-        (Stats.heated(s) && s.scoring && Heats.scoringText(s.scoring, pts)
-          ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>`
-          : '') +
-        (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') +
-        (Stats.weatherText(s) ? `<p class="muted">${esc(Stats.weatherText(s))}</p>` : '') +
-        (Stats.resumeText(s) ? `<p class="muted">${esc(Stats.resumeText(s))}</p>` : '') +
-        (Stats.compareText(s) ? `<p class="muted">${esc(Stats.compareText(s))}</p>` : '') +
+        (notes.length ? `<div class="rr-notes">${notes.map(n => `<p class="muted">${esc(n)}</p>`).join('')}</div>` : '') +
         (Stats.stintLines(s, dUnit()).length
           ? '<h4>Driver swaps</h4>' +
             Stats.stintLines(s, dUnit())
@@ -451,39 +518,23 @@ async function renderResultsPool(box, pool, supplied = null) {
               .join('')
           : '') +
         (s.heatResults
-          ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` +
+          ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4><div class="rr-heats">` +
             s.heatResults
               .map(
                 h =>
-                  `<p><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})`).join(' · ')}</span></p>`
+                  `<div class="rr-heat"><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<ol>${h.rows.map(r => `<li>${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})</li>`).join('')}</ol></div>`
               )
-              .join('')
+              .join('') +
+            '</div>'
           : '') +
         tyreStintsSection(s) +
-        (supplied ? '<h4>Lap times on this page</h4>' : '<h4>All lap times</h4>') +
-        s.standings
-          .map(x => {
-            const mine = Stats.ownLaps(x, laps)
-              .filter(l => l.sessionId === s.id)
-              .sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
-            return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${
-              mine
-                .map(l => {
-                  const t = esc(
-                    `${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`
-                  );
-                  return l.invalid || l.tooSlow
-                    ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>`
-                    : l.pit
-                      ? `<em title="Lap with a pit stop">${t}</em>`
-                      : t;
-                })
-                .join(' · ') || 'no laps'
-            }</span></p>`;
-          })
-          .join('') +
-        `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${!s.readOnly && api.paddockHistoricalReview ? `<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>` : ''}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-      return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${s.champ && typeof s.champ === 'object' ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>${Champ.awardText(s.champ) ? ` <span class="chaward${s.champ.awarded && !s.champ.off ? ' done' : ''}">${esc(Champ.awardText(s.champ))}</span>` : ''}` : ''}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
+        `<h4 class="rr-laphead">${supplied ? 'Lap times on this page' : 'All lap times'}</h4>` +
+        lapTable;
+      const champTags =
+        s.champ && typeof s.champ === 'object'
+          ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>${Champ.awardText(s.champ) ? ` <span class="chaward${s.champ.awarded && !s.champ.off ? ' done' : ''}">${esc(Champ.awardText(s.champ))}</span>` : ''}`
+          : '';
+      return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${sumHead(s)}${champTags}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
     })
     .join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];

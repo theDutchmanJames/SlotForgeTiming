@@ -319,7 +319,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the Results page of a team race: the team is the row with the drivers who drove next to it, in brackets, with their laps', html.includes('Red Bulls <span class="muted">(drivers: Alex (4 laps), Sam (2 laps))</span>') && html.includes('Blue Moons <span class="muted">(drivers: Kim (5 laps))</span>'));
     say('...the Team column is there for the race with a team on a lane (Red Bulls), and not the ones without teams in the standings', html.includes('<th>Team</th>') && html.includes('<td>Red Bulls</td>') && (html.match(/<th>Team<\/th>/g) || []).length === 1);
     say('...every heat says who drove (the driver in brackets behind the team)', html.includes('Red Bulls (Alex) (6 laps') && html.includes('Blue Moons (Kim) (5 laps'));
-    say('...the lap times of a team are those of all its drivers, with the heat they were driven in (H1 4.800 and H2 5.200)', html.includes('H1 1: 4.800') && html.includes('H2 1: 5.200'));
+    say('...the lap times of a team are those of all its drivers, with the heat they were driven in (H1 4.800 and H2 5.200)', /rr-n">H1 1<\/td>(<td[^>]*>[^]*?<\/td>)*?<td[^>]*>(<b>)?4\.800/.test(html) && /rr-n">H2 1<\/td>(<td[^>]*>[^]*?<\/td>)*?<td[^>]*>(<b>)?5\.200/.test(html));
   }
 
   // ---------- the view settings of the page ----------

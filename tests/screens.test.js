@@ -2452,13 +2452,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   run("state.tab='database'; state.sub='results'"); await run('render()');
   say('every session has an Export to PDF button', E('resbody').innerHTML.includes('Export to PDF') && E('resbody').innerHTML.includes('data-pdf="s1"'));
   { const cups = () => (E('resbody').innerHTML.match(/<svg class="trophy"/g) || []).length;
-    say('the winner of a race has the cup: in the summary line and in front of the name in the table', cups() === 2 && /Winner: <svg class="trophy"[^]*?<\/svg> Alex<\/summary>/.test(E('resbody').innerHTML) && /<td><svg class="trophy"[^]*?<\/svg> Alex<\/td>/.test(E('resbody').innerHTML));
+    say('the winner of a race has the cup: in the summary line and in front of the name in the table', cups() === 2 && /Winner: <\/small><svg class="trophy"[^]*?<\/svg> Alex<\/span><\/summary>/.test(E('resbody').innerHTML) && /<td><svg class="trophy"[^]*?<\/svg> Alex<\/td>/.test(E('resbody').innerHTML));
     say('...and with the Driver column on, the position cell has no cup (it is only there when the Driver column is off)', E('resbody').innerHTML.includes('<td>1</td><td><svg class="trophy"') && !E('resbody').innerHTML.includes('<td>1 <svg class="trophy"'));
     const keepS = store.sessions; store.sessions = [...keepS, { id: 's9', setupName: 'Quali', sessionType: 'qualifying', trackId: 't1', trackName: 'Living room', date: '2026-10-12T18:30:00Z', standings: [{ pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'NSR', laps: 2, best: 5000, total: 10500 }] },
       { id: 's8', setupName: 'Heats', sessionType: 'heats', trackId: 't1', trackName: 'Living room', date: '2026-10-13T18:30:00Z', standings: [{ pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'NSR', laps: 9, points: 0, best: 5000, total: null }, { pos: 2, driverId: 'd2', carId: 'c2', driverName: 'Sam', carName: 'NSR', laps: 8, points: 0, best: 5100, total: null }],
         heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5 }, { pos: 2, driverName: 'Sam', laps: 4 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5 }, { pos: 2, driverName: 'Alex', laps: 4 }] }] }];
     await run('render()'); const html = E('resbody').innerHTML;
-    say('a qualifying has no winner\'s cup and its line says who was fastest, not who won; a heat race has one in its line, one in the table and one for every heat (4)', cups() === 6 && html.includes('Quali · Qualifying') && /Fastest: Alex<\/summary>/.test(html) && html.includes('1. <svg class="trophy"') && html.includes('2. Sam (4 laps'));
+    say('a qualifying has no winner\'s cup and its line says who was fastest, not who won; a heat race has one in its line, one in the table and one for every heat (4)', cups() === 6 && html.includes('<b>Quali</b>') && html.includes('Qualifying') && /Fastest: <\/small>Alex<\/span><\/summary>/.test(html) && html.includes('1. <svg class="trophy"') && html.includes('2. Sam (4 laps'));
     store.sessions = keepS; await run('render()'); }
   { const prevAdd = api.add, got = []; // a double click on Save while the first save is being written adds one driver, not two; a failing save keeps the form open and says why
     api.add = async (e, it) => { got.push([e, it.name]); await new Promise(r => setTimeout(r, 30)); return { id: 'DX' }; };
@@ -2576,7 +2576,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...with the figures worked out from the laps (the pit lap is left out: average 5.100, 20 m in 10.2 s is 7.1 km/h) and the pit stops and points that were saved', h.includes('<td>5.100</td>') && h.includes('7.1 km/h') && h.includes('<td>±0.100 s</td>') && h.includes('<td>4.000</td>'));
     say('...and a line that tells how the figures are counted', h.includes('Lap figures count the valid laps only'));
     say('the records show the average speed of the lap, the session and the date; lane, lap number and scale speed are off to start', heads(h,'data-folder="results:tracks"').join()==='Track,Driver,Lap time,Car,Average speed,Session,Set on,' && h.includes('<td>7.2 km/h</td>') && h.includes('<td>Friday Sprint</td>'));
-    say('...a pit lap is in italics in the list of lap times', h.includes('<em title="Lap with a pit stop">3: 5.800</em>'));
+    say('...a pit lap is in italics in the list of lap times', /rr-n">3<\/td>(<td[^>]*>[^]*?<\/td>)*?<td><em title="Lap with a pit stop">5\.800<\/em>/.test(h));
     // the bar
     await rb.onclick({target:{closest:sel=>sel==='[data-viewbar]'?{dataset:{viewbar:'results'}}:null}}); h=rb.innerHTML;
     say('the View settings button opens a bar with a group for the records and one for the sessions, a check box for every column', h.includes('class="viewbar"') && h.includes('aria-expanded="true"') && h.includes('<legend>Track records and personal bests</legend>') && h.includes('<legend>Sessions</legend>') &&
@@ -2692,10 +2692,10 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   const resBox2=mk(); await run('renderResultsPool')(resBox2, 'racing');
   const part=(h,a,b)=>h.split(a)[1].split(b)[0];
   say('the next fastest lap takes over the track record', part(resBox2.innerHTML,'Track records','Personal bests').includes('6.000') && !part(resBox2.innerHTML,'Track records','Personal bests').includes('5.000'));
-  say('the lap is still a personal best and still in its session', part(resBox2.innerHTML,'Personal bests','Sessions').includes('5.000') && resBox2.innerHTML.includes('1: 5.000'));
+  say('the lap is still a personal best and still in its session', part(resBox2.innerHTML,'Personal bests','Sessions').includes('5.000') && /rr-n">1<\/td><td[^>]*>(<b>)?5\.000/.test(resBox2.innerHTML));
   await delRec(resBox2,'pb','l1');
   const resBox3=mk(); await run('renderResultsPool')(resBox3, 'racing');
-  say('removing a personal best hands it to the next lap', part(resBox3.innerHTML,'Personal bests','Sessions').includes('6.000') && !part(resBox3.innerHTML,'Personal bests','Sessions').includes('5.000') && resBox3.innerHTML.includes('1: 5.000'));
+  say('removing a personal best hands it to the next lap', part(resBox3.innerHTML,'Personal bests','Sessions').includes('6.000') && !part(resBox3.innerHTML,'Personal bests','Sessions').includes('5.000') && /rr-n">1<\/td><td[^>]*>(<b>)?5\.000/.test(resBox3.innerHTML));
   // ---- folders: Results and Records, and Race Setups, look like the groups of the forms ----
   { const keep = { sessions: store.sessions, laps: store.laps, drivers: store.drivers, slotcars: store.slotcars };
     Object.assign(store, { drivers:[{id:'d1',name:'Alex'},{id:'d2',name:'Sam'}], slotcars:[{id:'c1',brand:'Car'}],
@@ -2764,7 +2764,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...each pool has its own folders to open and close (a different page key)', th.includes('data-folder="tresults:tracks"') && rh.includes('data-folder="results:tracks"') && !th.includes('data-folder="results:'));
     say('...the track record is the fastest valid token lap (a Guest can hold it), a late lap never counts', pt(th, 'Track records', 'Personal bests').includes('3.000') && pt(th, 'Track records', 'Personal bests').includes('Guest') && !pt(th, 'Track records', 'Personal bests').includes('2.000') && !pt(th, 'Track records', 'Personal bests').includes('5.000'));
     say('...personal bests are for drivers (a Guest has none), and not from the racing laps', th.includes('<strong>Personal bests</strong> <span class="muted">1 personal best</span>') && pt(th, 'Personal bests', 'Stints').includes('4.000') && !pt(th, 'Personal bests', 'Stints').includes('Guest') && !pt(th, 'Personal bests', 'Stints').includes('5.000'));
-    say('...a stint shows its lane, driver, time bought and laps in its title', th.includes('Lane 2 · Alex · 10 min · 2 laps') && th.includes('Lane 1 · Guest · 1 min 30 s · 1 lap '));
+    say('...a stint shows its lane, driver, time bought and laps in its title', th.includes('<b>Alex</b>') && th.includes('Lane 2 · 10 min · 2 laps') && th.includes('<b>Guest</b>') && th.includes('Lane 1 · 1 min 30 s · 1 lap ·'));
     say('...and in its table: time bought, late laps, best lap; the time that came over and the time not used', th.includes('<th>Time bought</th>') && th.includes('<th>Late laps</th>') && th.includes('The time ran out') && th.includes('30 s came over from the driver before') && th.includes('20 s was not used'));
     say('...the late lap is struck through and says why', th.includes('<s class="lapbad" title="Late lap: driven after the time was up">2: 2.000</s>') && th.includes('1: 4.000'));
     say('...the stint has the same stand-out Export to PDF button', /class="btn primary pdfbtn" type="button" data-pdf="k1"/.test(th));
@@ -4597,7 +4597,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     await run('render()'); h = E('resbody').innerHTML;
     say('0.96.0: Results and Records: a heat race with finals has a Final column ("Final A: 1st", "Final B: 1st", nothing for a driver in no final)', h.includes('<th>Final</th>') && h.includes('<td>Final A: 1st</td>') && h.includes('<td>Final B: 1st</td>') && /Kim<\/td>.*?<td>5<\/td><td><\/td><td>/.test(h));
     say('...the heats and the finals are listed by name, and the heading says both', h.includes('Heats and finals') && h.includes('<strong>Heat 1</strong>') && h.includes('<strong>Final B</strong>') && h.includes('<strong>Final A</strong>') && !h.includes('<strong>Heat 2</strong>') && !h.includes('<strong>Heat 3</strong>'));
-    say('...it says how the finals counted, and the laps of a final are marked F and the letter', h.includes('The finals decide the final places.') && h.includes('FA 1: ') && h.includes('FB 1: ') && h.includes('H1 1: '));
+    say('...it says how the finals counted, and the laps of a final are marked F and the letter', h.includes('The finals decide the final places.') && h.includes('rr-n">FA 1<') && h.includes('rr-n">FB 1<') && h.includes('rr-n">H1 1<'));
     store.sessions = [finSession('added')]; await run('render()'); h = E('resbody').innerHTML;
     say('...with the final added the Result column shows the sum, and the note says so', h.includes('<th>Result</th>') && h.includes('<td>18 + 10 final = 28</td>') && h.includes('What a driver scores in a final is added to the heat result.'));
     store.sessions = [heatSession(null)]; await run('render()'); h = E('resbody').innerHTML;

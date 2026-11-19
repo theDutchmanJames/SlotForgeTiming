@@ -49,6 +49,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
 | [Scrutineering](#scrutineering) | Finalize race results: the classification as slim rows with a tiny lap chart, a lap explorer with a chart, filters, suspect laps and several laps at once | After the race |
 | [Cue Card](#cue-card) | A call of an audio set: when it plays, every line at once with ▶ and ⋯, race values as chips, one more line | Customization › Audio Settings |
+| [Race Report](#race-report) | A saved race: a row with a date tile and the winner, opened as a report with the podium, the classification and a lap table | Database › Results and Records |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1442,6 +1443,27 @@ html .audio-editor .cue-line:focus-within .cue-vars{display:flex}
 html .audio-editor .cue-var{padding:2px 9px;border:1px solid var(--line);border-radius:11px;font:500 11.5px "Roboto Mono",monospace}
 ```
 
+## Race Report
+
+Database › Results and Records (`renderer/database/results.js`, styles under `.rr-`).
+
+- **A saved race in the list** is a row: a **date tile** (day in Barlow, month in small capitals), the race name with its weekday, time, kind and
+  track under it, championship tags, and the **winner** (or the fastest in a practice) as a pill with the cup. The open race has an accent edge.
+- **Opened, as a report:** the actions as one Control Strip on top (Export to PDF filled, the share buttons, Historical Review…, Delete at the far
+  end); the **podium** (three cards with a 3px top in gold, silver and bronze, the place tile in that colour, laps and time in mono); the
+  **classification** as a Race Sheet table in its own box; the race notes (weather, scoring, interruptions) as grey lines with an accent rule;
+  the heats as small cards; and the **lap times as a table**: a row per lap (H1 / F A for heats and finals), a column per driver, times in mono,
+  the best lap of every driver in purple, a pit lap orange, an invalid or too slow lap struck through in red, the head sticky, at most 520px high.
+  The page buttons of the laps sit right above it.
+- **Track records and personal bests** are Race Sheet tables (small capitals, times in mono).
+
+```css
+html .rr-date{display:grid;place-items:center;width:44px;height:44px;border-radius:9px;background:color-mix(in srgb,var(--ink) 9%,var(--panel))}
+html .rr-p{display:grid;grid-template-columns:34px minmax(0,1fr) auto;border:1px solid var(--line);border-top:3px solid var(--pc);border-radius:10px}
+html .rr-laps thead th{position:sticky;top:0;background:var(--panel)}
+html .rr-laps td.rr-best{background:color-mix(in srgb,#b07cff 16%,transparent)}
+```
+
 ## Live Desk
 
 The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
@@ -1613,3 +1635,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Scrutineering | The race window's Review laps during the race has the same drivers and lap explorer as the Race Director page |
 | 2026-11 | Cue Card | New: a call of an audio set as one card (Plays when, What it says with every line, ▶ and ⋯, race values as chips, Only when…, one more line); Voice & playback quieter |
 | 2026-11 | System Sheet | A field with a control of its own (the system switches of a race setup) is a wide row: the name and note above, the control across the row; the switches are Toggle Chips |
+| 2026-11 | Race Report | New: a saved race as a row with a date tile and the winner, opened as a report (actions, podium, classification, notes, heats) with the lap times as a table |
