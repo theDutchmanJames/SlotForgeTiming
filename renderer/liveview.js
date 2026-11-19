@@ -57,8 +57,8 @@ const LiveView = (() => {
   // ---- the frame around every page ----
   function shell() {
     const tile = TILES.find(t => t[0] === page);
-    host.innerHTML = `<div class="lv-head${isControl(page) ? ' special' : ''}">${page === 'tiles' ? '<h2 style="margin:0">Live Race</h2>' : `<button class="btn" id="lv-back">‹ Live Race</button><strong>${esc(tile[1])}</strong>${isControl(page) ? BADGE : ''}`}
-      <span class="muted" id="lv-status" role="status"></span><span style="flex:1"></span>
+    host.innerHTML = `<div class="lv-head${isControl(page) ? ' special' : ''}">${page === 'tiles' ? '<h2 style="margin:0">Live Race</h2>' : `<button class="btn" id="lv-back">‹ Live Race</button><div class="lv-titles"><strong class="lv-title">${esc(tile[1])}${isControl(page) ? BADGE : ''}</strong><span class="lv-sr" id="lv-status" role="status"></span><span class="muted lv-stline" id="lv-stline" aria-hidden="true"></span></div>`}
+      ${page === 'tiles' ? '<span class="muted" id="lv-status" role="status"></span>' : ''}<span style="flex:1"></span>
       ${second ? '<button class="btn" id="lv-full">Full screen</button>' : '<button class="btn" id="lv-open">Open on a second screen</button>'}</div><div id="lv-body" class="lv-body"></div>`;
     if ($('lv-back')) $('lv-back').onclick = () => go('tiles');
     if ($('lv-full'))
@@ -71,6 +71,10 @@ const LiveView = (() => {
         const r = await api.liveOpen();
         $('lv-status').textContent =
           r && r.second ? 'Opened on your second screen.' : 'Opened. Only one screen was found, so drag the window where you want it.';
+        if ($('lv-stline')) {
+          $('lv-stline').textContent = $('lv-status').textContent;
+          $('lv-stline').dataset.k = '';
+        }
       };
     status();
   }
@@ -125,6 +129,23 @@ const LiveView = (() => {
     el.textContent = live()
       ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}`
       : 'No race is running.';
+    // (2.4.0, SlotForgeRestyle.md "Live Pages") what the eye reads: the race, and its phase as a pill (the words above are for a screen reader)
+    const line = $('lv-stline');
+    if (!line) return;
+    const k = live()
+        ? [
+            V.stat().title,
+            d.phase,
+            PHASE[d.phase] || '',
+            left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''
+          ]
+        : null,
+      key = JSON.stringify(k);
+    if (line.dataset.k === key) return;
+    line.dataset.k = key;
+    line.innerHTML = k
+      ? `<span class="lv-st-t">${esc(k[0])}</span><span class="lv-st-ph" data-phase="${esc(k[1])}">${esc(k[2])}${esc(k[3])}</span>`
+      : '<span class="lv-st-t">No race is running</span>';
   }
 
   function go(p) {
@@ -436,7 +457,43 @@ const LiveView = (() => {
     $('lv-board').innerHTML = g.boards.length
       ? `<div class="lv-grid" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${g.boards.map((b, i) => `<div class="lv-board" style="grid-column:${b.c} / span ${b.w};grid-row:${b.r} / span ${b.h}">${outputs[i].html}</div>`).join('')}</div>`
       : '<p class="muted lv-empty">No leaderboard in the grid yet. Open Customize and pick one for a cell.</p>';
-    if ($('lv-board').querySelectorAll) Rows.fitText($('lv-board')); // row designs: no text wider than its cell
+    if ($('lv-board').querySelectorAll) {
+      // (2.4.0, SlotForgeRestyle.md "Live Pages") a classic table gets the names of its columns, and its rows the lane colour
+      const NAMES = {
+        pos: 'Pos',
+        laps: 'Laps',
+        best: 'Best',
+        last: 'Last',
+        current: 'Current',
+        fuel: 'Fuel',
+        tyres: 'Tyres',
+        pace: 'Pace',
+        gap: 'Gap',
+        flag: ''
+      };
+      $('lv-board')
+        .querySelectorAll('.lv-board > table.lb')
+        .forEach(t => {
+          const first = t.querySelector('tr');
+          t.parentElement.classList.add('classic');
+          if (!first || t.tHead) return;
+          let driver = false;
+          const head = [...first.children].map(td => {
+            const k = (td.className.match(/lb-(\w+)/) || [])[1] || '';
+            if (['name', 'nickname', 'callsign'].includes(k)) {
+              const label = driver ? { nickname: 'Nickname', callsign: 'Callsign', name: 'Name' }[k] : 'Driver';
+              driver = true;
+              return `<th class="lb-${k}">${label}</th>`;
+            }
+            return `<th class="lb-${k}">${NAMES[k] ?? ''}</th>`;
+          });
+          t.insertAdjacentHTML('afterbegin', `<thead><tr>${head.join('')}</tr></thead>`);
+          t.querySelectorAll('tr[data-lap-lane]').forEach(tr =>
+            tr.style.setProperty('--c', HomeStats.laneColor(V.stat().layout, Number(tr.dataset.lapLane)))
+          );
+        });
+      Rows.fitText($('lv-board')); // row designs: no text wider than its cell
+    }
     $('lv-board')
       .querySelectorAll?.('.lv-board')
       .forEach((val, i) => {
@@ -974,7 +1031,7 @@ const LiveView = (() => {
         size = x.w >= 2 && x.h >= 2 ? ' big' : x.w === 1 ? ' small' : '';
       return `<div class="lv-dg lv-stat${size}${d.list ? ' list' : ''}" data-cell="${esc(x.key)}" style="${pos}${paint}">${x.label ? `<span${r.bg ? '' : ' class="muted"'}>${esc(d.label)}</span>` : ''}${d.list ? `<div class="lv-laps">${r.html || '<span class="muted">No laps yet</span>'}</div>` : `<strong>${r.html}</strong>`}</div>`;
     };
-    el.innerHTML = `<div class="lv-who">${html('avatar')}<div><div class="lv-big">${html('name')} ${html('driverflag')}</div><div class="muted">${esc(c ? c.carName : '')}</div></div>${html('carpicture')}</div>
+    el.innerHTML = `<div class="lv-who">${html('avatar')}<div><div class="lv-big">${html('name')} ${html('driverflag')}</div><div class="muted">${esc(c ? c.carName : '')}${c ? ` · <span class="lv-wholane" style="--c:${esc(HomeStats.laneColor(st.layout, lane))}">Lane ${lane + 1}</span>` : ''}</div></div>${html('carpicture')}</div>
       ${L.cells.length ? `<div class="lv-dgrid" style="grid-template-columns:repeat(${L.cols},minmax(0,1fr))">${L.cells.map(one).join('')}</div>` : `<p class="muted lv-empty">${g.boards.length ? 'Nothing in the grid has anything to show in this race.' : 'Nothing in the grid yet. Open Customize and pick a number for a cell.'}</p>`}`;
   }
   function drawDriver(body, fresh) {
@@ -988,7 +1045,7 @@ const LiveView = (() => {
     if (fresh || !$('lv-dstats')) {
       const was = $('lv-dgtool');
       if (was && typeof was.open === 'boolean') dgOpen = was.open;
-      body.innerHTML = `<div class="lv-lanes">${entries.map(e => `<button class="btn" data-lane="${e.lane}" aria-pressed="${e.lane === lane}">${esc(e.driverName)} <span class="muted">lane ${e.lane + 1}</span></button>`).join('')}</div>
+      body.innerHTML = `<div class="lv-lanes">${entries.map(e => `<button class="btn" data-lane="${e.lane}" aria-pressed="${e.lane === lane}" style="--c:${esc(HomeStats.laneColor(V.stat().layout, e.lane))}" aria-label="${esc(e.driverName)}, lane ${e.lane + 1}"><i>${e.lane + 1}</i>${esc(e.driverName)}</button>`).join('')}</div>
         <details class="lv-opts" id="lv-dgtool"${dgOpen ? ' open' : ''}><summary>Customize</summary><div id="lv-dgpanel"></div></details><div id="lv-dstats" class="lv-dstats"></div>`;
       const save = async g => {
         state.settings = await api.setSettings({ driverGrid: g });

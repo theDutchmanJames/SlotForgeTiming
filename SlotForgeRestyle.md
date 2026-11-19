@@ -54,6 +54,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Title Fight](#title-fight) | The standings of a championship: the season as a band, the first three as podium cards, the standings as a Race Sheet, the rounds as cards | Database › Results and Records › Championships |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
 | [Token Desk](#token-desk) | The time tokens of a Time Token Session: a card for every lane with the clock large, the buttons as a grid, the state as the edge | Race tab and Live Race › Tokens (Time Token Sessions) |
+| [Live Pages](#live-pages) | The Live Race pages that follow the race: a Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as tiles | Live Race (second screen, tablets, phones) |
 | [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
 | [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
@@ -1579,6 +1580,31 @@ html .lv-desk .lv-tile>svg{grid-row:1 / 3;width:52px;height:52px;padding:12px;bo
 html .lv-desk .lv-tile.special>svg{background:var(--accent-fill,var(--accent));color:#fff}
 ```
 
+## Live Pages
+
+The pages of Live Race behind the [Live Desk](#live-desk) that follow the race (`renderer/liveview.js`: shell, status, drawBoard, drawDriver; styles
+under `.lv-head`, `.lv-titles`, `.lv-opts`, `.lv-board.classic`, `.lv-lanes`, `.lv-dg`). Built for a phone as much as for a second screen.
+
+- **The Page Bar**: a sticky bar with a soft edge: *‹ Live Race*, the page in Barlow over the race (the race in small type, cut off with … when it is
+  long) and **the phase as a pill**: *Racing* green with a pulsing dot, *Lights* red, *Paused* / *Heat finished* amber, *Finished* plain. Full screen on
+  the right (an icon on a phone). The words of the status (*Check race · Racing*) stay for a screen reader. The Race Director and Tokens keep their
+  tinted bar with the Control badge. (Race timing keeps its clean full-screen header.)
+- **Customize** is a button (three lines, the name, a chevron) that opens its settings in boxes, the names of the boxes as kickers.
+- **The classic leaderboard** is a Race Sheet: the names of the columns (*Pos · Driver · Laps · Best · Gap*), the lane colour as a bar on the left of
+  every row, the leader in a gold tint, the times in mono, the gap grey, never smaller than 15px. A row design from the Leaderboard Editor is drawn as
+  it is designed.
+- **Driver stats**: the drivers as **pills** with the lane number in a disc of the lane colour (in a row that scrolls sideways on a phone); the
+  driver as a **head card** (avatar, the name in Barlow, the car and the lane with its dot); the figures as tiles with a kicker and the number in
+  Barlow; a figure that is empty shows a dash.
+- **Racing rules** is a page to read (a card of 820px at most); **a page with nothing to show** is a dashed card in the middle.
+
+```css
+html :not(.lv-clean)>.lv-head:has(#lv-back){position:sticky;top:0;border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(6px)}
+html .lv-st-ph[data-phase="running"]{background:color-mix(in srgb,#3ecf8e 14%,var(--panel));color:#3ecf8e}
+html .lv-board.classic table.lb tr[data-lap-lane] td.lb-pos{box-shadow:inset .22em 0 0 var(--c,transparent)}
+html .lv-lanes .btn>i{width:28px;height:28px;border-radius:50%;background:var(--c,var(--muted))}
+```
+
 ## Parc Fermé
 
 Choosing a car (`renderer/paddockbrowser.js`, **Browse cars** on Home). A [Workshop Window](#workshop-window) with a **sticky head** (eyebrow
@@ -1737,3 +1763,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Title Fight | New: the championship standings with the season as a band, the first three as podium cards, the best score of every round lit, a bar for the points, the rounds as cards |
 | 2026-11 | Record Card | New: the card of a slotcar, a driver or a track; the statistics as tiles, a service meter, the progress of a driver as track cards with trend chips and the months folded away |
 | 2026-11 | Token Desk | New: the time tokens as a card for every lane (lane colour, a large clock, the buttons as a grid, the state as the edge), a line of what the lanes are doing, the folder first; the penalties folder as a Race Sheet |
+| 2026-11 | Live Pages | New: the Live Race pages that follow the race; a sticky Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as pills, a head card and tiles, the rules as a page, an empty page as a card |
