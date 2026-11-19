@@ -41,6 +41,9 @@ const ResultsView = (() => {
       // Older settings retain the existing card presentation.
       largeField: x.largeField === 'leaderboard' ? 'leaderboard' : 'cards',
       leaderboardDesign: typeof x.leaderboardDesign === 'string' ? x.leaderboardDesign : '',
+      // (2.4.0) what the second screen shows after a race: the broadcast (raceover.js, as the race window) or this Results Wall. A Results Wall that was
+      // saved before 2.4.0 (settings without the choice) stays; a new one starts with the broadcast.
+      after: x.after === 'mine' || x.after === 'broadcast' ? x.after : Object.keys(x).length ? 'mine' : 'broadcast',
       winner: true
     };
   };

@@ -248,3 +248,63 @@ test('race.js shows the screens: Race over when the results are saved (the point
   );
   assert(code('renderer/styles.css').includes('2.4.0 Chequered Flag'));
 });
+
+test('the second screen: the same screens without buttons on one 16:9 screen, the line along the bottom, the time left of a break', () => {
+  const { session, laps } = race();
+  const f = RO.figures(session, laps, {});
+  const next = { label: 'Round 3', short: 'round 3', track: 'Wizard Oval', date: 'Thu 3 Dec', sessions: ['Race'] };
+  const tv = RO.tvHtml('over', {
+    f,
+    kicker: 'Check race',
+    champ: { view: champView(), awarded: true, next, name: 'Winter Cup' },
+    foot: { kicker: 'Next in Winter Cup', items: [{ text: 'Round 3 · Wizard Oval', cls: 'ch' }], note: 'Thu 3 Dec' }
+  });
+  assert.match(tv, /^<div class="ro-host ro-tv">/);
+  assert.match(
+    tv,
+    /<div class="ro-tvfoot"><span class="k">Next in Winter Cup<\/span><b class="ch">Round 3 · Wizard Oval<\/b><span class="n">Thu 3 Dec<\/span><span class="r">SlotForge Timing<\/span><\/div>/
+  );
+  assert(!tv.includes('class="ro-next'), 'the next round is the line along the bottom, not a band');
+  assert(RO.overHtml({ f, kicker: '' }).indexOf('ro-tvfoot') < 0, 'the race window has no line along the bottom');
+  const brk = RO.tvHtml('break', {
+    next: { name: 'Heat 2', drivers: [{ name: 'Anna', lane: 0 }] },
+    startable: true,
+    picks: true,
+    track: [],
+    standings: '',
+    foot: { kicker: 'The heats', items: [{ text: 'Heat 1 ✓' }, { text: 'Heat 2 next' }] }
+  });
+  assert(!brk.includes('data-ro="start"'), 'no Start on the second screen');
+  assert.match(
+    brk,
+    /class="ro-tvcount" data-tv-left hidden><small>Starts in<\/small><b><\/b>/,
+    'the time left of the break, filled in by the Live Race window'
+  );
+  assert(!brk.includes('id="ro-picks"'), 'the lane picks of a final stay on the race window');
+  const css = code('renderer/styles.css');
+  assert(
+    css.includes('html .ro-tv :is(.ro-bar,.ro-aw,.ro-notes,.ro-next,.ro-heats,.ro-more,.ro-picks){display:none}'),
+    'no buttons on the second screen'
+  );
+});
+
+test('the race window sends the screen with the live messages; the Live Race window draws it, unless Race Results keeps the Results Wall', () => {
+  const RV = require('../renderer/resultsview.js');
+  assert.equal(RV.clean(undefined).after, 'broadcast', 'a new Results Wall: the broadcast');
+  assert.equal(RV.clean({ summary: ['laps'] }).after, 'mine', 'a Results Wall saved before 2.4.0 stays');
+  assert.equal(RV.clean({ after: 'broadcast', summary: ['laps'] }).after, 'broadcast');
+  assert.equal(RV.clean(RV.clean({ after: 'mine' })).after, 'mine');
+  const race = code('renderer/race.js'),
+    view = code('renderer/liveview.js'),
+    share = code('renderer/liveshare.js');
+  assert(has(race, 'after: live.afterTv || null,') && has(share, 'after: c.after || null,'), 'with the live messages');
+  assert(has(race, "RaceOver.tvHtml('over',") && has(race, "RaceOver.tvHtml('break',"), 'Race over and the break');
+  assert(
+    has(race, "if (live.afterTv && !['between', 'review', 'finished'].includes(live.phase)) live.afterTv = null;"),
+    'gone when the next heat starts'
+  );
+  assert(has(view, 'if (afterOn(d)) return drawAfter(body, d);'), 'the Live Race window draws it on Race results');
+  assert(has(view, "(d.phase === 'between' && afterOn(d))"), 'and goes there in a break, as after a race');
+  assert(has(view, 'z = Math.max(0.15, Math.min(w / 1920, h / 1080))'), 'the whole screen is always seen');
+  assert(code('renderer/editor.js').includes('data-results-after="1"'), 'the choice in Customization › Race Results');
+});

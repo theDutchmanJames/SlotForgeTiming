@@ -13,7 +13,7 @@ const race = RaceEngine.createRace({ type: 'race', laps: 2, endRule: 'all', entr
 race.start(0);
 for (const [lane, a, b] of [[0, 5000, 10000], [1, 5500, 11000], [2, 6000, 12000], [3, 6500, 13000]]) { race.cross(lane, a); race.cross(lane, b); }
 
-const defaults = { summary: ['laps', 'best', 'average', 'consistency'], comparison: 'best', largeField: 'cards', leaderboardDesign: '', winner: true };
+const defaults = { summary: ['laps', 'best', 'average', 'consistency'], comparison: 'best', largeField: 'cards', leaderboardDesign: '', after: 'broadcast', winner: true };
 const consistencyCar = { laps: [9000, 11000, 60000, 8000, 7000, 6000], pitLaps: [2], invalid: [3], bad: [false, false, false, false, true], removed: [5] };
 const savedLaps = [{ time: 9000 }, { time: 11000 }, { time: 60000, pit: true }, { time: 8000, invalid: true }, { time: 7000, tooSlow: true }];
 assert.equal(Results.value(race, consistencyCar, 'consistency'), 1000, 'consistency excludes pit, invalid, slow and removed laps');
@@ -29,8 +29,8 @@ assert.equal(signed.min, -5); assert.equal(signed.max, 10);
 assert.equal(signed.bar(-5).left, 0); assert.equal(signed.bar(10).left, signed.zero);
 assert.equal(Results.comparisonScale([0, 0]).bar(0).width, 0, 'all-zero results have empty bars on a finite axis');
 assert.deepEqual(Results.clean(), defaults);
-assert.deepEqual(Results.clean({ summary: ['pit', 'nope'], comparison: 'nope', winner: false }), { summary: ['pit', 'best', 'average', 'consistency'], comparison: 'best', largeField: 'cards', leaderboardDesign: '', winner: true }, 'the finished classification always keeps its winner visible');
-assert.deepEqual(Results.clean({ summary: ['gap', 'none', 'total', 'heatpoints'], comparison: 'none' }), { summary: ['gap', 'none', 'total', 'heatpoints'], comparison: 'none', largeField: 'cards', leaderboardDesign: '', winner: true });
+assert.deepEqual(Results.clean({ summary: ['pit', 'nope'], comparison: 'nope', winner: false }), { summary: ['pit', 'best', 'average', 'consistency'], comparison: 'best', largeField: 'cards', leaderboardDesign: '', after: 'mine', winner: true }, 'the finished classification always keeps its winner visible');
+assert.deepEqual(Results.clean({ summary: ['gap', 'none', 'total', 'heatpoints'], comparison: 'none' }), { summary: ['gap', 'none', 'total', 'heatpoints'], comparison: 'none', largeField: 'cards', leaderboardDesign: '', after: 'mine', winner: true });
 assert(!Results.COMPARE_METRICS.some(([key]) => key === 'gap'), 'a text gap can be a fact but not a misleading bar chart');
 assert.equal(Results.value(race, race.cars[0], 'laps'), 2);
 assert.equal(Results.value(race, race.cars[0], 'best'), 5000);

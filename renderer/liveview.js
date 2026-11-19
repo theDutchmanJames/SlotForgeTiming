@@ -235,14 +235,55 @@ const LiveView = (() => {
     if (!second || !live()) return false;
     const d = V.dyn(),
       key = V.stat().raceId;
-    if (!['review', 'finished'].includes(d.phase) || resultsFollowed === key) return false;
+    if (!(['review', 'finished'].includes(d.phase) || (d.phase === 'between' && afterOn(d))) || resultsFollowed === key) return false; // (2.4.0: and the break between two heats, on the broadcast screen)
     resultsFollowed = key;
     go('results');
     return true;
   }
 
+  // (2.4.0, SlotForgeRestyle.md "Chequered Flag") after a race and in a break between heats: the broadcast screen the race window sends (raceover.js),
+  // made for 1920 px and zoomed to this window, one screen without scrolling; Customization › Race Results can keep the Results Wall instead
+  function drawAfter(body, d) {
+    if (body.dataset.tvk !== d.after.key) {
+      body.dataset.tvk = d.after.key;
+      body.classList.add('ro-tvbody');
+      body.innerHTML = d.after.html;
+    }
+    fitAfter(body);
+    const left = body.querySelector('[data-tv-left]');
+    if (left) {
+      const s = d.phase === 'between' && d.heat && d.heat.breakLeft > 0 ? Heats.clock(d.heat.breakLeft) : '';
+      left.hidden = !s;
+      if (s && left.querySelector('b')) left.querySelector('b').textContent = s;
+    }
+  }
+  // the screen fills the window: drawn for 1920 px, zoomed to the width, as high as what is left under the page bar (again when the window changes size)
+  function fitAfter(body) {
+    const tv = body && body.querySelector('.ro-tv');
+    if (!tv) return;
+    if (!fitAfter.on && typeof addEventListener === 'function') {
+      fitAfter.on = true;
+      addEventListener('resize', () => fitAfter($('lv-body')));
+    }
+    // (the whole 1920 × 1080 screen is always seen: zoomed to the smaller of the width and the height that is left, and centred)
+    const top = body.getBoundingClientRect().top,
+      w = body.clientWidth || innerWidth,
+      h = Math.max(240, innerHeight - Math.max(0, top) - 8),
+      z = Math.max(0.15, Math.min(w / 1920, h / 1080));
+    tv.style.transform = `scale(${z})`;
+    tv.style.height = '1080px';
+    tv.style.marginLeft = Math.max(0, Math.floor((w - 1920 * z) / 2)) + 'px';
+    body.style.height = h + 'px';
+  }
+  const afterOn = d => !!(d && d.after && d.after.html && ResultsView.clean(state.settings.resultsView).after !== 'mine');
   function drawResults(body) {
     const d = V.dyn();
+    if (afterOn(d)) return drawAfter(body, d);
+    if (body.dataset.tvk) {
+      delete body.dataset.tvk;
+      body.classList.remove('ro-tvbody');
+      body.style.height = '';
+    }
     const shared = V.shared(performance.now());
     const components = [];
     body.innerHTML = ResultsView.html(V.engine(), state.settings.resultsView, {

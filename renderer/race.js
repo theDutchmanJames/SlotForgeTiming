@@ -1342,6 +1342,7 @@ async function renderRace() {
         bestAllName: live.bestAllName,
         bestBy: live.bestBy,
         tokens: tokens ? tokens.snapshot() : null,
+        after: live.afterTv || null,
         now: t
       },
       t
@@ -2042,6 +2043,7 @@ async function renderRace() {
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
+    if (live.afterTv && !['between', 'review', 'finished'].includes(live.phase)) live.afterTv = null; // (the next heat started: the second screen follows the race again)
     if (live.roShown === 'break') {
       if (live.phase !== 'between') roShow('');
       else roBreak();
@@ -2779,7 +2781,7 @@ async function renderRace() {
       last = done[done.length - 1],
       totals = new Map(heat.overall().map(o => [o.participant, byPts ? o.points : o.laps]));
     roPark();
-    ui('racebreak').innerHTML = RaceOver.breakHtml({
+    const bo = {
       kicker: `Break · ${done.length} of ${list.length} done · ${setup.name} · ${r.track.name}`,
       next: nx && {
         name: nx.name,
@@ -2809,7 +2811,22 @@ async function renderRace() {
       byPoints: byPts,
       saved: last ? `✓ ${esc(last.name)} saved` : '',
       laneColor: roColor
-    });
+    };
+    ui('racebreak').innerHTML = RaceOver.breakHtml(bo);
+    // (the second screen) the break without the buttons, the time left of the break (filled in there), the heats along the bottom
+    roTv(
+      'break',
+      RaceOver.tvHtml('break', {
+        ...bo,
+        foot: {
+          kicker: 'The heats',
+          items: list.map(h => ({
+            text: h.name + (h.state === 'done' ? ' ✓' : h.state === 'next' ? ' next' : ''),
+            cls: h.state === 'later' ? 'later' : ''
+          }))
+        }
+      })
+    );
     const picksBox = ui('ro-picks');
     if (picksBox) ['finalpick', 'teampick'].forEach(id => ui(id) && picksBox.appendChild(ui(id)));
   }
@@ -2900,7 +2917,7 @@ async function renderRace() {
           : ''
       };
     }
-    ui('raceover').innerHTML = RaceOver.overHtml({
+    const opts = {
       f: o.f,
       kicker: `${heats ? 'Event over' : 'Chequered flag'} · ${setup.name} · ${r.track.name} · ${new Date(o.session.date).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}`,
       note: limit,
@@ -2910,7 +2927,36 @@ async function renderRace() {
       saved: `✓ Saved · ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`,
       laneColor: roColor,
       ...extra
-    });
+    };
+    ui('raceover').innerHTML = RaceOver.overHtml(opts);
+    // (the second screen) the same without the buttons; along the bottom the next round of a championship, or the club
+    const club = (state.settings.appName || '').trim(),
+      nx = champ && champ.next;
+    roTv(
+      'over',
+      RaceOver.tvHtml('over', {
+        ...opts,
+        foot: champ
+          ? {
+              kicker: 'Next in ' + champ.name,
+              items: nx
+                ? [{ text: nx.label + (nx.track ? ' · ' + nx.track : ''), cls: 'ch' }]
+                : [{ text: 'The season is complete', cls: 'ch' }],
+              note: nx ? nx.date : ''
+            }
+          : {
+              kicker: 'Thank you for racing',
+              items: club ? [{ text: club }] : [],
+              note: heats ? 'Every heat of this event is in the results' : 'Every lap of this race is in the results'
+            }
+      })
+    );
+  }
+  // what the second screen shows after a race (or in a break): sent with the live messages, until the next heat starts
+  function roTv(kind, html) {
+    live.afterTv = { kind, key: kind + ':' + (live.afterTvN = (live.afterTvN || 0) + 1), html };
+    live.lastShare = -1e9;
+    share();
   }
   async function roStart(session, savedId, laps) {
     const s = { ...session, id: savedId };

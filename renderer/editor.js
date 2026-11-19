@@ -723,6 +723,15 @@ async function renderResultsSettings(box) {
   const field = (id, label, sel, hint = '') =>
     `<div class="field"><label for="${id}">${esc(label)}</label>${sel}${hint ? `<span class="muted hint">${esc(hint)}</span>` : ''}</div>`;
   box.innerHTML = `<div class="rvpage"><div class="rvsettings">${fold(
+    'After the race',
+    'What the second screen shows',
+    field(
+      'rv-after',
+      'When a race is over, and between two heats',
+      `<select id="rv-after" data-results-after="1"><option value="broadcast"${o.after !== 'mine' ? ' selected' : ''}>The broadcast: the winner big, the classification, the race story, the title fight</option><option value="mine"${o.after === 'mine' ? ' selected' : ''}>This Results Wall</option></select>`,
+      'The broadcast is the screen the race window shows after a race, on one screen and without its buttons. The Results Wall is the page you set up below.'
+    )
+  )}${fold(
     'On the cards',
     'What every driver card shows',
     field(
@@ -776,7 +785,8 @@ async function renderResultsSettings(box) {
       d.resultsSummary === undefined &&
       d.resultsComparison === undefined &&
       d.resultsLarge === undefined &&
-      d.resultsLeaderboard === undefined
+      d.resultsLeaderboard === undefined &&
+      d.resultsAfter === undefined
     )
       return;
     const next = R.clean({ ...o, summary: o.summary.slice() });
@@ -784,6 +794,7 @@ async function renderResultsSettings(box) {
     if (d.resultsComparison !== undefined) next.comparison = t.value;
     if (d.resultsLarge !== undefined) next.largeField = t.value;
     if (d.resultsLeaderboard !== undefined) next.leaderboardDesign = t.value;
+    if (d.resultsAfter !== undefined) next.after = t.value === 'mine' ? 'mine' : 'broadcast';
     state.settings = await api.setSettings({ resultsView: R.clean(next) });
     const msg = document.getElementById('rv-results-msg');
     if (msg) msg.textContent = 'Saved. The next finished race uses this Results Wall.';

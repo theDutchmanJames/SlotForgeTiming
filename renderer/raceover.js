@@ -280,7 +280,7 @@
       : o.event
         ? o.finalCard || ''
         : storyCard(f, o) || card('Highlights', '', `<div class="ro-chips">${raceChips(f)}</div>`);
-    return `<div class="ro-screen">${top}${o.event ? o.trackCard || '' : ''}<div class="ro-main${ch ? ' eq' : ''}">${left}${right}</div>${ch ? nextRound(ch.next, ch.name) : ''}</div>`;
+    return `<div class="ro-screen">${top}${o.event ? o.trackCard || '' : ''}<div class="ro-main${ch ? ' eq' : ''}">${left}${right}</div>${ch && !o.tv ? nextRound(ch.next, ch.name) : ''}${o.tv ? tvFoot(o.foot) : ''}</div>`;
   }
   // nothing to show (no driver in the standings): the actions only
   function emptyHtml(o) {
@@ -350,15 +350,28 @@
           })
           .join('')}</div>`
       : '';
-    const go = o.startable
-      ? `<div class="ro-go"><button type="button" class="btn primary ro-start" data-ro="start">Start ${esc(nx.name.replace(/^Heat/, 'heat').replace(/^Final/, 'final'))}</button><kbd>Space</kbd><span>starts it too</span></div>`
-      : `<div class="ro-go"><p class="ro-sub">${esc(o.startNote || 'Choose the lanes of the final first.')}</p></div>`;
+    const go = o.tv
+      ? `<div class="ro-tvcount" data-tv-left hidden><small>Starts in</small><b></b></div>`
+      : o.startable
+        ? `<div class="ro-go"><button type="button" class="btn primary ro-start" data-ro="start">Start ${esc(nx.name.replace(/^Heat/, 'heat').replace(/^Final/, 'final'))}</button><kbd>Space</kbd><span>starts it too</span></div>`
+        : `<div class="ro-go"><p class="ro-sub">${esc(o.startNote || 'Choose the lanes of the final first.')}</p></div>`;
     const top = `<div class="ro-hero brk"><div class="ro-chq" aria-hidden="true"></div><div class="ro-hin"><div class="ro-words"><div class="ro-k">${esc(o.kicker || '')}</div><h2 class="ro-big">${esc(nx.name)} <em>next up</em></h2>${nx.line ? `<p class="ro-sub">${esc(nx.line)}</p>` : ''}${go}</div>${tiles}</div><div class="ro-bar" role="group" aria-label="The break">${btn('screen', 'Show the race screen')}${btn('heatprint', 'Print the heat list')}<span class="ro-grow"></span><button type="button" class="btn ro-quietdanger" data-ro="endevent">End the event…</button>${o.saved ? `<span class="ro-saved" role="status">${o.saved}</span>` : ''}</div></div>`;
-    const picks = o.picks ? `<div class="ro-picks" id="ro-picks"></div>` : '';
-    return `<div class="ro-screen">${top}${picks}${heatTrack(o.track || [])}<div class="ro-main">${card('Standings', esc(o.standingsNote || ''), o.standings)}${o.last ? card(o.last.name, esc(o.last.note || ''), heatResult(o.last, o) + (o.last.fastest ? `<div class="ro-chips">${chip('Fastest lap', `${esc(s3(o.last.fastest.time))} · ${esc(o.last.fastest.name)}`, 'fl')}</div>` : '')) : ''}</div></div>`;
+    const picks = o.picks && !o.tv ? `<div class="ro-picks" id="ro-picks"></div>` : '';
+    return `<div class="ro-screen">${top}${picks}${heatTrack(o.track || [])}<div class="ro-main">${card('Standings', esc(o.standingsNote || ''), o.standings)}${o.last ? card(o.last.name, esc(o.last.note || ''), heatResult(o.last, o) + (o.last.fastest ? `<div class="ro-chips">${chip('Fastest lap', `${esc(s3(o.last.fastest.time))} · ${esc(o.last.fastest.name)}`, 'fl')}</div>` : '')) : ''}</div>${o.tv ? tvFoot(o.foot) : ''}</div>`;
   }
 
+  // (the second screen) the line along the bottom: a small kicker, what comes next in Barlow, and the name of the app on the right
+  function tvFoot(f) {
+    if (!f) return '';
+    return `<div class="ro-tvfoot"><span class="k">${esc(f.kicker || '')}</span>${(f.items || []).map(x => `<b class="${esc(x.cls || '')}">${esc(x.text)}</b>`).join('')}${f.note ? `<span class="n">${esc(f.note)}</span>` : ''}<span class="r">SlotForge Timing</span></div>`;
+  }
+  // the screens for the second screen (the Live Race window): the same, without the buttons, on one 16:9 screen (.ro-tv), the line along the bottom
+  const tvHtml = (kind, o) =>
+    `<div class="ro-host ro-tv">${kind === 'break' ? breakHtml({ ...o, tv: true }) : overHtml({ ...o, tv: true })}</div>`;
+
   const api = {
+    tvHtml,
+    tvFoot,
     card,
     figures,
     overHtml,

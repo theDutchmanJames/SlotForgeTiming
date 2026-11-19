@@ -6056,3 +6056,71 @@ html .btn.ro-back{margin:0 0 10px}
 html #racehost>p.muted:has(~ .ro-host:not([hidden])){display:none} /* (the line about the shared library: not on the screens after a race) */
 html .ro-lt.nolane img{filter:grayscale(1);opacity:.55}
 html .ro-more{margin:4px 0 0;padding:0 10px;font-size:12px;color:var(--muted)}
+
+/* ---- 2.4.0 Chequered Flag on the second screen (the Live Race window, raceover.js tvHtml): the same screens without buttons, on one 16:9 screen,
+   big enough to read across the room, with a line along the bottom. Sizes are for a 1920 px wide screen: liveview.js zooms the screen to the window. ---- */
+html .ro-tv{display:block;overflow:hidden;width:1920px;transform-origin:0 0}
+html .ro-tv .ro-screen{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:0 32px}
+html .ro-tv .ro-hero{margin:0 -32px}
+html .ro-tv :is(.ro-bar,.ro-aw,.ro-notes,.ro-next,.ro-heats,.ro-more,.ro-picks){display:none}
+html .ro-tv .ro-hin{min-height:0;padding:30px 48px 26px}
+html .ro-tv .ro-k{font-size:15px}
+html .ro-tv .ro-big{font-size:132px}
+html .ro-tv .ro-sub{font-size:22px}
+html .ro-tv .ro-chip{padding:9px 16px}
+html .ro-tv .ro-chip small{font-size:13px}
+html .ro-tv .ro-chip b{font-size:21px}
+html .ro-tv .ro-helm{width:380px;height:330px}
+html .ro-tv .ro-helm img{max-height:330px;max-width:370px}
+html .ro-tv .ro-place{width:92px;height:92px;font-size:68px;border-radius:20px}
+html .ro-tv .ro-main{margin-top:22px;min-height:0;align-items:stretch}
+html .ro-tv .ro-card{padding:20px 24px;overflow:hidden}
+html .ro-tv .ro-ch h3{font-size:30px}
+html .ro-tv .ro-ch small{font-size:15px}
+html .ro-tv .ro-tower{min-width:0;gap:7px}
+html .ro-tv .ro-row{grid-template-columns:52px 6px 54px minmax(0,1fr) 64px 130px 120px 96px;padding:10px 14px;gap:16px}
+html .ro-tv .ro-row.hd span{font-size:13px}
+html .ro-tv .ro-pos{width:48px;height:48px;font-size:32px;border-radius:11px}
+html .ro-tv .ro-pos.sm{width:40px;height:40px;font-size:26px}
+html .ro-tv .ro-av{width:54px;height:54px}
+html .ro-tv .ro-str{height:44px}
+html .ro-tv .ro-nm b{font-size:24px}
+html .ro-tv .ro-nm small{font-size:15px}
+html .ro-tv .ro-row .r{font-size:21px}
+html .ro-tv :is(.ro-gap,.ro-best){font-size:17px;padding:3px 10px}
+html .ro-tv .ro-mom li{font-size:19px;grid-template-columns:76px 12px minmax(0,1fr)}
+html .ro-tv .ro-mom .lap{font-size:16px}
+html .ro-tv .ro-legend{font-size:15px}
+html .ro-tv .ro-st{border-spacing:0 6px}
+html .ro-tv .ro-st th{font-size:13px}
+html .ro-tv .ro-st td{padding:8px 14px;font-size:20px}
+html .ro-tv .ro-st td.h{font-size:20px}
+html .ro-tv .ro-pts{font-size:28px}
+html .ro-tv :is(.ro-plus,.ro-mv){font-size:16px}
+html .ro-tv .ro-pc b{font-size:26px}
+html .ro-tv .ro-pc .v{font-size:32px}
+html .ro-tv .ro-pc .d{font-size:15px}
+html .ro-tv .ro-trk li b{font-size:19px}
+html .ro-tv .ro-trk li{font-size:15px}
+html .ro-tv .ro-lu{display:flex;gap:12px;max-width:1240px}
+html .ro-tv .ro-lt{flex:0 1 200px;min-width:120px}
+html .ro-tv .ro-lt b{font-size:30px}
+html .ro-tv .ro-lt small{font-size:15px}
+html .ro-tv .ro-lt img{height:150px}
+html .ro-tv .ro-lt .n{width:38px;height:38px;font-size:28px}
+html .ro-tv .ro-lt .pt{font-size:16px}
+html .ro-tv .ro-wb .w b{font-size:34px}
+html .ro-tv .ro-wb .o{font-size:20px;padding:11px 16px}
+html .ro-tv .ro-wb .w img{height:70px;width:70px}
+html .ro-tvfoot{display:flex;align-items:center;gap:18px;margin:18px -32px 0;padding:14px 48px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--panel) 70%,var(--bg));font-size:20px}
+html .ro-tvfoot .k{font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .ro-tvfoot b{font:italic 700 28px/1 var(--ro-hb);text-transform:uppercase}
+html .ro-tvfoot b.ch{color:var(--ro-cht)}
+html .ro-tvfoot b.later{color:var(--muted)}
+html .ro-tvfoot .n{color:var(--muted)}
+html .ro-tvfoot .r{margin-left:auto;color:var(--muted)}
+html .ro-tvcount{display:inline-flex;align-items:baseline;gap:12px;margin-top:22px;padding:10px 18px;border-radius:14px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 80%,transparent)}
+html .ro-tvcount small{font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .ro-tvcount b{font:500 44px var(--ro-mono)}
+html .lv-body.ro-tvbody{padding:0;overflow:hidden}
+html .ro-tv .ro-title .ro-st tbody tr:nth-child(-n+3){display:none} /* (the first three are the podium cards above it) */

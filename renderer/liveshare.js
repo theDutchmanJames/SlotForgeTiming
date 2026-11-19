@@ -194,6 +194,7 @@ const LiveShare = (() => {
         bestAllName: c.bestAllName,
         bestBy: [...c.bestBy].map(([k, v]) => [k, number(v)]),
         champ: c.champ || null,
+        after: c.after || null, // (2.4.0: the screen after a race or in a break, as raceover.js draws it for the second screen)
         tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(number) } : null,
         flash: [...c.flash].map(([car, f]) => [e.cars.indexOf(car), number(f.at), number(f.time), f.kind, f.index]).filter(x => x[0] >= 0)
       };

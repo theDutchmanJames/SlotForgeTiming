@@ -1712,6 +1712,11 @@ shown. Built on the [Broadcast Hero](#broadcast-hero), the [Timing Tower](#timin
   just driven as a result board (the winner as a gold lower third). *Show the race screen* and *End the event…* (red text) in the bar.
 - **Event over**: the band for the winner of the event, the heats as a strip, the final standings, the result of the final.
 - **Delete all data** in the review goes back to Home, which says *The race was deleted* for half a minute.
+- **On the second screen** (`.ro-tv`, `RaceOver.tvHtml`, drawn by `liveview.js` drawAfter): the same screens for the audience, without buttons (the bar,
+  Undo, the lane picks and the next-round band are hidden), made for 1920 × 1080 and zoomed to fit the window whole, never scrolling: the headline at
+  132 px, names at 24 px, times at 21 px. A **line along the bottom** (`.ro-tvfoot`) says what comes next: the next round of a championship in pink, the
+  heats in a break, otherwise *Thank you for racing* and the club name. In a break the time left shows as *Starts in 1:45*. On the title fight the table
+  starts at 4th place (the first three are the podium cards). Customization › Race Results › *After the race* chooses the broadcast or the Results Wall.
 
 ```css
 html .ro-hero{margin:-20px -20px 0;border-bottom:1px solid var(--line);background:radial-gradient(55% 140% at 0% 100%,color-mix(in srgb,var(--accent) 24%,transparent),transparent 70%),linear-gradient(110deg,color-mix(in srgb,var(--accent) 10%,var(--panel)) 0%,var(--bg) 62%)}
@@ -1966,3 +1971,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Start Lights, Workshop Window, Race Report, Lane Desk | The last screens: the startup window with start lights, the Circuit file as a drop card, the record tables fit, an empty Results and Records as a card, the race folders with the Lane Desk off |
 | 2026-11 | Update Window | New: the update check of every SlotForge app (from Circuit): the window with What's new, Skip and Download, Settings › Updates; the notice on Home is gone |
 | 2026-11 | Chequered Flag | New: the screens after a race (Race over, a championship race with the title fight as big as the race, the break between heats, Event over) replace the frozen race page; the points of a championship race are awarded on Finalize, with Undo |
+| 2026-11 | Chequered Flag | The screens after a race on the second screen: without buttons, one 16:9 screen zoomed to the window, a line along the bottom; Race Results › After the race chooses it or the Results Wall |
