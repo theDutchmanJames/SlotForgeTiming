@@ -6541,3 +6541,134 @@ html .rsform .rshd .rstile.rscar svg{width:100%;height:auto}
 html .vcpic .ph.vcdrawn{display:grid;place-items:center;width:100%;height:100%;color:var(--ink);background:radial-gradient(120% 90% at 50% 100%,color-mix(in srgb,var(--ink) 9%,var(--panel)),color-mix(in srgb,var(--bg) 70%,var(--panel)))}
 html .vcpic .ph.vcdrawn>svg{width:92%;height:auto}
 html .vcpic .ph.vcdrawn>img{height:86%;width:auto;object-fit:contain}
+
+/* ---- Record Book (2.4.0, SlotForgeRestyle.md "Record Book"): Results and Records › Racing Records (renderer/recordbook.js, database/recordbookview.js) ---- */
+html .rb{display:flex;flex-direction:column;gap:18px;color:var(--ink)}
+html .rb-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 10px}
+html .rb-h h3{margin:0;font:700 italic 22px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .rb-h>span{color:var(--muted);font-size:12.5px}
+html .rb-link{display:inline-flex;align-items:center;gap:5px;padding:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+html .rb-link:hover{text-decoration:underline}
+html .rb-recs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+html .rb-rec{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden;cursor:pointer}
+html .rb-rec:is(:hover,:focus-visible){border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+html .rb-rtop{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:radial-gradient(120% 100% at 0 100%,color-mix(in srgb,var(--ink) 7%,var(--panel)),var(--panel))}
+html .rb-rtop svg{width:78px;height:auto;color:var(--ink)}
+html .rb-rtop b{display:block;font:700 italic 17px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-rtop small{color:var(--muted);font-size:11.5px}
+html .rb-rmid{padding:10px 12px 8px}
+html .rb-time{font:700 30px/1 'SF Roboto Mono',Consolas,monospace;color:#b48cff}
+html .rb-who{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;min-width:0}
+html .rb-who b{font-weight:600}html .rb-who small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-helm{width:30px;height:30px;object-fit:contain;flex:none}
+html .rb-rbot{display:flex;align-items:center;gap:8px;margin-top:auto;padding:6px 8px 6px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--bg) 45%,var(--panel));cursor:default}
+html .rb-rbot>span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-more{width:26px;height:26px;padding:0;display:inline-grid;place-items:center}
+html .rb-new{position:absolute;top:10px;right:10px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b48cff;background:color-mix(in srgb,#b48cff 16%,transparent)}
+html .rb-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html .rb-search{flex:1 1 130px;min-width:0;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--muted)}
+html .rb-search input{flex:1;min-width:0;height:30px;padding:0;border:0;background:transparent;box-shadow:none;color:var(--ink);font-size:13px}
+html .rb-search input:focus{outline:none}html .rb-search:focus-within{border-color:var(--accent)}
+html .rb-sel{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px 0 10px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+html .rb-sel select{height:28px;width:auto;max-width:118px;padding:0 4px;border:0;background:transparent;color:var(--ink);font-weight:600;font-size:12.5px;box-shadow:none}
+html .rb-sel.sm{height:28px;margin-left:auto}
+html .rb-chips{display:flex;gap:6px;flex-wrap:wrap}
+html .gx-chip.ch{border-color:color-mix(in srgb,var(--c-ch,#ec4899) 50%,var(--line))}
+html .rb-cols{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+html .rb-month{display:flex;align-items:baseline;gap:10px;margin:4px 0 8px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rb-month b{color:var(--ink)}
+html .rb-log{display:flex;flex-direction:column;margin-bottom:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+html .rb-row{display:grid;grid-template-columns:46px minmax(0,1.4fr) minmax(0,1.3fr) 80px 14px;gap:12px;align-items:center;width:100%;padding:9px 12px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+html .rb-row:first-child{border-top:0}
+html .rb-row:is(:hover,:focus-visible){background:color-mix(in srgb,var(--ink) 5%,var(--panel));outline:none}
+html .rb-date{display:flex;flex-direction:column;align-items:center;justify-content:center;width:42px;height:42px;border-radius:9px;background:color-mix(in srgb,var(--ink) 7%,var(--panel))}
+html .rb-date b{font:700 17px/1 'SF Roboto Mono',Consolas,monospace}html .rb-date small{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+html .rb-what{min-width:0}
+html .rb-what b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-what small{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden}
+html .rb-tag{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ink) 9%,transparent);white-space:nowrap}
+html .rb-tag.ch{color:var(--c-ch,#ec4899);background:color-mix(in srgb,var(--c-ch,#ec4899) 14%,transparent)}
+html .rb-tag.adj{color:#f2b705;background:color-mix(in srgb,#f2b705 14%,transparent)}
+html .rb-pod{display:flex;align-items:center;gap:8px;min-width:0}
+html .rb-pod .w{display:flex;align-items:center;gap:6px;min-width:0}
+html .rb-pod .w b{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-pod small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-pos{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;font:700 11px 'SF Roboto Mono',Consolas,monospace;flex:none;color:#111}
+html .rb-pos.p1{background:#f5c211}html .rb-pos.p2{background:#c8ced6}html .rb-pos.p3{background:#d08a4c}
+html .rb-best{font:600 13px 'SF Roboto Mono',Consolas,monospace;color:#b48cff;text-align:right}
+html .rb-best small{display:block;font:500 10.5px 'Segoe UI',system-ui,sans-serif;color:var(--muted)}
+html .rb-chev{color:var(--muted);font-size:18px}
+html .rb-moreraces{align-self:center;margin:0 auto 14px;display:flex}
+html .rb-side{display:flex;flex-direction:column;gap:14px;position:sticky;top:10px}
+html .rb-box{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+html .rb-box .hd{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+html .rb-box .hd .rb-helm{width:40px;height:40px}
+html .rb-box .hd b{display:block;font:700 italic 19px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .rb-box .hd small{color:var(--muted);font-size:12px}
+html .rb-pb{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 14px;border-top:1px solid var(--line);font-size:13px}
+html .rb-box .hd+.rb-pb{border-top:0}
+html .rb-pb b{font:600 14px 'SF Roboto Mono',Consolas,monospace;text-align:right}
+html .rb-pb b.rec{color:#b48cff}
+html .rb-pb small{color:var(--muted);font-size:11.5px}
+html .rb-pb small.gap{text-align:right;font-family:'SF Roboto Mono',Consolas,monospace}
+html .rb-pad{padding:10px 14px;margin:0}
+html .rb-form{display:flex;gap:5px;flex-wrap:wrap;padding:10px 14px 12px}
+html .rb-form>span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;font:700 13px 'SF Roboto Mono',Consolas,monospace;background:color-mix(in srgb,var(--ink) 8%,var(--panel))}
+html .rb-form>span.rb-pos{width:30px;height:30px;font-size:13px}
+html .rb-box .ft{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+html .rb-back{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+html .rb-back .btn{display:inline-flex;align-items:center;gap:4px}
+html .rb-race details.sess{border-radius:14px}
+html dialog.rb-win{width:min(980px,calc(100vw - 48px));max-width:none;max-height:calc(100vh - 40px);padding:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--ink);overflow:hidden}
+html dialog.rb-win:not([open]){display:none}
+html .rb-whd{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--panel))}
+html .rb-wpic{width:120px;height:72px;display:grid;place-items:center;border-radius:12px;border:1px solid var(--line);color:var(--ink);background:radial-gradient(120% 90% at 50% 100%,color-mix(in srgb,var(--ink) 9%,var(--panel)),color-mix(in srgb,var(--bg) 70%,var(--panel)))}
+html .rb-wpic svg{width:92%;height:auto}html .rb-wpic .rb-helm{width:66px;height:66px}
+html .rb-whd small{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rb-whd h2{margin:2px 0 0;font:700 italic 30px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .rb-x{width:32px;height:32px;padding:0;display:grid;place-items:center;border:1px solid var(--line);align-self:start}
+html .rb-wbody{overflow:auto;padding:16px 18px 20px;display:flex;flex-direction:column;gap:14px}
+html .rb-wft{display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);background:var(--panel)}
+html .rb-wft .sp{flex:1}html .rb-wft small{color:var(--muted);font-size:12.5px}
+html .rb-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+html .rb-tiles.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+html .rb-tile{padding:11px 13px;border-radius:11px;border:1px solid var(--line);background:var(--panel)}
+html .rb-tile small{display:block;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+html .rb-tile b{display:block;margin-top:3px;font:700 24px/1.05 'SF Roboto Mono',Consolas,monospace}
+html .rb-tile b.fl{color:#b48cff}html .rb-tile b.sm{font-size:18px}html .rb-tile b.nm{font:600 18px/1.3 'Segoe UI',system-ui,sans-serif}
+html .rb-chart{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html .rb-chart svg{width:100%;height:120px;display:block;color:var(--ink)}
+html .rb-tbl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+html .rb-tr{display:grid;grid-template-columns:70px minmax(0,1.5fr) minmax(0,1fr) 60px 80px 70px;gap:10px;align-items:center;width:100%;padding:8px 14px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:13px;text-align:left}
+html button.rb-tr{cursor:pointer}html button.rb-tr:hover{background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+html .rb-tr.h{border-top:0;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+html .rb-tr.pb{grid-template-columns:minmax(0,1fr) 90px 80px 150px}
+html .rb-tr>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-tr .m{font:500 13px 'SF Roboto Mono',Consolas,monospace}html .rb-tr .m.fl{color:#b48cff}
+html .rb-tl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+html .rb-tli{display:grid;grid-template-columns:100px 34px minmax(0,1fr) 80px 100px;gap:12px;align-items:center;width:100%;padding:10px 14px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:13px;text-align:left;cursor:pointer}
+html .rb-tli:first-child{border-top:0}
+html .rb-tli.now{background:color-mix(in srgb,#b48cff 8%,var(--panel))}
+html .rb-tli:hover{background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+html .rb-tli .t{font:700 15px 'SF Roboto Mono',Consolas,monospace}
+html .rb-tli.now .t{font-size:18px;color:#b48cff}
+html .rb-tli .n{min-width:0}html .rb-tli .n small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-tli .dl{font:500 12.5px 'SF Roboto Mono',Consolas,monospace;color:#3ecf8e;text-align:right}
+html .rb-tli .when{color:var(--muted);font-size:12px;text-align:right}html .rb-tli .when small{display:block}
+html .rb-lead{margin:0;font-size:13.5px}
+html .rb-cor{display:grid;grid-template-columns:44px minmax(0,1.4fr) 50px 110px 90px 70px 80px;gap:10px;align-items:center;padding:7px 14px;border-top:1px solid var(--line);font-size:13px}
+html .rb-cor.h{border-top:0;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+html .rb-cor input[type="number"]{width:100%;height:30px;font-family:'SF Roboto Mono',Consolas,monospace}
+html .rb-cor.chg{background:color-mix(in srgb,#f2b705 7%,var(--panel))}
+html .rb-cor .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .rb-cor .m{font-family:'SF Roboto Mono',Consolas,monospace}
+html .rb-out{display:inline-flex;align-items:center;gap:5px;font-size:12.5px}
+html .rb-cor .mv{font:600 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .rb-cor .mv.up{color:#3ecf8e}html .rb-cor .mv.dn{color:#f97316}
+html .rb-why{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted)}
+html .rb-why input{height:34px}
+html .rb-champnote{padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--c-ch,#ec4899) 40%,var(--line));background:color-mix(in srgb,var(--c-ch,#ec4899) 7%,var(--panel));font-size:13px}
+html:is([data-theme="light"],[data-theme="ocean"]) :is(.rb-time,.rb-best,.rb-pb b.rec,.rb-tile b.fl,.rb-tr .m.fl,.rb-tli.now .t){color:#7c3aed}
+@media (max-width:1100px){html .rb-cols{grid-template-columns:minmax(0,1fr)}html .rb-side{position:static}}
+@media (max-width:700px){html .rb-row{grid-template-columns:42px minmax(0,1fr) 70px}html .rb-pod,html .rb-chev{display:none}html .rb-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+html .rb-wbody>*{flex:none}

@@ -72,7 +72,18 @@
     [
       'results',
       'Results & race control',
-      ['results', 'paddockhistory', 'paddockhistorical', 'paddockhistoryuploads', 'start', 'screen', 'sectors', 'director', 'lanecards']
+      [
+        'results',
+        'recordbook',
+        'paddockhistory',
+        'paddockhistorical',
+        'paddockhistoryuploads',
+        'start',
+        'screen',
+        'sectors',
+        'director',
+        'lanecards'
+      ]
     ],
     [
       'settings',

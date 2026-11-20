@@ -35,6 +35,8 @@ async function renderResults(box) {
     return;
   } // (1.56.0: the standings of the championships)
   const body = byId('resbody');
+  if (pool === 'racing' && api.historyPage && typeof RecordBook !== 'undefined' && typeof renderRecordBook === 'function')
+    return renderRecordBook(body); // (2.4.0: the Record Book)
   await renderResultsPool(body, pool);
 }
 // the lines that tell how the figures of a table are counted, as one small paragraph under it
@@ -450,7 +452,8 @@ async function renderResultsPool(box, pool, supplied = null) {
         fin ? Heats.finalsSaid(s.finals) : '',
         Stats.weatherText(s),
         Stats.resumeText(s),
-        Stats.compareText(s)
+        Stats.compareText(s),
+        typeof RecordBook !== 'undefined' ? RecordBook.correctionText(s) : ''
       ].filter(Boolean);
       const podium =
         Stats.WINNER_TYPES.includes(s.sessionType) && s.standings.length > 1
@@ -503,7 +506,7 @@ async function renderResultsPool(box, pool, supplied = null) {
               ''
             )}</tbody></table></div><p class="rr-legend"><span class="rr-lg-best">Best lap of a driver</span><span class="rr-lg-pit">Pit stop</span><span class="rr-lg-bad">Invalid or too slow</span></p>`
         : '<p class="muted">No laps</p>';
-      const actions = `<div class="rr-actions">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${!s.readOnly && api.paddockHistoricalReview ? `<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>` : ''}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+      const actions = `<div class="rr-actions">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${typeof RecordBook !== 'undefined' && RecordBook.canCorrect(s) && typeof rbCorrect === 'function' ? `<button class="btn" data-correct="${esc(s.id)}">Correct the result…</button>` : ''}${!s.readOnly && api.paddockHistoricalReview ? `<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>` : ''}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
       const body =
         actions +
         (!s.readOnly && s.champ && typeof s.champ === 'object' && s.champ.id
@@ -565,30 +568,33 @@ async function renderResultsPool(box, pool, supplied = null) {
       );
   if (state.focusSession && !tokenPool) folderClosed.delete(folderKey(folderPage, 'sessions')); // (1.25.0: a race clicked on Home opens here: its folder is open)
   const pageNote = supplied ? ' on this page' : '';
-  box.innerHTML =
-    folderToolsWith(viewButton('results')) +
-    bar +
-    folderHtml(
-      folderPage,
-      'tracks',
-      'Track records',
-      plural(trackRecords.length, 'record', 'records') + pageNote,
-      recTable(trackRecords, 'track')
-    ) +
-    folderHtml(
-      folderPage,
-      'pb',
-      'Personal bests',
-      plural(personal.length, 'personal best', 'personal bests') + pageNote,
-      recTable(personal, 'pb')
-    ) +
-    folderHtml(
-      folderPage,
-      'sessions',
-      tokenPool ? 'Stints' : 'Sessions',
-      (tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions')) + pageNote,
-      sessionCards
-    );
+  if (supplied && supplied.only)
+    box.innerHTML = sessionCards; // (2.4.0: a race opened from the Record Book: only its report)
+  else
+    box.innerHTML =
+      folderToolsWith(viewButton('results')) +
+      bar +
+      folderHtml(
+        folderPage,
+        'tracks',
+        'Track records',
+        plural(trackRecords.length, 'record', 'records') + pageNote,
+        recTable(trackRecords, 'track')
+      ) +
+      folderHtml(
+        folderPage,
+        'pb',
+        'Personal bests',
+        plural(personal.length, 'personal best', 'personal bests') + pageNote,
+        recTable(personal, 'pb')
+      ) +
+      folderHtml(
+        folderPage,
+        'sessions',
+        tokenPool ? 'Stints' : 'Sessions',
+        (tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions')) + pageNote,
+        sessionCards
+      );
   folderWire(box);
   if (!tokenPool && String(box.innerHTML).includes('data-cpbox'))
     champPanelsIn(box, async s => {
@@ -622,6 +628,8 @@ async function renderResultsPool(box, pool, supplied = null) {
       await viewReset([['results', 'records'], sessPath]);
       return reload();
     }
+    const corr = ev.target.closest('[data-correct]');
+    if (corr) return rbCorrect(corr.dataset.correct, reload);
     const historical = ev.target.closest('[data-historical-session]');
     if (historical && typeof PaddockHistorical !== 'undefined') {
       await PaddockHistorical.open(api, historical.dataset.historicalSession);

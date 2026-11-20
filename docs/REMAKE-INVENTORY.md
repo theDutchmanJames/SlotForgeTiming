@@ -84,7 +84,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 - The preview offers lanes 1-4 only (widgetbuilder.js:234).
 - **Ideas:** one editor with a simple mode, linked widgets, "Add to layout…" from the builder.
 
-### 8. Results and Records · Remake
+### 8. Results and Records · Remake · **Done (2.4.0, "Record Book")**
 - Each folder (track records, personal bests, sessions) has its own "Page N" paging. There is no search and no filter by
   driver, track, date or championship. Two code paths (SQLite and the old one) patched together.
 - No way to correct a result after Finalize, only delete.
@@ -191,6 +191,6 @@ shell, one empty-state card, one rule for red, and settings in tiers (everyday f
 2. Race window during the race (#2): one control strip, no duplicate controls, a board that doesn't overlap itself.
 3. Race Setup editor and start checks (#3), with settings in tiers.
 4. The shared fixes (explainer, editor shell, empty state, red, tiers), so every later remake starts from them.
-5. Database lists and the Car editor (**done, 2.4.0, "Garage" and "Build Sheet"**), then Results and Records (#8).
+5. Database lists and the Car editor (**done, 2.4.0, "Garage" and "Build Sheet"**), then Results and Records (#8, **done, "Record Book"**).
 6. Timing Hardware with DS and the Lane Check (#4, #5).
 7. Audio (#6), Widgets (#7), Paddock (#9), Calculations, then the Tier 2 reworks.

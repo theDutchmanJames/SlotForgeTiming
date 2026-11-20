@@ -56,6 +56,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Setup Sheet](#setup-sheet) | The race setup form: the race in one line with chips, Set and Missing in the rail, six kinds, the tracks as cards, Start and flags, a system and its switch on one row | Race Setup › Edit |
 | [Garage](#garage) | The Database lists: a car drawn in its livery, a driver's helmet and callsign, a track with its lanes; figures from the races; filters with counts, sort, ticks; no red on a card | Database › Slotcars, Drivers, Tracks, Teams |
 | [Build Sheet](#build-sheet) | The car editor: the drawn car on top, a rail of sections, the gearing worked out, a service meter and log, More for the rest | Database › Slotcars › Edit |
+| [Record Book](#record-book) | Results and Records: track records as cards with their history, one filter bar, the races by month, a driver panel, a driver's history, correcting a result | Database › Results and Records › Racing Records |
 | [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
@@ -1805,6 +1806,37 @@ html .bs-meter.due{border-color:color-mix(in srgb,#f2b705 40%,var(--line))}
 
 ---
 
+## Record Book
+
+Results and Records › Racing Records (`renderer/recordbook.js` makes the words and rows, `renderer/database/recordbookview.js` draws the page and its
+windows; styles under `.rb-`). Token Records and Championships keep their pages. Nothing changed in how a race is stored; a correction adds
+`correction` to the session and changes its standings.
+
+- **Track records** first, as cards of equal weight (`.rb-rec`): the track drawn with its lanes, its name in Barlow, lanes and races; the record big
+  in Roboto Mono purple; the holder with their helmet and car; a foot with *Set 19 Nov*, **Beaten 11×** (opens the history) and ⋯. A fresh record
+  has a purple *New* badge. Four are shown; *All 8 tracks ›* shows the rest.
+- **One filter bar** (`.rb-strip`): search, Track, Driver, the kinds as chips with counts (Championship with a pink edge), Period, ⋯ (CSV).
+- **The race log** (`.rb-log`): by month (*November 2026 · 28 sessions*), a row per race: a date tile, the name with its kind, track and round
+  (*Winter Cup 2026 · R5* in pink; *Corrected* in amber), the winner with a gold 1 and their helmet with second and third after them (in practice the
+  fastest), the best lap in purple. One *Show more* instead of pages.
+- **The driver panel** (`.rb-box`, sticky): helmet and name, their personal best per track with the gap to the record, their form as place badges
+  (gold, silver, bronze), *Full history ›*.
+- **Windows** (`dialog.rb-win`): a picture, a kicker and a Barlow title on top, tiles, then a list: the history of a record (the record row tinted
+  purple, the gain in green, how long each stood), a driver's history (a line of their places, every race, their personal bests), *Correct the result*
+  (a row per car with time to add, laps to take, Out, the new place as ▲ green or ▼ orange, the reason).
+- **A race opened** shows its report in place under *‹ Record book*.
+
+```css
+html .rb-recs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+html .rb-time{font:700 30px/1 'SF Roboto Mono',Consolas,monospace;color:#b48cff}
+html .rb-row{display:grid;grid-template-columns:46px minmax(0,1.4fr) minmax(0,1.3fr) 80px 14px;gap:12px}
+html .rb-pos.p1{background:#f5c211}html .rb-pos.p2{background:#c8ced6}html .rb-pos.p3{background:#d08a4c}
+html .rb-tag.ch{color:var(--c-ch,#ec4899);background:color-mix(in srgb,var(--c-ch,#ec4899) 14%,transparent)}
+html .rb-cols{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+```
+
+---
+
 ## Race Control
 
 The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
@@ -2131,3 +2163,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Setup Sheet | The race setup form: the race in one line with chips, Set and Missing instead of dots, six kinds, the tracks as cards, quick picks, Start and flags with Track Call together, the heat scoring in Heats, a system and On at the start on one row |
 | 2026-11 | Garage | New: the Database lists as Garage cards (drawn cars, helmets, tracks, figures from the races), a Control Strip with filters, sort and ⋯, a list with ticks and a bar for many at once, empty cards |
 | 2026-11 | Build Sheet | New: the car editor with the drawn car, a rail, the gearing worked out, livery colours, Can it race?, a service meter and log, More for Archive, Reload and Save history |
+| 2026-11 | Record Book | New: Racing Records as a record book (record cards, filter bar, race log by month, driver panel, record history, driver history, Correct the result, CSV) |

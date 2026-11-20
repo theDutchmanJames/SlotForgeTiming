@@ -209,6 +209,28 @@ function setChampionshipAwards(s, { edits }) {
   return { updated: edits.map(e => ({ sessionId: e.sessionId, revision: s.revision('sessions', e.sessionId) })) };
 }
 
+// (2.4.0, "Record Book") a saved result corrected: the same entries in a new order with time or laps adjusted or a car out, and the line that says why
+function correctResult(s, { sessionId, standings, correction, expectedRevision }) {
+  s.expect('sessions', sessionId, expectedRevision);
+  const session = s.get('sessions', sessionId, true).value;
+  const before = Array.isArray(session.standings) ? session.standings : [];
+  const key = r => JSON.stringify([r && r.driverId, r && r.carId, r && r.teamId]);
+  if (
+    !Array.isArray(standings) ||
+    standings.length !== before.length ||
+    standings.some(r => !object(r)) ||
+    JSON.stringify(standings.map(key).sort()) !== JSON.stringify(before.map(key).sort())
+  )
+    throw Error('A correction keeps the same entries of the race.');
+  if (!Array.isArray(correction) || correction.length > 100 || correction.some(c => !object(c))) throw Error('Invalid correction.');
+  session.standings = standings;
+  session.correction = correction;
+  if (session.paddockDelivery?.transport === 'engine')
+    require('./paddockrecords').revise({ ...s.paddockState(), laps: s.lapsFor(session.id) }, session);
+  s.replace('sessions', session.id, session);
+  return { sessionId, revision: s.revision('sessions', sessionId) };
+}
+
 function removeRecord(s, { entity: table, recordId, expectedRevision }) {
   entity(table, true);
   if (table === 'sessions') return s.deleteSession({ sessionId: recordId, expectedRevision });
@@ -322,6 +344,7 @@ function mergeDrivers(s, { fromId, intoId, expectedFromRevision, expectedIntoRev
   return { merged: true, fromId, intoId, laps };
 }
 const commands = {
+  correctResult,
   addRecord,
   updateRecord,
   removeRecord,

@@ -68,9 +68,18 @@ class SqliteAppRepository extends SqliteCompatibilityReads {
     return this.queue(async () => {
       const expectedRevision = await this.version(entity, id);
       if (entity === 'sessions') {
-        if (Object.keys(patch).length !== 1 || !Object.hasOwn(patch, 'champ'))
-          throw Error('Only championship awards may be edited on a saved session.');
-        await this.commands.awards([{ sessionId: id, champ: patch.champ, expectedRevision }], { commandId });
+        const keys = Object.keys(patch);
+        if (Object.hasOwn(patch, 'standings') && keys.every(k => ['standings', 'correction', 'champ'].includes(k)))
+          // (2.4.0: a result corrected after it was saved; its championship tag stays as it is)
+          await this.commands.execute(commandId, 'correctResult', {
+            sessionId: id,
+            standings: patch.standings,
+            correction: patch.correction || [],
+            expectedRevision
+          });
+        else if (keys.length !== 1 || !Object.hasOwn(patch, 'champ'))
+          throw Error('Only championship awards and corrections may be edited on a saved session.');
+        else await this.commands.awards([{ sessionId: id, champ: patch.champ, expectedRevision }], { commandId });
       } else if (entity === 'laps')
         await this.commands.execute(commandId, 'setLapEligibility', { lapId: id, flags: patch, expectedRevision });
       else await this.commands.update(entity, id, patch, { commandId, expectedRevision });

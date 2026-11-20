@@ -13,8 +13,13 @@ function apply(s, { scope, operation, args }) {
       return command('addRecord', { entity, item: id });
     case 'update':
       if (entity === 'sessions') {
+        if (value && Object.hasOwn(value, 'standings') && Object.keys(value).every(k => ['standings', 'correction', 'champ'].includes(k))) {
+          // (2.4.0: a result corrected after it was saved; its championship tag stays as it is)
+          command('correctResult', { sessionId: id, standings: value.standings, correction: value.correction || [], expectedRevision });
+          return { recordId: id };
+        }
         if (!value || Object.keys(value).length !== 1 || !Object.hasOwn(value, 'champ'))
-          throw Error('Only championship awards may be edited on a saved session.');
+          throw Error('Only championship awards and corrections may be edited on a saved session.');
         command('setChampionshipAwards', { edits: [{ sessionId: id, champ: value.champ, expectedRevision }] });
         return { recordId: id };
       }

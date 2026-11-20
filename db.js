@@ -746,7 +746,11 @@ class Database {
         this.touch(session);
       }
     }
-    if (entity === 'sessions' && row.paddockDelivery?.transport === 'engine' && Object.hasOwn(patch, 'champ'))
+    if (
+      entity === 'sessions' &&
+      row.paddockDelivery?.transport === 'engine' &&
+      (Object.hasOwn(patch, 'champ') || Object.hasOwn(patch, 'standings'))
+    )
       PaddockRecords.revise(this.data, row);
     const revised = session ? session.paddockDelivery : undefined;
     this.guard(() => {

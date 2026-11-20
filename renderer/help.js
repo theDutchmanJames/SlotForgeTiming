@@ -259,6 +259,18 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'recordbook',
+          title: 'Record Book',
+          note: 'Track records, the race log, a driver, a correction',
+          body: `<ul>
+          <li><b>Racing Records</b> opens with the <b>track records</b> as cards: the record, who holds it, the car, when it was set. <b>Beaten 4×</b> opens the history of the record: each time it was beaten, by how much and how long it stood. <b>⋯</b> on a card can take the lap out of the records (the lap stays in its race; the next fastest takes over).</li>
+          <li>The <b>bar</b> finds races by name or driver and filters by track, driver, kind (Races, Heats, Practice, Qualifying, Championship) and period. <b>⋯</b> saves the list as a CSV file.</li>
+          <li>The races are listed by <b>month</b>, newest first, with the winner, second and third, and the best lap. Click one to open its full report; <b>Record book</b> takes you back.</li>
+          <li>On the right: a driver's <b>personal bests</b> (and how far from the record), their <b>form</b> in the last races, and <b>Full history</b>: races, wins, podiums, a line of their places and every race.</li>
+          <li><b>Correct the result…</b> in an opened race adds time, takes laps away or puts a car out after the race was saved, with a reason. The order is worked out again and a championship follows it; the report says it was corrected. Heat races and races scored by points cannot be corrected this way.</li>
+        </ul>`
+        },
+        {
           id: 'results',
           title: 'Results and Records',
           note: 'What has been driven',

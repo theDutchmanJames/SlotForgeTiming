@@ -259,6 +259,7 @@ module.exports = [
   ['racecontrol.test.js', 'node-test'],
   ['racecheck.test.js', 'node-test'],
   ['garage.test.js', 'node-test'],
+  ['recordbook.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],
