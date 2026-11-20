@@ -265,14 +265,46 @@ async function renderHome() {
         )
   );
   const mcHtml = mc
-    ? `<details class="mc-home"><summary>${esc(mc.name)} · Class assignments</summary><p class="muted">${mc.assignment === 'roster' ? 'Drivers are assigned in the Multi-Class setup. Only cars with matching Race Class labels can be selected.' : 'Defaults come from the ' + esc(mc.assignment) + '. Assignments lock when the event starts.'}</p></details>`
+    ? `<details class="mc-home"><summary>${esc(mc.name)} · Classes of this race</summary><p class="muted">Choose the class of every entry in its lane; it is kept with this race setup's entry list, so the next race starts with it. ${mc.assignment === 'roster' ? 'The defaults come from the Multi-Class System, and only cars with the class label can be chosen.' : 'The defaults come from the ' + esc(mc.assignment) + '.'} Classes lock when the event starts.</p>${
+        mc.assignment === 'roster'
+          ? '<button type="button" class="btn sm" data-mc-copy>Copy these classes to the Multi-Class System as defaults</button>'
+          : ''
+      }</details>`
     : '';
-  const classChoice = (r, i) =>
-    !mc || r.absent || isRival(r)
-      ? ''
-      : mc.assignment === 'roster'
-        ? `<span class="hs-class">Class: <b>${esc(mc.classes.find(c => c.id === mcRows[i].raceClass)?.name || 'Assign this driver in Multi-Class setup')}</b></span>`
-        : `<label class="hs-class">Race class <select data-mc-entry="${i}" aria-label="Race class for entry ${i + 1}"><option value="">Database default${mcRows[i].raceClass ? ' · ' + esc(mc.classes.find(c => c.id === mcRows[i].raceClass)?.name || 'Unavailable') : ''}</option>${mc.classes.map(c => `<option value="${esc(c.id)}"${r.raceClass === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+  // (2.4.0) the class of an entry is chosen here, for this race (kept with the setup's entry list); the system or the database gives the default
+  const classChoice = (r, i) => {
+    if (!mc || r.absent) return '';
+    const now = mcRows[i].raceClass,
+      dflt = MultiClass.resolve({ ...r, raceClass: '' }, mc, { cars, drivers, teams }),
+      car = cars.find(c => c.id === r.carId),
+      cls = mc.classes.find(c => c.id === now);
+    const check = !now
+      ? '<small class="hs-classnote bad">Choose a class</small>'
+      : mcRowErrors[i]
+        ? ''
+        : car && car.raceClass === now
+          ? `<small class="hs-classnote ok">✓ Car is ${esc(cls ? cls.name : '')}</small>`
+          : r.raceClass && r.raceClass === now && dflt !== now
+            ? '<small class="hs-classnote">Chosen for this race</small>'
+            : '';
+    return `<span class="hs-class" role="group" aria-label="Race class for entry ${i + 1}">${mc.classes
+      .map(
+        c =>
+          `<button type="button" class="hs-cpick${c.id === now ? ' on' : ''}" style="--mc:${esc(/^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#63b9db')}" data-mc-pick="${i}" data-val="${esc(c.id)}" aria-pressed="${c.id === now}">${esc(c.name)}</button>`
+      )
+      .join('')}${check}</span>`;
+  };
+  // (2.4.0) how many entries race in each class
+  const classCounts = mc
+    ? mc.classes
+        .map(c => [c, mcRows.filter(x => !x.absent && x.driverId && x.raceClass === c.id).length])
+        .filter(([, n]) => n)
+        .map(
+          ([c, n]) =>
+            `<span class="hs-chip hs-classchip" style="--mc:${esc(/^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#63b9db')}">${esc(c.name)} · ${n}</span>`
+        )
+        .join('')
+    : '';
 
   const rivalSelection = allowRival ? VirtualRival.gridEntries(rows, allDrivers, rivalProfiles, track?.id) : { entries: [], errors: [] };
   const rivalFor = r => rivalSelection.entries.find(e => e.driverId === r.driverId);
@@ -289,7 +321,14 @@ async function renderHome() {
   const issues = [],
     rowMsgs = {}; // (1.58.0: what a row still needs is said in that row; it is in the list of issues too, so that Start stays off, but the list under the rows does not say it again)
   issues.push(...mcErrors);
-  issues.push(...rivalSelection.errors);
+  // (2.4.0) what a virtual rival still needs is said in its own lane; the rest (too many, twice) in the list
+  const rivalRowErr = rows.map(r =>
+    allowRival && isRival(r) && !r.absent
+      ? VirtualRival.entries([{ driverId: r.driverId, profileId: r.rivalProfileId || '' }], allDrivers, rivalProfiles, track?.id)
+          .errors[0] || ''
+      : ''
+  );
+  issues.push(...rivalSelection.errors.filter(e => !rivalRowErr.includes(e))); // (the lane says the rest, below)
   const rowMsg = (i, t) => {
     issues.push(t);
     rowMsgs[i] = t;
@@ -328,7 +367,11 @@ async function renderHome() {
       rows.forEach((r, i) => {
         if (rot && r.absent) return;
         if (isRival(r)) {
-          if (!rivalFor(r)) rowMsg(i, label(i) + ' needs a valid Rival Setup for this track.');
+          if (!rivalFor(r))
+            rowMsg(
+              i,
+              label(i) + (rivalRowErr[i] ? ': ' + rivalRowErr[i].replace(/^[^:]+: /, '') : ' needs a valid Rival Setup for this track.')
+            ); // (2.4.0: why, in its lane)
         } else if (!r.driverId || !r.carId) rowMsg(i, label(i) + ' needs a driver and a car.');
       });
     mcRowErrors.forEach((message, i) => {
@@ -499,14 +542,21 @@ async function renderHome() {
     typeShort ? `<span class="hs-chip hs-type"><b>${esc(typeShort)}</b></span>` : '',
     lenText ? `<span class="hs-chip">${esc(lenText)}</span>` : '',
     track ? `<span class="hs-chip">${Icons.svg('pin', { size: 14 })}${esc(track.name)}</span>` : '',
-    lanes ? `<span class="hs-chip">${lanes} lane${lanes === 1 ? '' : 's'}</span>` : ''
+    lanes ? `<span class="hs-chip">${lanes} lane${lanes === 1 ? '' : 's'}</span>` : '',
+    classCounts
   ].join('');
   const away = r => !!rot && r.absent === true; // (not here today: the places of this participant in the rotation stay empty)
   // a row: the team (only in a session with teams: the team is the participant, or the team of an Endurance Race), the driver (the drivers of the team when there is one) and the car
   // 1.55.0: a session of a championship lists the drivers of its roster first (those who have joined by this round); anybody else drives as a guest
   const driverOpts = (list, chosen, blank = '(choose)') => {
-    if (mc?.assignment === 'roster')
-      list = list.filter(d => d.driverType === 'virtual' || mc.classes.some(c => c.id === MultiClass.driverClass(mc, d.id)));
+    // (2.4.0) a Rival Setup without a virtual driver yet can be chosen right here: the driver is made when it is picked
+    const rivalAdd =
+      allowRival && blank === '(choose)' && rivalProfiles.length
+        ? `<optgroup label="Add a virtual rival">${rivalProfiles
+            .filter(p => !allDrivers.some(d => d.driverType === 'virtual' && d.virtualRivalSystem === p.id))
+            .map(p => `<option value="rival:${esc(p.id)}">${esc(p.name || 'Rival Setup')} · Virtual rival</option>`)
+            .join('')}<option value="rival:new">From a race… (Race Setup › Virtual Rivals)</option></optgroup>`
+        : '';
     if (!ch)
       return (
         `<option value="">${esc(blank)}</option>` +
@@ -515,7 +565,8 @@ async function renderHome() {
             d =>
               `<option value="${esc(d.id)}"${d.id === chosen ? ' selected' : ''}>${esc(titleOf('drivers', d))}${d.driverType === 'virtual' ? ' · Virtual' : ''}</option>`
           )
-          .join('')
+          .join('') +
+        rivalAdd
       );
     const rf = Champ.rosterFirst(list, ch.c, ch.ri + 1),
       opt = d =>
@@ -577,7 +628,7 @@ async function renderHome() {
       (heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '');
     return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
       <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
-      <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r) && allowRival ? rivalSelect(r, i) : sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r, mc, { cars, drivers, teams }), r.carId, mc?.assignment === 'roster' ? (MultiClass.assignedClass(r, mc, { cars, drivers, teams }) ? 'Choose a matching car' : 'Choose an assigned driver first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
+      <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r) && allowRival ? rivalSelect(r, i) : sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r, mc, { cars, drivers, teams }), r.carId, mc?.assignment === 'roster' ? (MultiClass.assignedClass(r, mc, { cars, drivers, teams }) ? 'Choose a matching car' : 'Choose a class first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
       ${more || (!isRival(r) && typeof PaddockBrowser !== 'undefined') ? `<div class="hs-more">${more}${!isRival(r) && typeof PaddockBrowser !== 'undefined' ? `<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r) || raceOn ? ' disabled' : ''} title="Browse available slotcars">Browse cars</button>` : ''}</div>` : ''}
       ${r.driverId && !gone && !byTeam ? `<span class="hs-avatar" aria-hidden="true" data-avatar-driver="${esc(r.driverId)}"><img src="${esc(homeAvatarCache.get(r.driverId) || (typeof Avatars !== 'undefined' ? Avatars.forLane(null, i) : ''))}" alt=""${homeAvatarCache.get(r.driverId) ? ' class="own"' : ''}></span>` : ''}
       ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
@@ -1046,6 +1097,25 @@ async function renderHome() {
       persist();
       return;
     }
+    // (2.4.0) a Rival Setup picked in a lane: its virtual driver (made once), or the Virtual Rivals page to record one
+    if (ev.target.dataset?.k === 'driverId' && String(ev.target.value).startsWith('rival:')) {
+      const pid = ev.target.value.slice(6),
+        i = Number((ev.target.closest('[data-row]') || {}).dataset?.row);
+      if (pid === 'new') {
+        state.tab = 'setup';
+        state.setupSub = 'virtualrivals';
+        return render();
+      }
+      const prof = rivalProfiles.find(p => p.id === pid);
+      if (!prof || !Number.isInteger(i) || !rows[i]) return renderHome();
+      let d = allDrivers.find(x => x.driverType === 'virtual' && x.virtualRivalSystem === pid);
+      if (!d) d = await api.add('drivers', { name: prof.name || 'Virtual Rival', driverType: 'virtual', virtualRivalSystem: pid });
+      rows[i].driverId = d.id;
+      rows[i].rivalProfileId = pid;
+      rows[i].carId = '';
+      persist();
+      return;
+    }
     state.rotMsg = null;
     const t = ev.target,
       dd = t.dataset || {};
@@ -1156,10 +1226,7 @@ async function renderHome() {
         r[k] = v;
         if (k === 'driverId') {
           delete r.rivalProfileId;
-          if (wasRival || isRival(r)) {
-            r.carId = '';
-            delete r.raceClass;
-          }
+          if (wasRival || isRival(r)) r.carId = ''; // (2.4.0: the class chosen for the lane stays, also for a rival)
         }
       }
       if (mc?.assignment === 'roster' && !MultiClass.carsFor(r, mc, { cars, drivers, teams }).some(c => c.id === r.carId)) r.carId = '';
@@ -1170,6 +1237,27 @@ async function renderHome() {
     if (sharedSelecting) return;
     const b = ev.target.closest('button');
     if (!b) return;
+    // (2.4.0) the class of an entry, chosen in its lane; a car without that class label is taken off the lane (in a system with driver assignments)
+    if (b.dataset.mcPick !== undefined) {
+      const r = rows[Number(b.dataset.mcPick)];
+      if (!r) return;
+      r.raceClass = b.dataset.val;
+      if (mc?.assignment === 'roster' && r.carId && !MultiClass.carsFor(r, mc, { cars, drivers, teams }).some(c => c.id === r.carId))
+        r.carId = '';
+      return persist();
+    }
+    // (2.4.0) the classes of this race become the defaults of the Multi-Class System
+    if (b.dataset && b.dataset.mcCopy !== undefined && mc) {
+      const sys = multiProfiles.find(p => p.id === setup.multiClass);
+      if (!sys) return;
+      const keep = (sys.driverClasses || []).filter(a => !rows.some(r => r.driverId === a.driverId && !isRival(r)));
+      const add = mcRows
+        .filter(r => r.driverId && !r.absent && !isRival(r) && r.raceClass)
+        .map(r => ({ driverId: r.driverId, classId: r.raceClass }));
+      await api.update('multiclasssystems', sys.id, { driverClasses: [...keep, ...add] });
+      await Dialog.alert(`${add.length} ${add.length === 1 ? 'driver is' : 'drivers are'} saved as defaults in ${sys.name}.`);
+      return renderHome();
+    }
     if (b.dataset.paddockPick !== undefined) {
       const i = Number(b.dataset.paddockPick);
       return PaddockBrowser.pick(

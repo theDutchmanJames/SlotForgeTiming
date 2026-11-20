@@ -45,6 +45,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket; connect inside, cars from the library, Commentary, Back to the guide | The setup guide on Home |
 | [Plugged In](#plugged-in) | The Home cards for a USB device that was plugged in: why they ask, a failed connect on the card, the DS model, Undo | Home |
 | [Profile Cards](#profile-cards) | Balance of Power and Time Tokens as named profiles: the Club default and profile cards with Used by; the editor of a profile as its window | Race Setup › Balance of Power, Time Tokens |
+| [Entry Classes](#entry-classes) | The class of an entry picked in its lane on Home, the class counts, a virtual rival added in a lane | Home (Start a race) |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1302,6 +1303,23 @@ html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:c
 .mb-strip{display:flex;align-items:center;gap:18px;height:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%)}
 ```
 
+## Entry Classes
+
+Home's lanes with a Multi-Class System (`renderer/landing.js`, `multiclass.js`; styles `.hs-cpick`, `.hs-classnote`, `.hs-classchip`). The class of every
+entry is chosen in its lane for this race and kept with the race setup's entry list; the system's driver list (now *Defaults*) gives the start.
+
+- **The class pick**: a button per class (`.hs-cpick`, Roboto Mono, 26 px), the chosen one outlined and tinted in the class colour; after it a small
+  check (`.hs-classnote`): *✓ Car is GT3* in green, *Choose a class* in amber.
+- **The counts**: chips beside the race chips (`.hs-classchip`, *GT3 · 2*), tinted in the class colour.
+- **Classes of this race** (the fold above the lanes): how it works, and *Copy these classes to the Multi-Class System as defaults*.
+- **A virtual rival**: the driver list of a lane has *Add a virtual rival* with the Rival Setups and *From a race…*; the rival's lane says what it still
+  needs (*Lane 4: This replay belongs to a different track.*).
+
+```css
+html .hs-cpick.on{border-color:var(--mc);background:color-mix(in srgb,var(--mc) 20%,transparent);color:var(--ink)}
+html .hs-chip.hs-classchip{border-color:color-mix(in srgb,var(--mc) 55%,var(--line));background:color-mix(in srgb,var(--mc) 14%,transparent)}
+```
+
 ## Profile Cards
 
 Race Setup › **Balance of Power** and **Time Tokens** (`renderer/profiles.js`; the editors are those of before, `bopui.js` and `tokenui.js`, editing the profile
@@ -2392,3 +2410,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Start Lights (rework) | The setup guide connects inside the guide, picks cars from the shared library, has Lanes & sensors (the Lane Check) and a Commentary step, and a Back to the guide pill |
 | 2026-11 | Plugged In | New: the detected hardware cards on Home say why they ask, keep a failed connect on the card, take the DS model, and can undo Not timing hardware |
 | 2026-11 | Profile Cards | New: Balance of Power and Time Tokens as named profiles a race setup chooses; the Club default keeps the settings of before |
+| 2026-11 | Entry Classes | New: the Multi-Class class of an entry picked in its lane on Home, class counts, copy to the system; a virtual rival added in a lane with its reason there |

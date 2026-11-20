@@ -29,23 +29,19 @@
     }
     return driverClass(p, row.driverId);
   }
+  // (2.4.0) the class chosen for this entry in the race (Home), when it is one of the system's classes
+  const chosenClass = (row, p) => (row && row.raceClass && p && p.classes.some(c => c.id === row.raceClass) ? row.raceClass : '');
   const carsFor = (row, p, db) =>
     p?.assignment === 'roster'
-      ? db.cars.filter(c => c.raceClass === assignedClass(row, p, db) && p.classes.some(k => k.id === c.raceClass))
+      ? db.cars.filter(c => c.raceClass === (chosenClass(row, p) || assignedClass(row, p, db)) && p.classes.some(k => k.id === c.raceClass))
       : db.cars;
   function entryIssues(p, rows, db) {
     if (p?.assignment !== 'roster') return [];
     return rows.flatMap((r, i) => {
       if (r.absent) return [];
-      const cls = assignedClass(r, p, db),
+      const cls = chosenClass(r, p) || assignedClass(r, p, db),
         label = r.teamId ? 'Team ' + (i + 1) : 'Entry ' + (i + 1);
-      if (!cls || !p.classes.some(c => c.id === cls))
-        return [
-          label +
-            (r.teamId
-              ? ' needs every team driver assigned to the same selected class.'
-              : ' needs a driver assigned to a selected class in the Multi-Class setup.')
-        ];
+      if (!cls || !p.classes.some(c => c.id === cls)) return [label + ' needs a class: choose it here.'];
       const car = db.cars.find(c => c.id === r.carId);
       return !car || car.raceClass !== cls
         ? [label + ' needs a slotcar labelled ' + (p.classes.find(c => c.id === cls)?.name || 'with its assigned class') + '.']
@@ -87,7 +83,7 @@
   }
   function resolve(row, p, db) {
     if (!p) return '';
-    if (p.assignment === 'roster') return assignedClass(row, p, db);
+    if (p.assignment === 'roster') return chosenClass(row, p) || assignedClass(row, p, db);
     if (row.raceClass) return row.raceClass;
     const source =
       p.assignment === 'team'

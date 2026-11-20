@@ -114,15 +114,15 @@ async function renderMultiClass(box) {
     },
     {
       id: 'assignments',
-      title: 'Driver assignments',
-      ask: 'Who drives in each selected class?',
+      title: 'Defaults',
+      ask: 'The class a driver starts in (optional)',
       icon: 'driver',
       open: true,
       body:
         (d.assignment !== 'roster'
           ? `<div class="mc-info">This existing system uses ${esc(d.assignment)} defaults. Its behavior is preserved until you switch. <button type="button" class="btn" id="mc-use-roster">Use driver assignments and matching cars</button></div>`
           : '') +
-        `<div id="mc-drivers"></div><div class="mc-info">Assign each participating driver to one selected class. On Home, that driver can only choose slotcars carrying the same Race Class label. Drivers left unassigned are not entered in this system.<p>For teams or endurance swaps, assign every driver sharing the car to the same class. Assignments lock for the event and survive lane rotations and driver swaps.</p></div>`
+        `<div class="mc-info">The class of every entry is chosen on Home, in its lane, for each race (and kept with the race setup). Here you can give drivers the class they start in; Home's <b>Copy these classes to the Multi-Class System</b> fills it from a race. On Home, a driver can only choose slotcars carrying the label of their class.</div><div id="mc-drivers"></div><div class="mc-info"><p>For teams or endurance swaps, assign every driver sharing the car to the same class. Assignments lock for the event and survive lane rotations and driver swaps.</p></div>`
     },
     {
       id: 'heats',
@@ -209,7 +209,7 @@ async function renderMultiClass(box) {
         ? drivers
             .map(
               driver =>
-                `<label class="field mc-driver-row"><span>${esc(driver.name || 'Unnamed driver')}</span><select data-driver-class="${esc(driver.id)}" aria-label="Race Class for ${esc(driver.name)}"><option value="">Not entered in this system</option>${options(
+                `<label class="field mc-driver-row"><span>${esc(driver.name || 'Unnamed driver')}</span><select data-driver-class="${esc(driver.id)}" aria-label="Race Class for ${esc(driver.name)}"><option value="">No default class</option>${options(
                   d.classes.map(c => [c.id, ed.defs.find(x => x.id === c.id)?.name || 'Missing class']),
                   M.driverClass(d, driver.id)
                 )}</select></label>`
@@ -224,8 +224,7 @@ async function renderMultiClass(box) {
     if (!d.classes.length) errors.push('Select at least one class.');
     if (d.assignment === 'roster') {
       if (d.classes.some(c => !cars.some(car => car.raceClass === c.id))) errors.push('Every selected class needs a labelled slotcar.');
-      if (!d.driverClasses.some(a => drivers.some(driver => driver.id === a.driverId) && d.classes.some(c => c.id === a.classId)))
-        errors.push('Assign at least one driver to a selected class.');
+      // (2.4.0: the class of every entry is chosen on Home for the race; the driver defaults here are optional)
     }
     if (d.classes.some(c => !ed.defs.find(x => x.id === c.id)?.name.trim())) errors.push('Each included class needs a name.');
     const names = d.classes.map(c =>

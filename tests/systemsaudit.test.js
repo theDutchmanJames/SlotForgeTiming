@@ -64,7 +64,7 @@ await test('resource profiles can be picked and exported without balances',()=>{
 });
 await test('car labels drive the class catalogue and enforce driver-car combinations',()=>{
  const defs=[{id:'gt',name:'GT3'},{id:'p',name:'Prototype'},{id:'unused',name:'Unused'}],db={cars:[{id:'gtcar',raceClass:'gt'},{id:'pcar',raceClass:'p'},{id:'unlabelled'}],drivers:[{id:'a'},{id:'b'}],teams:[]},p=M.clean({assignment:'roster',classes:defs.slice(0,2),driverClasses:[{driverId:'a',classId:'gt'},{driverId:'b',classId:'p'}]});
- assert.deepEqual(M.catalogue(db.cars,defs).map(c=>c.id),['gt','p']);assert.equal(M.resolve({driverId:'a',raceClass:'p'},p,db),'gt');assert.deepEqual(M.carsFor({driverId:'a'},p,db).map(c=>c.id),['gtcar']);assert.equal(M.carsFor({driverId:'unknown'},p,db).length,0);assert(M.entryIssues(p,[{driverId:'a',carId:'pcar'}],db).length);assert.equal(M.entryIssues(p,[{driverId:'a',carId:'gtcar'}],db).length,0);
+ assert.deepEqual(M.catalogue(db.cars,defs).map(c=>c.id),['gt','p']);assert.equal(M.resolve({driverId:'a',raceClass:'p'},p,db),'p');assert.equal(M.resolve({driverId:'a'},p,db),'gt');/* (2.4.0: the class chosen in the lane wins; the system's driver list is the default) */assert.deepEqual(M.carsFor({driverId:'a'},p,db).map(c=>c.id),['gtcar']);assert.equal(M.carsFor({driverId:'unknown'},p,db).length,0);assert(M.entryIssues(p,[{driverId:'a',carId:'pcar'}],db).length);assert.equal(M.entryIssues(p,[{driverId:'a',carId:'gtcar'}],db).length,0);
  db.cars[0].raceClass='p';assert(M.entryIssues(p,[{driverId:'a',carId:'gtcar'}],db).length);assert.equal(M.entryIssues(p,[{absent:true}],db).length,0);
 });
 await test('a shared car requires the whole team roster to be assigned to the same class',()=>{
