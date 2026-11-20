@@ -325,4 +325,5 @@ module.exports = [
   ['findeverything.test.js', 'node-test'],
   ['helpdesk.test.js', 'node-test'],
   ['layouttry.test.js', 'node-test'],
+  ['sensorbench.test.js', 'node-test'],
 ];

@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
+| [Sensor Bench](#sensor-bench) | The Trackmate's Live monitor (lane lights, the time between passes, Trackcall, what came in) and Track power (the state, a switch, what a race does, the relay) | App Settings › Timing Hardware › Trackmate |
 | [Try It](#try-it) | The Layout Editor with a sample race (moments, lanes, speed), who uses a layout, the words a text widget does not know, Delete with a replacement; Audio sets and Picture sets under Libraries | Customization › Layout Editor |
 | [Help Desk](#help-desk) | The "?" beside every page title and F1: the page's article in a drawer; the Help home (your first race ticked, read lately, a tile per group); counts, Before / Next, settings in the search | Every page; App Settings › Help |
 | [Find Everything](#find-everything) | Find (Ctrl K) over everything: chips, rows with facts, the best match and its links, a preview with actions, Recent and Do | Ctrl K on every page |
@@ -1424,6 +1425,30 @@ html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--pane
 html .so-dot.warn{background:#f2b705}
 ```
 
+## Sensor Bench
+
+The Trackmate page's Live monitor and Track power (`renderer/tmmonitor.js` hit, call, html, rules, powerHtml; `hardwareui.js` tmMonDraw, tmMonLeds,
+tmPowerDraw, tmPowerLoad; styles `.tmx`, `.tmx-lane`, `.tmx-led`, `.tmx-log`, `.tmx-state`, `.tmx-sw`, `.tmx-race`). The sheet converter leaves `.tmx` alone.
+
+- **Live monitor**: *● Listening* in green and what it is for (*Nothing is saved; this is not a race*), **Clear**. A card per lane: a 4 px stripe of the
+  lane colour on the left, a 34 px light (green with a glow while a car is over a sensor of that lane), *LANE 1* in Barlow italic caps, the passes and how
+  long ago, and on the right the time between the last two passes in 26 px Roboto Mono, *last lap · best* with the best in purple. A pass is a run of
+  letters from one sensor; passes closer than a second are one car.
+- **Trackcall**: a dashed row with a small light, the presses, how long ago and the time since the press before.
+- **What came in**: the last 12 lines in Roboto Mono on striped rows: the clock to the millisecond, *Lane 2* in its lane colour, the time since the pass
+  before (*· best*); a sensor switched off by the lane count in amber (*is a cable on the wrong input?*).
+- **Track power**: one row: a 56 px bolt tile, *THE TRACK NOW*, *POWER ON* in green or *POWER OFF* in red in Barlow italic caps (*Not switched yet* when
+  the app has not switched it), when and the relay; an **Off | On** switch on the right (On green, Off red when chosen). Under it *IN A RACE THE APP
+  SWITCHES IT · <the race setup on Home>*: the lights, lights out, Yellow, Red (or the Trackcall button when it switches the power), the interface lost,
+  each ON / OFF in Roboto Mono with where it is set. Then **Power relay** as a two-choice switch, and the safety line.
+- **Debounce**: a hint under its row says what the number does.
+
+```css
+.tmx-lane{grid-template-columns:44px minmax(0,1fr) auto;border-left:4px solid var(--c);border-radius:12px}
+.tmx-led.on{background:var(--tmx-green);border-color:var(--tmx-green);box-shadow:0 0 18px var(--tmx-green)}
+.tmx-state h3{font:800 italic 34px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+```
+
 ## Try It
 
 The Layout Editor tried with a race (`renderer/layouttry.js` the bar, paintFrame, chip, cards, askDelete, remove; `layoutcheck.js` unknownWords,
@@ -2667,3 +2692,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Find Everything | New: Find (Ctrl K) searches every kind of thing (teams, races, championships, systems, Customization, Help), ranks by word start and typos, shows linked things, filter chips, a preview with actions (Enter, Tab), Recent and Do |
 | 2026-11 | Help Desk | New: the "?" beside every page title and F1 open the page's article in a drawer; every page has an article and every page article opens its page; the Help home (first race ticked from your data, read lately, a tile per group); counts, the page article first, Before / Next, marked search with settings; a Racing Rules article |
 | 2026-11 | Try It | New: the Layout Editor plays a sample race (moments, 2 to 8 lanes, 1× and 4×; Try it on the cards); who uses a layout on the cards and in a chip; a warning for words a text widget does not know; Delete names the setups and asks what they use instead (a backup first); Audio sets and Picture sets under Libraries |
+| 2026-11 | Sensor Bench | New: the Trackmate Live monitor (lane lights, the time between two passes and the best, Trackcall, what came in, a sensor switched off flagged) and Track power (the state, an Off/On switch, what a race does with it from the race setup, the relay as a switch); a Debounce hint |

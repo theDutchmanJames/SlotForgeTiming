@@ -7676,3 +7676,58 @@ html .lt-usedlist button{display:flex;justify-content:space-between;gap:10px;min
 .lt-instead{display:grid;gap:6px;font-size:12.5px;color:var(--muted)}
 @media (max-width:900px){.lt-hint{display:none}.lt-clock{min-width:0}}
 .lt-note{display:block;margin-top:6px;color:var(--muted);font-size:12px}
+/* ---- 2.4.0 Sensor Bench (SlotForgeRestyle.md "Sensor Bench"): the Trackmate's Live monitor and Track power ---- */
+.tmx{--tmx-green:#2fb67c;--tmx-green-text:#3ecf8e;--tmx-purple:#b57aff;--tmx-amber:#e0a800;color:var(--ink)}
+[data-theme="light"] .tmx{--tmx-green-text:#1e8a4c;--tmx-purple:#7c3aed;--tmx-amber:#8a6400}
+.tmx-k{font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.tmx-mon{display:grid;gap:14px}
+.tmx-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.tmx-top>span{flex:1;min-width:200px}
+.tmx-live{color:var(--tmx-green-text)}
+.tmx-wait{color:var(--muted)}
+.tmx-lanes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.tmx-lane{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:4px 14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;background:var(--panel)}
+.tmx-led{display:block;width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:color-mix(in srgb,var(--ink) 8%,transparent);transition:background .12s,box-shadow .12s}
+.tmx-lane .tmx-led{grid-row:span 2}
+.tmx-led.on{background:var(--tmx-green);border-color:var(--tmx-green);box-shadow:0 0 18px var(--tmx-green)}
+.tmx-lane h4{margin:0;font:800 italic 22px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+.tmx-lane small{color:var(--muted);font-size:12px}
+.tmx-t{grid-row:span 2;text-align:right}
+.tmx-t b{display:block;font:700 26px/1.1 'SF Roboto Mono',Consolas,monospace}
+.tmx-t span{font:600 11px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+.tmx-t em{font-style:normal;color:var(--tmx-purple)}
+.tmx-call{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;border:1px dashed var(--line);border-radius:12px;font-size:13px}
+.tmx-call .tmx-led{width:18px;height:18px}
+.tmx-call span:last-child{color:var(--muted)}
+.tmx-log{margin:0;padding:0;list-style:none;display:grid;gap:2px;font:500 12.5px 'SF Roboto Mono',Consolas,monospace}
+.tmx-log li{display:grid;grid-template-columns:100px 90px minmax(0,1fr);gap:10px;padding:4px 8px;border-radius:6px}
+.tmx-log li:nth-child(odd){background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.tmx-log i{font-style:normal;font-weight:700;color:var(--c)}
+.tmx-none{margin:0;color:var(--muted);font-size:13px}
+/* the track power */
+.tmx-pw{display:grid;gap:14px}
+.tmx-state{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:18px;align-items:center;padding:18px 20px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.tmx-state.on{background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--tmx-green) 12%,transparent),transparent 60%),var(--panel)}
+.tmx-bolt{display:grid;place-items:center;width:56px;height:56px;border-radius:14px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--muted);font-size:28px}
+.tmx-state.on .tmx-bolt{background:color-mix(in srgb,var(--tmx-green) 18%,var(--panel));color:var(--tmx-green-text)}
+.tmx-state h3{margin:2px 0;font:800 italic 34px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:0}
+.tmx-state.on h3{color:var(--tmx-green-text)}
+.tmx-state.off h3{color:#e5484d}
+.tmx-state small,.tmx-rel small{display:block;color:var(--muted);font-size:12.5px}
+.tmx-sw{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+html .tmx-sw button{min-height:0;margin:0;padding:9px 16px;border:0;border-right:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;color:var(--ink);font:600 13px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+html .tmx-sw button:last-child{border-right:0}
+html .tmx-sw button.on{background:var(--tmx-green);color:#06140d}
+html .tmx-sw button.on.off{background:#e5484d;color:#fff}
+html .tmx-rel .tmx-sw button.on{background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--ink)}
+html .tmx-sw button:disabled{opacity:.45;cursor:not-allowed}
+.tmx-race{padding:14px 16px;border:1px solid var(--line);border-radius:12px}
+.tmx-race ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.tmx-race li{display:grid;grid-template-columns:minmax(150px,220px) 80px minmax(0,1fr);gap:12px;font-size:13px}
+.tmx-race li b{font:700 12px 'SF Roboto Mono',Consolas,monospace}
+.tmx-race li b.on{color:var(--tmx-green-text)}
+.tmx-race li b.off{color:#e5484d}
+.tmx-race li span:last-child{color:var(--muted)}
+.tmx-rel{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid var(--line);border-radius:12px;font-size:13px}
+.tmx-safe{margin:0;color:var(--muted);font-size:12.5px}
+@media (max-width:700px){.tmx-state{grid-template-columns:44px minmax(0,1fr)}.tmx-state .tmx-sw{grid-column:1/-1}.tmx-race li{grid-template-columns:1fr auto}.tmx-race li span:last-child{grid-column:1/-1}}

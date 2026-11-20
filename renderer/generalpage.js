@@ -620,7 +620,7 @@ const SettingsRail = (() => {
             );
         parts.forEach(p => {
           if (p.closest && p.closest('.pp-frame')) return; // (the Parallel Port page keeps its own controls)
-          if (p.matches && (p.matches('.pl, .cb-on') || p.querySelector(':scope > .pl, :scope > .bv'))) return; // (2.4.0: the Paddock Pit Lane, the Engineer's Bench and the Backup Vault are drawn as they are)
+          if (p.matches && (p.matches('.pl, .cb-on') || p.querySelector(':scope > .pl, :scope > .bv, :scope > .tmx'))) return; // (2.4.0: the Paddock Pit Lane, the Engineer's Bench and the Backup Vault are drawn as they are)
           if (SettingsSheet.fresh(p)) SettingsSheet.convert(p);
           SettingsSheet.folds(p);
           // the short words that open a section become its Page Note: the section's picture and those words

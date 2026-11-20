@@ -331,6 +331,7 @@ for (const f of require('./renderer-scripts.cjs').expand([
   'help.js',
   'hardware.js',
   'trackmate.js',
+  'tmmonitor.js',
   'hardwareui.js',
   'zipfile.js',
   'arduinosketch.js',
@@ -14995,7 +14996,10 @@ const say = (m, c) => {
   await E('hw-nc').onchange({ target: { value: '0' } });
   await E('hw-deb').onchange({ target: { value: '3' } });
   await E('hw-auto').onchange({ target: { checked: false } });
-  say('the power relay type can be chosen', E('hwbox').innerHTML.includes('id="hw-relay"'));
+  say(
+    'the power relay type can be chosen (2.4.0: a two-choice switch on Track power)',
+    E('hwbox').innerHTML.includes('data-tmx-relay="1"')
+  );
   say(
     'each sensor has a lane choice',
     E('hwbox').innerHTML.includes('data-sensor="0"') && E('hwbox').innerHTML.includes('data-sensor="1"')

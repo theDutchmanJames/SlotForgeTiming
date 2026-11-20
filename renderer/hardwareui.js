@@ -15,7 +15,10 @@ let hw = {
   hide: true,
   t0: 0,
   lit: Array(9).fill(null),
-  ledTimers: []
+  ledTimers: [],
+  mon: typeof TmMonitor !== 'undefined' ? TmMonitor.create() : null, // (2.4.0, "Sensor Bench": the passes the Live monitor shows)
+  wall: Date.now() - (typeof performance !== 'undefined' ? performance.now() : 0),
+  powerAt: ''
 };
 
 const tmSettings = () => {
@@ -33,6 +36,7 @@ const tmSettings = () => {
 const LED_HOLD = 1000;
 const tmLeds = () => {
   const on = Trackmate.ledsOn(hw.lit, performance.now(), LED_HOLD, 9);
+  tmMonLeds(on);
   on.forEach((v, i) => {
     const el = document.getElementById(i === 8 ? 'hw-led-call' : 'hw-led-' + i);
     if (el) {
@@ -42,6 +46,46 @@ const tmLeds = () => {
   });
   return on;
 };
+// (2.4.0, SlotForgeRestyle.md "Sensor Bench") the Live monitor: a lane is lit while one of its sensors is; drawn again on a pass, and every second for "2 s ago"
+const tmMonLit = on => {
+  const map = Trackmate.laneMap((typeof state !== 'undefined' && state.settings && state.settings.tmLaneMap) || null),
+    lit = Array(9).fill(false);
+  on.forEach((v, i) => {
+    if (v) lit[i === 8 ? 8 : map[i]] = true;
+  });
+  return lit;
+};
+function tmMonLeds(on) {
+  if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+  const lit = tmMonLit(on);
+  document.querySelectorAll('[data-tmx-led]').forEach(el => el.classList.toggle('on', !!lit[Number(el.dataset.tmxLed)]));
+}
+function tmMonDraw() {
+  const el = typeof document !== 'undefined' && typeof document.getElementById === 'function' && document.getElementById('tmx-mon');
+  if (!el || !hw.mon || typeof TmMonitor === 'undefined') return;
+  const html = TmMonitor.html(hw.mon, {
+    lanesOn: tmSettings().lanes,
+    open: hw.open,
+    now: performance.now(),
+    wall: hw.wall,
+    lit: tmMonLit(Trackmate.ledsOn(hw.lit, performance.now(), LED_HOLD, 9))
+  });
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+// the once-a-second redraw ("2 s ago") runs only while the monitor is on the page, and never keeps a test process alive
+function tmMonTick() {
+  if (hw.monTimer || typeof setInterval !== 'function') return;
+  hw.monTimer = setInterval(() => {
+    const el = typeof document !== 'undefined' && typeof document.getElementById === 'function' && document.getElementById('tmx-mon');
+    if (!el || el.isConnected === false) {
+      clearInterval(hw.monTimer);
+      hw.monTimer = null;
+      return;
+    }
+    tmMonDraw();
+  }, 1000);
+  if (hw.monTimer && typeof hw.monTimer.unref === 'function') hw.monTimer.unref();
+}
 const tmLed = i => {
   hw.lit[i] = performance.now();
   tmLeds();
@@ -100,8 +144,36 @@ async function tmSend(list) {
 // switch the track power through the interface's relay
 async function tmPower(on) {
   const ok = await tmSend([Hardware.trackmatePower(on, tmSettings().relayNC)]);
-  if (ok) Trackmate.link.setPower(on);
+  if (ok) {
+    Trackmate.link.setPower(on);
+    hw.powerAt = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    tmPowerDraw();
+  }
   return ok;
+}
+// (2.4.0, "Sensor Bench") the Track power tab: the state, the switch, what a race does (the race setup chosen on Home), the relay
+let tmPowerSetup = null;
+function tmPowerDraw() {
+  const el = typeof document !== 'undefined' && typeof document.getElementById === 'function' && document.getElementById('tmx-pw');
+  if (!el || typeof TmMonitor === 'undefined') return;
+  el.innerHTML = TmMonitor.powerHtml({
+    power: Trackmate.link.connected ? Trackmate.link.power : null,
+    at: hw.powerAt,
+    relayNC: tmSettings().relayNC,
+    open: hw.open,
+    setupName: tmPowerSetup ? tmPowerSetup.name : '',
+    setup: tmPowerSetup
+  });
+}
+async function tmPowerLoad() {
+  try {
+    const id = state.settings && state.settings.lastSetupId,
+      list = id && api.list ? await api.list('racesetups') : [];
+    tmPowerSetup = (list || []).find(x => x.id === id) || null;
+  } catch {
+    tmPowerSetup = null;
+  }
+  tmPowerDraw();
 }
 // the setup the Trackmate needs before it reports sensors: number of lanes, sensor type, debounce, start
 let tmRaceLanes = 0; // the lanes of the race that is open: a reconnect or "Send setup now" during that race tells the interface those, not the Lanes of the settings
@@ -116,6 +188,18 @@ const tmSetup = lanes => {
 // bytes from the port -> whole messages for the monitor, and race events through Trackmate.link
 function tmReceive(bytes) {
   Trackmate.link.feed(bytes).forEach(e => {
+    if (e.type === 'lane' && hw.mon && typeof TmMonitor !== 'undefined') {
+      const t = tmSettings();
+      if (
+        TmMonitor.hit(hw.mon, e.lane - 1, performance.now(), { laneMap: Trackmate.laneMap(state.settings.tmLaneMap), lanesOn: t.lanes }) ===
+        'pass'
+      )
+        tmMonDraw();
+    }
+    if (e.type === 'call' && hw.mon && typeof TmMonitor !== 'undefined') {
+      TmMonitor.call(hw.mon, performance.now());
+      tmMonDraw();
+    }
     if (e.type === 'lane') tmLed(e.lane - 1);
     if (e.type === 'tick') {
       const steady = hw.prevTick === undefined || hw.prevTick === e.ms;
@@ -350,7 +434,7 @@ function renderHardwareSettings(box) {
     <details class="tm-section" data-tm-section="sensors" open><summary><i aria-hidden="true">◉</i><strong>Lane sensors</strong><span>${esc(t.lanes)} lanes · ${t.nc ? 'normally closed' : 'normally open'}</span><b aria-hidden="true">⌃</b></summary><div class="tm-content"><div class="row"><strong>Trackmate setup</strong><label>Lanes when Home has no race set up (a race uses its track's lanes) <input type="number" id="hw-lanes" min="1" max="8" value="${esc(t.lanes)}" style="width:4em"></label>
       <label>Sensors <select id="hw-nc"><option value="1"${t.nc ? ' selected' : ''}>normally closed</option><option value="0"${t.nc ? '' : ' selected'}>normally open</option></select></label>
       <label>Debounce (0-9) <input type="number" id="hw-deb" min="0" max="9" value="${esc(t.deb)}" style="width:4em"></label>
-      <button class="btn" id="hw-init" ${hw.open ? '' : 'disabled'}>Send setup now</button></div>
+      <button class="btn" id="hw-init" ${hw.open ? '' : 'disabled'}>Send setup now</button></div><p class="hint tmx-deb">How long a sensor must stay changed before the Trackmate reports it. 0 reports at once; a higher number ignores short flickers. The app starts at 1.</p>
     <div class="row"><strong>Sensors</strong></div>
     <div class="tm-sensors">${sensors}</div>
     <div class="tm-sensors"><div class="tm-sensor tm-call"><span class="led${litNow[8] ? ' on' : ''}" id="hw-led-call" role="img" aria-label="Track Call: ${litNow[8] ? 'triggered' : 'not triggered'}"></span><span><b>Track Call · W</b><small>Press the hardware Track Call button to test it</small></span></div></div>
@@ -358,8 +442,8 @@ function renderHardwareSettings(box) {
     <p class="muted">The light beside a sensor turns green while a car is over it, so you can test a sensor and its cable without starting a race. The lane choice says which lane the sensor counts for: use it when the sensor leads are plugged into the other lane, swapping two sensors here is quicker than changing the cables.</p>
     <p class="muted">All eight sensors (A to H) are supported. The Trackmate only reports as many sensors as <em>Lanes</em> above (a race uses the lanes of its track), so set it to the number of sensors you have connected; the others are dimmed.</p>
     <p class="muted">The setup is sent every time the app connects and when a race opens. Change the sensor type if laps do not register.</p></div></details>
-    <details class="tm-section" data-tm-section="monitor"><summary><i aria-hidden="true">⌁</i><strong>Live monitor</strong><span>Check what each sensor reports</span><b aria-hidden="true">⌄</b></summary><div class="tm-content"><div class="tm-monitor"><i class="tm-dot${hw.open ? ' on' : ''}" aria-hidden="true"></i><div><strong>${hw.open ? 'Sensor lights are live' : 'Connect to begin monitoring'}</strong><small>The lights in Lane sensors turn green while a car is over a sensor. This tests the hardware without recording a lap.</small></div></div><p class="hint">Detailed incoming bytes, command history and a downloadable log are in Advanced connection.</p></div></details>
-    <details class="tm-section" data-tm-section="power"><summary><i aria-hidden="true">ϟ</i><strong>Track power</strong><span>Relay control</span><b aria-hidden="true">⌄</b></summary><div class="tm-content"><div class="tm-power"><div><strong>Track power relay</strong><small>Only use this if a suitable relay circuit is connected to the Trackmate.</small></div><div class="tm-actions"><button class="btn" id="hw-pon" ${hw.open ? '' : 'disabled'}>Power on</button><button class="btn" id="hw-poff" ${hw.open ? '' : 'disabled'}>Power off</button></div></div><label>Power relay <select id="hw-relay"><option value="0"${t.relayNC ? '' : ' selected'}>Normally open</option><option value="1"${t.relayNC ? ' selected' : ''}>Normally closed</option></select><small>If Power on switches the track off, use the other relay setting.</small></label></div></details>
+    <details class="tm-section" data-tm-section="monitor"><summary><i aria-hidden="true">⌁</i><strong>Live monitor</strong><span>Check what each sensor reports</span><b aria-hidden="true">⌄</b></summary><div class="tm-content"><div class="tmx" id="tmx-mon">${typeof TmMonitor !== 'undefined' && hw.mon ? TmMonitor.html(hw.mon, { lanesOn: t.lanes, open: hw.open, now: performance.now(), wall: hw.wall }) : ''}</div></div></details>
+    <details class="tm-section" data-tm-section="power"><summary><i aria-hidden="true">ϟ</i><strong>Track power</strong><span>Relay control</span><b aria-hidden="true">⌄</b></summary><div class="tm-content"><div class="tmx" id="tmx-pw">${typeof TmMonitor !== 'undefined' ? TmMonitor.powerHtml({ power: Trackmate.link.connected ? Trackmate.link.power : null, at: hw.powerAt, relayNC: t.relayNC, open: hw.open, setupName: tmPowerSetup ? tmPowerSetup.name : '', setup: tmPowerSetup }) : ''}</div></div></details>
     <details class="tm-section" data-tm-section="advanced"><summary><i aria-hidden="true">⚙</i><strong>Advanced connection</strong><span>Serial settings and data log</span><b aria-hidden="true">⌄</b></summary><div class="tm-content">
       <div class="row"><button class="btn" id="hw-hid" ${can.hid ? '' : 'disabled'}>Find a USB (HID) device</button>
         <label>Speed (baud) <select id="hw-baud">${bauds.map(b => `<option${b === hw.baud ? ' selected' : ''}>${b}</option>`).join('')}</select></label>
@@ -464,9 +548,26 @@ function renderHardwareSettings(box) {
     renderHardwareSettings(box);
   };
   $('hw-init').onclick = () => tmSetup();
-  $('hw-pon').onclick = () => tmPower(true);
-  $('hw-poff').onclick = () => tmPower(false);
-  $('hw-relay').onchange = e => save({ tmRelayNC: e.target.value === '1' });
+  // (2.4.0, "Sensor Bench") the Live monitor and the Track power tab: drawn now, then by themselves
+  tmMonDraw();
+  tmMonTick();
+  tmPowerLoad();
+  if (box.addEventListener && !box._tmx) {
+    box._tmx = true;
+    box.addEventListener('click', async ev => {
+      const b = ev.target && ev.target.closest ? ev.target.closest('[data-tmx-clear],[data-tmx-power],[data-tmx-relay]') : null;
+      if (!b) return;
+      if (b.hasAttribute('data-tmx-clear')) {
+        hw.mon = TmMonitor.create();
+        return tmMonDraw();
+      }
+      if (b.dataset.tmxPower !== undefined) return tmPower(b.dataset.tmxPower === '1');
+      if (b.dataset.tmxRelay !== undefined) {
+        await save({ tmRelayNC: b.dataset.tmxRelay === '1' });
+        tmPowerDraw();
+      }
+    });
+  }
   $('hw-baud').onchange = e => {
     hw.baud = Number(e.target.value);
   };
