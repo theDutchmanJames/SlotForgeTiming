@@ -182,6 +182,7 @@ async function abOpen() {
 async function abOpenNow() {
   const L = ArduinoBox.link;
   L.setMap(abSettings().laneMap);
+  if (typeof L.setPitMap === 'function') L.setPitMap((typeof state !== 'undefined' && state.settings && state.settings.abPitMap) || null); // (2.4.0 review: the pit sensors' lanes, chosen in Lane Check)
   try {
     ab.t0 = performance.now();
     await ab.dev.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });

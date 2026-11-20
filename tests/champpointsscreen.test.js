@@ -4,6 +4,8 @@ const vm = require('vm'), fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..') + '/';
 const schema = require(R + 'schema.js');
 let fails = 0;
+let summaryReached = false;
+process.on('exit', code => { if (!summaryReached && code === 0) { console.log('FAIL the test stopped before its end (a step waited for something that never came)'); process.exitCode = 1; } });
 process.on('unhandledRejection', e => { console.log('UNHANDLED:', e.stack || e.message); process.exit(1); });
 const mk = () => new Proxy({ innerHTML: '', style: {}, dataset: {}, hidden: false, value: '', checked: false, disabled: false, classList: { add() {}, remove() {}, toggle() {} } },
   { get: (t, k) => (k in t ? t[k] : k === 'parentElement' ? mk() : () => mk()), set: (t, k, v) => { t[k] = v; return true; } });
@@ -31,7 +33,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of require('./renderer-scripts.cjs').expand(['listnum.js', 'bop.js', 'weather.js', 'tyretemperature.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'multiclass.js', 'virtualrival.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'season.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'strategywidgets.js', 'pitwidgets.js', 'allinone.js', 'chartextras.js', 'chartwidgets.js', 'widgets.js', 'frame.js', 'laphighlights.js', 'widgetview.js', 'backdrop.js','audiocalls.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'racereport.js', 'report.js', 'canvas.js', 'liveshare.js','widgetpreview.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationwords.js', 'championshipwords.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'setupwords.js', 'systemwords.js', 'formui.js', 'railform.js', 'temperatureeditor.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editordata.js', 'editor.js', 'charteditor.js','tokenui.js', 'bopui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'virtualrivalui.js', 'rotationui.js', 'championshipui.js', 'audiostudio.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js'])) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of require('./renderer-scripts.cjs').expand(['listnum.js', 'bop.js', 'weather.js', 'tyretemperature.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'multiclass.js', 'virtualrival.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'season.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'strategywidgets.js', 'pitwidgets.js', 'allinone.js', 'chartextras.js', 'chartwidgets.js', 'widgets.js', 'frame.js', 'laphighlights.js', 'widgetview.js', 'backdrop.js','audiocalls.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'racereport.js', 'report.js', 'canvas.js', 'liveshare.js','widgetpreview.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationwords.js', 'championshipwords.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'setupwords.js', 'systemwords.js', 'formui.js', 'railform.js', 'temperatureeditor.js', 'database.js', 'landing.js', 'raceover.js', 'race.js', 'undo.js', 'editordata.js', 'editor.js', 'charteditor.js','tokenui.js', 'bopui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'virtualrivalui.js', 'rotationui.js', 'championshipui.js', 'audiostudio.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js'])) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -330,17 +332,24 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   key(' '); await until(() => phase() === 'running', 5000); await wait(60);
   for (let n = 0; n < 3; n++) for (const k of ['1', '2', '3', '4']) { key(k); await wait(60); }
   await until(() => phase() !== 'running', 6000); await until(() => saved.length > 0, 6000); await wait(250);
-  { const el = E('champpanel'), h = el.innerHTML;
-    say('when the race is saved, the panel shows the points of this race: the title, "Not awarded yet", the four drivers and the buttons', saved.length === 1 && el.dataset.cpbox === store.sessions[0].id && el.hidden === false && h.includes('Championship points: Club Cup 2026, Round 1') && h.includes('Not awarded yet') && h.includes('Award these points') && h.includes('Do not count this race') && ['Alex', 'Sam', 'Kim', 'Lee'].every(n => h.includes(n)));
-    say('...the places follow the result of the race and the points follow the places (the four of them add up to 25 + 18 + 15 + 12 = 70)', (h.match(/<td class="r">(25|18|15|12)<\/td>/g) || []).length === 4);
-    await cp(el, 'award', store.sessions[0].id); await wait(40);
-    say('Award these points on the race screen marks the saved race, and the panel says so', typeof store.sessions[0].champ.awarded === 'string' && E('champpanel').innerHTML.includes('Points awarded') && E('champpanel').innerHTML.includes('1 of 2 rounds driven')); }
-  { saved.length = 0; E('champpanel').dataset.cpbox = ''; E('champpanel').innerHTML = ''; run("state.settings.champTag = null; state.race = null");
+  // (2.4.0 Chequered Flag: the points of the race are on the after-race screen, awarded at once, with Undo; 2.4.0 review: this part had
+  // stopped checking anything since then, without saying so)
+  { await until(() => /Title fight/.test(E('raceover').innerHTML) && typeof (store.sessions[0] && store.sessions[0].champ && store.sessions[0].champ.awarded) === 'string', 6000);
+    const h = String(E('raceover').innerHTML);
+    const roAct = act => E('raceover').onclick({ target: { closest: () => ({ dataset: { ro: act } }) } });
+    say('when the race is saved, the after-race screen has the title fight of the championship: its name, the round and the four drivers', saved.length === 1 && h.includes('Title fight') && h.includes('Club Cup 2026') && h.includes('after Round 1') && ['Alex', 'Sam', 'Kim', 'Lee'].every(n => h.includes('<b>' + n + '</b>')));
+    say('...the points follow the places (+25, +18, +15, +12), and they are in the standings at once, with Undo', ['+25', '+18', '+15', '+12'].every(x => h.includes('>' + x + '<')) && h.includes('The points of this race are in the standings') && h.includes('data-ro="champ-undo"') && typeof store.sessions[0].champ.awarded === 'string');
+    roAct('champ-undo'); await until(() => !store.sessions[0].champ.awarded, 3000); await wait(60);
+    say('Undo takes the points out of the standings, and the card offers Award these points', !store.sessions[0].champ.awarded && E('raceover').innerHTML.includes('These points are not in the standings yet') && E('raceover').innerHTML.includes('data-ro="champ-award"'));
+    roAct('champ-award'); await until(() => typeof store.sessions[0].champ.awarded === 'string', 3000); await wait(60);
+    say('...and Award these points puts them back', typeof store.sessions[0].champ.awarded === 'string' && E('raceover').innerHTML.includes('The points of this race are in the standings')); }
+  { saved.length = 0; E('raceover').innerHTML = ''; run("state.settings.champTag = null; state.race = null");
     await openRace({ ...SRA }, store.tracks[0], rows(1, 2)); key(' '); await until(() => phase() === 'running', 5000); await wait(60);
     for (let n = 0; n < 3; n++) { key('1'); await wait(80); key('2'); await wait(80); }
     await until(() => saved.length > 0, 8000); await wait(200);
-    say('a race that does not count for a championship has no panel', saved.length === 1 && !('champ' in saved[0][0]) && !E('champpanel').dataset.cpbox && E('champpanel').innerHTML === ''); }
+    say('a race that does not count for a championship has no title fight', saved.length === 1 && !('champ' in saved[0][0]) && !E('raceover').innerHTML.includes('Title fight')); }
 
+  summaryReached = true;
   console.log(fails ? fails + ' CHAMPIONSHIP POINTS SCREEN TESTS FAILED' : 'ALL CHAMPIONSHIP POINTS SCREEN TESTS PASSED');
   process.exit(fails ? 1 : 0);
 })();

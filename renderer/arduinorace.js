@@ -86,9 +86,9 @@
         if (i >= 0) o.crossCar(i, e.at); // (a crossing without a real time never reaches the race)
       } else if (e.type === 'pit') {
         if (!pitBySensor) return;
-        const i = carOf(e.pit);
+        const i = carOf(Number.isInteger(e.lane) ? e.lane : e.pit);
         if (i >= 0) (e.in ? o.blockCar : o.unblockCar)(i);
-      } // pit sensor n belongs to lane n
+      } // (2.4.0 review) the lane chosen for the pit sensor in Lane Check (sensor n is lane n until then), the same as Lane Check shows
       else if (e.type === 'call') {
         if (o.trackcall) o.trackcall();
       } else if (e.type === 'button') {

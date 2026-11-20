@@ -208,6 +208,13 @@
   };
 
   // ---- the link ----
+  // (2.4.0 review) the saved pit sensor map (abPitMap): for each of the 8 pit sensors the lane (from 0); anything that is not one is sensor n = lane n
+  function pitMap(saved) {
+    return Array.from({ length: 8 }, (_, i) => {
+      const v = Array.isArray(saved) ? saved[i] : undefined;
+      return Number.isInteger(v) && v >= 0 && v < 8 ? v : i;
+    });
+  }
   function createLink(o = {}) {
     const clock = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
     const L = {
@@ -225,7 +232,8 @@
       covered: Array(8).fill(false),
       lit: Array(8).fill(null),
       pitCovered: Array(8).fill(false),
-      map: TM.laneMap(null)
+      map: TM.laneMap(null),
+      pitMap: pitMap(null) // (2.4.0 review: pit sensor -> lane, chosen in Lane Check by clicking the pit light; sensor n is lane n until then)
     };
     const subs = new Set(),
       statusSubs = new Set();
@@ -273,6 +281,9 @@
     };
     L.setMap = saved => {
       L.map = TM.laneMap(saved);
+    };
+    L.setPitMap = saved => {
+      L.pitMap = pitMap(saved);
     };
     L.reset = () => {
       P = parser();
@@ -340,7 +351,7 @@
               on = e.sign === '+';
             if (L.pitCovered[pit] !== on) {
               L.pitCovered[pit] = on;
-              emit({ type: 'pit', pit, in: on, at: toPc(hwMs) });
+              emit({ type: 'pit', pit, lane: L.pitMap[pit], in: on, at: toPc(hwMs) });
             }
           } else if (e.tag === 'K' && okN(e.n) && L.map[e.n - 1] !== undefined)
             emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
@@ -401,6 +412,7 @@
     KEEPALIVE_MS,
     QUIET,
     laneMap: TM.laneMap,
+    pitMap,
     swapLane: TM.swapLane,
     link: createLink()
   };

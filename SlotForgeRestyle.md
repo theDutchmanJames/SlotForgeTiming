@@ -60,6 +60,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Find Everything](#find-everything) | Find (Ctrl K) over everything: chips, rows with facts, the best match and its links, a preview with actions, Recent and Do | Ctrl K on every page |
 | [Season Calendar](#season-calendar) | Championship rounds with real dates and the season strip, Fill the dates, the calendar file; Adjustments in the standings | Race Setup › Championships, Results › Championships |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
+| [Pit Lights](#pit-lights) | A light per pit sensor in Lane Check that lights amber when a car is on it; click it and choose its lane, saved at once and used by the race | Lane Check (Arduino box) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
 | [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
@@ -2546,6 +2547,21 @@ html .paddock-browser .pb-car{display:flex;flex-direction:column;padding:0;borde
 html .paddock-browser .pb-car>img,html .paddock-browser .pb-car>.pb-car-placeholder{width:100%;height:118px;object-fit:contain;border-bottom:1px solid var(--line)}
 ```
 
+## Pit Lights
+
+Lane Check (`renderer/sensortest.js`), for hardware with its own pit sensors (the Arduino box). Once the lanes are done, a box (`.lc-pits`) under the
+lanes says *A pit sensor lights up when a car is on it. Click a light to choose its lane.* Then a row of tiles (`.lc-pitsensor`), one per pit sensor
+(at least as many as the race has lanes): a small round light, *Pit sensor 3* and its lane (*Lane 2 · seen*). A sensor that a car covers lights amber
+for a moment (`.lc-lit`, *Lit up just now*) and is picked (`.lc-sel`, accent outline). Under the tiles a bar (`.lc-pitpick`): *Pit sensor 3 is for*,
+a button per lane (the current one filled) and *Saved at once · the race uses it*. Choosing a lane that another sensor had gives that sensor this
+sensor's old lane, so every lane keeps one sensor. The map is the setting `abPitMap`; the race reads it too (before 2.4.0 the race used sensor n = lane n
+while Lane Check used the lane sensor order).
+
+```css
+html .lc-pitsensor.lc-lit .lc-pitlight{background:radial-gradient(circle at 40% 35%,#fde68a,#f59e0b 60%,#b45309);box-shadow:0 0 14px rgba(245,158,11,.6)}
+html .lc-pitpick{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px}
+```
+
 ## Choice Rows
 
 In a [Settings Sheet](#settings-sheet), a row that holds **only a radio button** is one big button: the whole row picks it, the chosen row is tinted
@@ -2721,3 +2737,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Sensor Bench | New: the Trackmate Live monitor (lane lights, the time between two passes and the best, Trackcall, what came in, a sensor switched off flagged) and Track power (the state, an Off/On switch, what a race does with it from the race setup, the relay as a switch); a Debounce hint |
 | 2026-11 | Design pass fixes | Small: the race bar status up to 260 px with the whole line as a tooltip; the Tracks bar on one line at 1366 px (the word *Sort* goes under 1500 px); the Results search says *Race or driver*; *Used in N layouts* under chart designs and picture sets (`.lt-usedline`); an amber warning line on a Widget Builder card with a word its text does not know (`.wk-warn`); no *(optional)* beside the track length |
 | 2026-11 | Quiet Pages | New: page notes folded to one line with More; explanations on two lines; one red button per page (Parallel Port, the standings, the Widget Builder; Delete muted on cards); Ready / Not ready on race setup cards and a legend for the list dot; values under their widget titles; the Plugins empty card; Display and units and Share the race on one page |
+| 2026-11 | Pit Lights | New: Lane Check shows a light per pit sensor (Arduino box); a car on it lights it amber, click it and choose its lane; saved at once (`abPitMap`) and the race uses the same lanes |

@@ -4447,6 +4447,22 @@ html .st-lane.st-seen{border-color:color-mix(in srgb,var(--st-ok) 45%,var(--line
 html dialog .st-body>.row.st-foot{flex-direction:row;justify-content:space-between;margin:0;padding:0;border:0}
 html .st-lanes{grid-template-columns:repeat(auto-fit,minmax(120px,200px));justify-content:center}
 html .st-lanes{grid-template-columns:repeat(var(--n,4),minmax(0,1fr));max-width:calc(var(--n,4) * 210px);margin-left:auto;margin-right:auto}
+/* 2.4.0 review, SlotForgeRestyle.md "Pit Lights" (sensortest.js): a light per pit sensor that lights up when a car is on it; click it, then choose its lane */
+html .lc-pits{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+html .lc-pithint{margin:0 0 10px;font-size:13px}
+html .lc-pitgrid{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:8px}
+html .lc-pitsensor{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font:inherit;cursor:pointer}
+html .lc-pitsensor:hover{border-color:color-mix(in srgb,var(--ink) 35%,var(--line))}
+html .lc-pitsensor b{font-size:13px}
+html .lc-pitsensor small{font-size:12px;color:var(--muted)}
+.lc-pitlight{width:22px;height:22px;border-radius:50%;margin-bottom:4px;background:var(--sf-lightoff,#1b1f25);box-shadow:var(--sf-lightoff-in,inset 0 2px 4px rgba(0,0,0,.6));transition:background .15s,box-shadow .15s}
+html .lc-pitsensor.lc-lit{border-color:#f59e0b;background:color-mix(in srgb,#f59e0b 14%,var(--panel))}
+html .lc-pitsensor.lc-lit .lc-pitlight{background:radial-gradient(circle at 40% 35%,#fde68a,#f59e0b 60%,#b45309);box-shadow:0 0 14px rgba(245,158,11,.6)}
+html .lc-pitsensor.lc-lit small{color:#fbbf24}
+html .lc-pitsensor.lc-sel{outline:2px solid var(--accent);outline-offset:1px}
+html .lc-pitpick{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+html .lc-pitpick small{margin-left:auto;font-size:12px}
+@media (prefers-reduced-motion:reduce){.lc-pitlight{transition:none}}
 /* 2.4.0 Flag Dialog (dialogs.js): the app's own Yes / No and message windows. A badge in front of the title says the kind (? a question, i a message,
    ! an action that cannot be undone), the text lines up with the title, and a dangerous action is a filled red button */
 html dialog.appdlg{width:min(470px,94vw);padding:22px 24px 18px;border-top:1px solid var(--line)}

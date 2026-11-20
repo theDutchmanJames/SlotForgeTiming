@@ -20,6 +20,8 @@
       wrong: Array(n).fill(null), // (the lane whose sensor lit when this lane was asked for)
       swap: null, // { lane, lit, sensor }: the lane asked for, and the lane (and sensor) that lit instead
       pit: Array(n).fill(false),
+      pitLit: Array(8).fill(null), // (2.4.0 review: when each pit sensor last lit up)
+      pitSel: null, // (the pit sensor whose lane is being chosen)
       call: null,
       power: { off: false, on: false }
     };
@@ -70,6 +72,15 @@
     T.wrong.fill(null);
   }
   const pitSeen = (T, lane) => (Number.isInteger(lane) && lane >= 0 && lane < T.lanes ? ((T.pit[lane] = true), lane) : -1);
+  // (2.4.0 review) pit sensor `sensor` is for `lane`: the sensor that had that lane takes the lane this one had, so every lane keeps one sensor
+  function pitAssign(map, sensor, lane) {
+    const m = map.slice(),
+      old = m[sensor],
+      other = m.indexOf(lane);
+    m[sensor] = lane;
+    if (other >= 0 && other !== sensor) m[other] = old;
+    return m;
+  }
   const callSeen = (T, at) => (T.call = Number.isFinite(at) ? at : Date.now());
   const powerSet = (T, on) => (on ? (T.power.on = true) : (T.power.off = true));
   // the checks of the panel, as a list: lanes, then what the hardware has (pit sensors, the Track call button, track power)
@@ -163,7 +174,14 @@
       const mapOf = () => (g.Trackmate ? g.Trackmate.laneMap(settings.abLaneMap) : Array.from({ length: 8 }, (_, i) => i));
       return hits(L, {
         listen: cb => on(L, 'hit', e => cb(e.lane, e.at, undefined, mapOf().indexOf(e.lane))),
-        pits: cb => on(L, 'pit', e => (e.in ? cb(Array.isArray(L.map) && L.map[e.pit] !== undefined ? L.map[e.pit] : e.pit) : undefined)),
+        // (2.4.0 review) the pit sensor's lane is the one chosen by clicking its light (abPitMap), the same as in the race
+        pits: cb => on(L, 'pit', e => (e.in ? cb(Number.isInteger(e.lane) ? e.lane : e.pit) : undefined)),
+        pitSensors: {
+          key: 'abPitMap',
+          listen: cb => on(L, 'pit', e => cb(e.pit, !!e.in)),
+          of: () => (Array.isArray(L.pitMap) ? L.pitMap.slice() : Array.from({ length: 8 }, (_, i) => i)),
+          apply: m => typeof L.setPitMap === 'function' && L.setPitMap(m)
+        },
         calls: cb => on(L, 'call', e => cb(e.at)),
         power:
           C && typeof g.abSend === 'function'
@@ -287,6 +305,33 @@
                 ? '<b class="lc-go">Go</b><small>drive now</small>'
                 : '<b>–</b><small>waiting</small>'
         }</span>${caps.pit ? `<span class="lc-pit"><span>Pit lane</span><b class="${T.pit[i] ? 'lc-yes' : ''}">${T.pit[i] ? '✓ seen' : 'waiting'}</b></span>` : ''}</div>`;
+      // (2.4.0 review) the pit sensors: a light per sensor that lights up when a car is on it; click it, then choose its lane
+      const ps = src.pitSensors,
+        pmap = ps ? ps.of() : null,
+        pitN = ps ? Math.min(8, Math.max(T.lanes, ...T.pitLit.map((t, i) => (t !== null ? i + 1 : 0)))) : 0,
+        litNow = i => T.pitLit[i] !== null && Date.now() - T.pitLit[i] < 1500;
+      const pits =
+        on && ps && st[0].done
+          ? `<div class="lc-pits"><p class="muted lc-pithint">A pit sensor lights up when a car is on it. Click a light to choose its lane.</p><div class="lc-pitgrid" style="--n:${cols(pitN)}">${Array.from(
+              { length: pitN },
+              (_, i) =>
+                `<button type="button" class="lc-pitsensor${litNow(i) ? ' lc-lit' : ''}${T.pitSel === i ? ' lc-sel' : ''}" data-lc-pitsel="${i}" aria-pressed="${T.pitSel === i}"><span class="lc-pitlight" aria-hidden="true"></span><b>Pit sensor ${i + 1}</b><small>${
+                  litNow(i)
+                    ? 'Lit up just now'
+                    : pmap[i] < T.lanes
+                      ? `Lane ${pmap[i] + 1}${T.pit[pmap[i]] ? ' · seen' : ''}`
+                      : 'No lane in this race'
+                }</small></button>`
+            ).join('')}</div>${
+              T.pitSel !== null && T.pitSel < pitN
+                ? `<div class="lc-pitpick" role="group" aria-label="The lane of pit sensor ${T.pitSel + 1}"><span>Pit sensor ${T.pitSel + 1} is for</span>${Array.from(
+                    { length: T.lanes },
+                    (_, l) =>
+                      `<button type="button" class="btn sm${pmap[T.pitSel] === l ? ' primary' : ''}" data-lc-pitlane="${l}" aria-pressed="${pmap[T.pitSel] === l}"${racing() ? ' disabled' : ''}>Lane ${l + 1}</button>`
+                  ).join('')}<small class="muted">${racing() ? 'Not during a race' : 'Saved at once · the race uses it'}</small></div>`
+                : ''
+            }</div>`
+          : '';
       const p = caps.power ? src.power.get() : null;
       const extra =
         on && (caps.call || caps.power)
@@ -326,6 +371,7 @@
         (sw
           ? `<div class="lc-swap" role="alert"><div><b>${esc(sw.head)}</b><p>${esc(sw.text)}</p></div>${canSwap() && !racing() ? `<button type="button" class="btn primary sm" data-lc-swap>${esc(sw.button)}</button>` : ''}<button type="button" class="btn sm ghost" data-lc-notnow>Not now</button></div>`
           : '') +
+        pits +
         extra +
         `<div class="row st-foot lc-foot"><p class="st-sum ${s.ok ? 'st-ok' : 'st-warn'}" role="status">${esc(s.text)}</p><button type="button" class="btn ghost sm" data-streset>Start again</button>${close}</div>`;
     };
@@ -348,6 +394,18 @@
         offs.push(
           src.pits(lane => {
             if (!closed && pitSeen(T, lane) >= 0) draw();
+          })
+        );
+      if (src.pitSensors)
+        offs.push(
+          src.pitSensors.listen((sensor, onIt) => {
+            if (closed || !Number.isInteger(sensor) || sensor < 0 || sensor > 7) return;
+            if (onIt) {
+              T.pitLit[sensor] = Date.now();
+              if (!busy) T.pitSel = sensor; // (the light that lit is the one to choose a lane for)
+              timers.push(setTimeout(() => !closed && draw(), 1600)); // (it dims again)
+            }
+            draw();
           })
         );
       if (src.calls)
@@ -384,8 +442,10 @@
     };
     const saveMap = async (key, m) => {
       if (typeof o.saveMap === 'function') return o.saveMap(key, m);
-      if (typeof api === 'undefined') return { [key]: m };
-      const st = await api.setSettings({ [key]: m });
+      // (2.4.0 review) the app's window.api: inside this file the name `api` is Lane Check's own export, so the lane swap and the pit lights saved nothing
+      const appApi = g.api || root.api;
+      if (!appApi || typeof appApi.setSettings !== 'function') return { [key]: m };
+      const st = await appApi.setSettings({ [key]: m });
       if (typeof state !== 'undefined') state.settings = st;
       return st;
     };
@@ -416,6 +476,27 @@
           await new Promise(r => timers.push(setTimeout(r, 500)));
           busy = false;
           if (!src.connected() && !note) note = 'Not connected yet: plug it in, or open Timing Hardware to choose its port.';
+          return draw();
+        }
+        if (b.dataset.lcPitsel !== undefined) {
+          T.pitSel = Number(b.dataset.lcPitsel);
+          return draw();
+        }
+        if (b.dataset.lcPitlane !== undefined && src.pitSensors && T.pitSel !== null && !racing()) {
+          const sensor = T.pitSel,
+            lane = Number(b.dataset.lcPitlane),
+            m = pitAssign(src.pitSensors.of(), sensor, lane);
+          b.disabled = true;
+          try {
+            const st = await saveMap(src.pitSensors.key, m);
+            Object.assign(live, st && st[src.pitSensors.key] ? st : { [src.pitSensors.key]: m });
+            src.pitSensors.apply(m);
+            pitSeen(T, lane);
+            T.pitSel = null;
+            note = `Pit sensor ${sensor + 1} is now lane ${lane + 1}.`;
+          } catch (e) {
+            note = 'Could not save the pit sensor: ' + e.message;
+          }
           return draw();
         }
         if (b.hasAttribute('data-lc-swap') && T.swap && src.map) {
@@ -507,6 +588,7 @@
     swapped,
     noOrder,
     pitSeen,
+    pitAssign,
     callSeen,
     powerSet,
     steps,

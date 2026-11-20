@@ -76,13 +76,24 @@ test('the checks: lanes, then the pit lane, the Track call button and the track 
 test('the source says what the hardware has: pit sensors, the call button, power and the lane map', () => {
   const link = () => {
     const subs = new Set();
-    return { connected: true, power: null, on: f => (subs.add(f), () => subs.delete(f)), onStatus: () => () => {}, emit: e => subs.forEach(f => f(e)) };
+    return {
+      connected: true,
+      power: null,
+      on: f => (subs.add(f), () => subs.delete(f)),
+      onStatus: () => () => {},
+      emit: e => subs.forEach(f => f(e))
+    };
   };
   const tm = link(),
     ab = link();
   ab.map = [1, 0, 2, 3];
   const g = {
-    Trackmate: { link: tm, laneMap: (m, n = 8) => (Array.isArray(m) ? m.concat(Array.from({ length: n }, (_, i) => i).slice(m.length)) : Array.from({ length: n }, (_, i) => i)), swapLane: () => [] },
+    Trackmate: {
+      link: tm,
+      laneMap: (m, n = 8) =>
+        Array.isArray(m) ? m.concat(Array.from({ length: n }, (_, i) => i).slice(m.length)) : Array.from({ length: n }, (_, i) => i),
+      swapLane: () => []
+    },
     tmPower: async () => true,
     ArduinoBox: { link: ab, C: { mainPower: on => [on ? 1 : 0] } },
     abSend: async () => true
@@ -102,9 +113,12 @@ test('the source says what the hardware has: pit sensors, the call button, power
   assert.equal(a.map.key, 'abLaneMap');
   const pits = [];
   a.pits(l => pits.push(l));
-  ab.emit({ type: 'pit', pit: 0, in: true });
-  ab.emit({ type: 'pit', pit: 0, in: false });
-  assert.deepEqual(pits, [1], 'the Arduino box: a covered pit sensor, on its lane');
+  ab.emit({ type: 'pit', pit: 0, lane: 1, in: true });
+  ab.emit({ type: 'pit', pit: 0, lane: 1, in: false });
+  ab.emit({ type: 'pit', pit: 2, in: true });
+  // (2.4.0 review, Pit Lights) the lane the box gives the pit sensor (chosen in Lane Check), else sensor n = lane n, the same as the race
+  assert.deepEqual(pits, [1, 2], 'the Arduino box: a covered pit sensor, on its lane');
+  assert.equal(a.pitSensors.key, 'abPitMap');
   const ds = ST.source('ds', {}, { DsTiming: { link: link() } });
   assert(!ds.pits && !ds.calls && !ds.power && !ds.map, 'DS: the lanes only');
 });
@@ -113,7 +127,10 @@ test('the panel is wired: Connect, Open Timing Hardware, Swap, Not now, the powe
   const s = code('renderer/sensortest.js');
   for (const k of ['data-lc-connect', 'data-lc-hw', 'data-lc-swap', 'data-lc-notnow', 'data-lc-power', 'data-stclose', 'data-lc-pill'])
     assert(s.includes(k), k);
-  assert(has(s, "if (typeof DESK_CONNECT !== 'undefined' && DESK_CONNECT[o.hw]) return DESK_CONNECT[o.hw]();"), 'the same connect as the Timing Desk');
+  assert(
+    has(s, "if (typeof DESK_CONNECT !== 'undefined' && DESK_CONNECT[o.hw]) return DESK_CONNECT[o.hw]();"),
+    'the same connect as the Timing Desk'
+  );
   assert(has(s, 'const racing = () =>'), 'no power switching or swapping during a race');
   assert(has(code('renderer/styles.css'), '.lc-swap{'));
 });
