@@ -61,7 +61,7 @@ test('connected timing hardware that is not in use is named, on the page, at Sta
   vm.createContext(ctx);vm.runInContext(app.slice(start,end)+';this.u=unusedTimingConnected;this.t=unusedTimingText;',ctx);
   assert.deepEqual(JSON.parse(JSON.stringify(ctx.u())),['ds']);assert(/DS Electronics is connected but not the timing hardware in use \(Trackmate Interface\), so its laps are not counted/.test(ctx.t()));
   ctx.state.settings.timingHw='ds';assert.equal(ctx.u().length,0);assert.equal(ctx.t(),'');
-  assert(app.includes('is not counting laps.</strong>')&&app.includes('for races</button>'),'the hardware page warns plainly and offers the switch');
+  assert(require('fs').readFileSync(require('path').join(__dirname,'..','renderer','hwdeskview.js'),'utf8').includes('Not connected · no laps are counted')&&require('fs').readFileSync(require('path').join(__dirname,'..','renderer','hwdeskview.js'),'utf8').includes("label: 'Connect & use'"),'the hardware page warns plainly and offers the switch (2.4.0: the big card of the Timing Desk)');
   assert(src('renderer/landing.js').includes("unusedTimingText(state.settings)"),'Start race asks first');
   assert(require('./source.cjs').has(require('./source.cjs').code('renderer/race.js'),'id="hwunused"'),'the race screen shows it');
 });

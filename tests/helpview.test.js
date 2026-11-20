@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),Help=require('../renderer/help'),V=require('../renderer/helpview');
 const v=V.create({folders:Help.folders,WELCOME:Help.WELCOME}),topics=Help.folders(),ids=v.groups.flatMap(g=>g.ids);
-assert.equal(topics.length,120,'all current topics after retiring Phidget support, with Database lists and Record Book (2.4.0)');assert(!ids.includes('phidget'));assert(ids.includes('paddock'));assert(ids.includes('dscapture'));assert(ids.includes('sqlitestorage'));assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
+assert.equal(topics.length,121,'all current topics after retiring Phidget support, with Database lists, Record Book and Timing Desk (2.4.0)');assert(!ids.includes('phidget'));assert(ids.includes('paddock'));assert(ids.includes('dscapture'));assert(ids.includes('sqlitestorage'));assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
 for(const t of topics){assert(v.search(t.title).some(x=>x.id===t.id),'search reaches '+t.id);assert(v.select(t.id));assert(v.html().includes(t.body),'full article is available: '+t.id);}
 assert.equal(v.select('not-a-topic'),false);assert(v.select('start-guide'));assert(v.html().includes('Your first race'));
 assert.equal(v.search('Lap Highlights')[0].id,'laphighlights');assert(v.search('flash').some(t=>t.id==='laphighlights'));

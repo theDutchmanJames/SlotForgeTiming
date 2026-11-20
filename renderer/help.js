@@ -1218,15 +1218,28 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'timingdesk',
+          title: 'Timing Desk',
+          note: 'What counts the laps, Connect & use, the lane order',
+          body: `<ul>
+          <li><b>App Settings › Timing Hardware › Overview</b> shows what counts the laps in a big card: connected or not, the lanes (from the track of the next race), and <b>Test the sensors</b>. Under it a card per lane lights up when a car crosses its sensor, with the last lap and the number of crossings.</li>
+          <li>Every interface is a card. <b>Connect &amp; use</b> makes it the one that counts the laps and connects it (a remembered or plugged-in device connects by itself; else its Connection opens). Only one counts the laps at a time.</li>
+          <li>An interface page has the same big card on top and its parts as tabs (Connection, Lane sensors, …). <b>Diagnostics</b> at the bottom shows the developer tools: raw data, the HID finder, sending bytes, DS captures.</li>
+          <li><b>Find the lane order</b> (Trackmate and Arduino, when connected): drive one car over the sensor of lane 1, then lane 2, and so on. Timing says which lanes were swapped and fixes the order when you press Use this order.</li>
+          <li><b>Forgotten devices</b> lists the USB devices you said are not timing hardware. <b>Ask again</b> lets Timing offer them again when they are plugged in.</li>
+          <li>The DS Electronics model and serial settings are remembered when the app restarts.</li>
+        </ul>`
+        },
+        {
           id: 'hardware',
           title: 'Timing hardware',
           note: 'Trackmate, Arduino, Parallel Port and hardware status',
           body: `
         <ul>
-          <li>App Settings, <b>Timing Hardware</b>: at the top you choose the <b>Timing hardware in use</b>: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b>, the <b>Arduino Sketch</b>, <b>Parallel Port</b>, <b>DS Electronics</b> or a <b>Plugin interface</b>. One at a time: only the one in use connects by itself, counts race laps and shows on Home and the race screen (green: connected, red: not). If it is not connected, Start race asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino Sketch the one in use. Connecting one on its own page does <b>not</b> put it in use: the page, Start race and the race screen then warn that its laps do not count.</li>
+          <li>App Settings, <b>Timing Hardware</b>: the Overview says what counts the laps: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b>, the <b>Arduino Sketch</b>, <b>Parallel Port</b>, <b>DS Electronics</b> or a <b>Plugin interface</b>. One at a time: press <b>Connect &amp; use</b> on a card to make it the one in use; only that one connects by itself, counts race laps and shows on Home and the race screen (green: connected, red: not). If it is not connected, Start race asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino Sketch the one in use.</li>
           <li>Below that, Timing Hardware has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB, check the sensors (the lights show which one is seen) and choose the lane of each. The <b>Track Call</b> light flashes green when its button is pressed, so you can check it without a race.</li>
           <li>The Trackmate can also switch the <b>track power</b> (relay) and has a <b>Trackcall</b> button. What they do is set in the race setup.</li>
-          <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> supports DS-200 and DS-300 timing; other models are capture-only. <b>oXigen Digital</b> is a place held for it: there is nothing to set up there yet.</li>
+          <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> supports DS-200 and DS-300 timing; other models are capture-only. <b>oXigen Digital</b> is a card on the Overview: it is not supported yet.</li>
           <li>The Monitor shows what the box sends, to find out why a lap did not count.</li>
           <li>No hardware? Use the number keys, or <b>Simulated cars</b>.</li>
         </ul>`

@@ -68,7 +68,11 @@
     ],
     ['widgets', 'Race screens & widgets', []],
     ['audio', 'Audio & appearance', ['audio', 'ambient', 'audioconditions', 'audiocategories', 'audioevents', 'look']],
-    ['hardware', 'Timing hardware', ['hardware', 'arduino', 'arduinoracelock', 'interfacepages', 'parallel', 'timingplugins']],
+    [
+      'hardware',
+      'Timing hardware',
+      ['timingdesk', 'hardware', 'arduino', 'arduinoracelock', 'interfacepages', 'parallel', 'timingplugins']
+    ],
     [
       'results',
       'Results & race control',

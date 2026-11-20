@@ -6672,3 +6672,77 @@ html:is([data-theme="light"],[data-theme="ocean"]) :is(.rb-time,.rb-best,.rb-pb 
 @media (max-width:1100px){html .rb-cols{grid-template-columns:minmax(0,1fr)}html .rb-side{position:static}}
 @media (max-width:700px){html .rb-row{grid-template-columns:42px minmax(0,1fr) 70px}html .rb-pod,html .rb-chev{display:none}html .rb-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 html .rb-wbody>*{flex:none}
+
+/* ---- Timing Desk (2.4.0, SlotForgeRestyle.md "Timing Desk"): App Settings › Timing Hardware (renderer/hwdesk.js, hwdeskview.js) ---- */
+html .hd-hero{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:22px;align-items:center;margin:0 0 16px;padding:20px 22px;border:1px solid var(--line);border-radius:18px;background:var(--panel);color:var(--ink)}
+html .hd-hero.ok{background:radial-gradient(130% 120% at 0% 0%,color-mix(in srgb,#3ecf8e 9%,var(--panel)),var(--panel) 60%)}
+html .hd-hero.warn{background:radial-gradient(130% 120% at 0% 0%,color-mix(in srgb,#f2b705 9%,var(--panel)),var(--panel) 60%)}
+html .hd-dev{width:150px;height:96px;border-radius:14px;display:grid;place-items:center;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 60%,var(--panel));color:var(--ink)}
+html .hd-k{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .hd-id h1{margin:4px 0 6px;font:700 italic 38px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+html .hd-state{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600}
+html .hd-state i{width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+html .hd-state.ok{color:#3ecf8e;background:color-mix(in srgb,#3ecf8e 13%,transparent)}
+html .hd-state.warn{color:#f2b705;background:color-mix(in srgb,#f2b705 14%,transparent)}
+html .hd-state.ready{color:#60a5fa;background:color-mix(in srgb,#3b82f6 14%,transparent)}
+html .hd-state.off{color:var(--muted);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+html .hd-state.off i{box-shadow:none}
+html .hd-facts{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;color:var(--muted);font-size:12.5px}
+html .hd-facts b{font:600 13px 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+html .hd-note{margin:10px 0 0;font-size:13px;color:var(--ink)}
+html .hd-acts{display:flex;flex-direction:column;gap:8px;min-width:190px}
+html .hd-acts .btn{height:36px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+html .hd-lanes{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:10px;margin:0 0 18px}
+html .hd-lane{position:relative;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);overflow:hidden}
+html .hd-lane::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+html .hd-lane .h{display:flex;align-items:center;justify-content:space-between}
+html .hd-lane .h b{font:700 italic 18px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hd-led{width:16px;height:16px;border-radius:50%;background:color-mix(in srgb,var(--ink) 12%,var(--panel));border:2px solid color-mix(in srgb,var(--ink) 18%,transparent);transition:background .15s,box-shadow .15s}
+html .hd-led.hit{background:var(--c);border-color:var(--c);box-shadow:0 0 14px var(--c)}
+html .hd-lane .t{margin-top:8px;font:700 22px 'SF Roboto Mono',Consolas,monospace}
+html .hd-lane small{display:block;color:var(--muted);font-size:11.5px}
+html .hd-lane .sensor{margin-top:6px;font:500 11.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .hd-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 10px}
+html .hd-h h3{margin:0;font:700 italic 22px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hd-h span{color:var(--muted);font-size:12.5px}
+html .hd-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+html .hd-card{display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink)}
+html .hd-card.use{border-color:color-mix(in srgb,#3ecf8e 50%,var(--line));box-shadow:inset 0 0 0 1px color-mix(in srgb,#3ecf8e 30%,transparent)}
+html .hd-card.soon{opacity:.55}
+html .hd-card .ico{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 8%,var(--panel))}
+html .hd-card b{display:block;font:700 italic 17px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hd-card small{display:block;color:var(--muted);font-size:12px}
+html .hd-card .st{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px}
+html .hd-card .ft{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;align-items:center;min-height:36px;padding-top:8px;border-top:1px solid var(--line);font-size:12px}
+html .hd-dot{width:8px;height:8px;border-radius:50%;background:#5b636d;flex:none}
+html .hd-dot.use{background:#3ecf8e;box-shadow:0 0 8px #3ecf8e}html .hd-dot.ready{background:#3b82f6}html .hd-dot.warn{background:#f2b705}
+html .sr-sectabs{display:inline-flex;flex-wrap:wrap;align-self:flex-start;gap:2px;margin:0 0 14px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+html .sr-sectab{height:32px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+html .sr-sectab.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);font-weight:600}
+html .sr-sectab:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+html .sr-tabgap{width:1px;margin:6px 4px;background:var(--line)}
+html .gs-dual #hwbox .tm-header,html .gs-dual #hwbox .pp-header,html .gs-dual #hwbox .tm-rail,html .gs-dual #hwbox .pp-rail{display:none}
+html .gs-dual #hwbox .tm-body,html .gs-dual #hwbox .pp-body{display:block}
+html .gs-dual #hwbox .tm-frame,html .gs-dual #hwbox .pp-frame{border:0;background:transparent;padding:0}
+html .hd-fold{display:flex;align-items:center;gap:10px;margin:16px 0 0;padding:12px 16px;border:1px dashed color-mix(in srgb,var(--ink) 22%,var(--line));border-radius:12px;color:var(--muted);font-size:13px;cursor:pointer}
+html .hd-fold b{color:var(--ink)}html .hd-fold input{margin-left:auto}
+html .hd-forgot{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+html .hd-fr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-top:1px solid var(--line);font-size:13px}
+html .hd-fr:first-child{border-top:0}html .hd-fr small{display:block;color:var(--muted);font-size:11.5px}
+html dialog.hd-win{width:min(760px,calc(100vw - 48px));max-width:none}
+html .hd-whd h2{margin:2px 0 0;font:700 italic 28px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hd-wb{display:flex;flex-direction:column;gap:14px;margin:12px 0}
+html .hd-wb p{margin:0}
+html .hd-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+html .hd-step{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);text-align:center}
+html .hd-step .big{width:54px;height:54px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;font:700 22px 'SF Roboto Mono',Consolas,monospace;border:3px solid var(--c);color:var(--c)}
+html .hd-step.done .big{background:var(--c);color:#111}
+html .hd-step.now{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 0 24px color-mix(in srgb,var(--c) 30%,transparent)}
+html .hd-step b{font-size:13px}html .hd-step small{color:var(--muted);font-size:12px}
+html .hd-step .btn{margin-top:6px}
+html .hd-say{padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,#f2b705 45%,var(--line));background:color-mix(in srgb,#f2b705 8%,var(--panel));font-size:14px}
+html .hd-say.ok{border-color:color-mix(in srgb,#3ecf8e 45%,var(--line));background:color-mix(in srgb,#3ecf8e 8%,var(--panel))}
+html:is([data-theme="light"],[data-theme="ocean"]) .hd-state.ok{color:#16803f}
+html:is([data-theme="light"],[data-theme="ocean"]) .hd-state.warn{color:#8a6400}
+@media (max-width:900px){html .hd-hero{grid-template-columns:minmax(0,1fr)}html .hd-dev{display:none}html .hd-acts{flex-direction:row;flex-wrap:wrap}html .hd-lanes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+html #hwhero:has(.btn.primary)~#hwbox .btn.primary{background:color-mix(in srgb,var(--ink) 8%,var(--panel));border-color:var(--line);color:var(--ink)}

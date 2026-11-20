@@ -205,6 +205,8 @@
     "renderer/database/garageactions.js",
     "renderer/recordbook.js",
     "renderer/database/recordbookview.js",
+    "renderer/hwdesk.js",
+    "renderer/hwdeskview.js",
     "renderer/report.js",
     "renderer/resources.js",
     "renderer/resourceui.js",

@@ -1,6 +1,6 @@
 // DS-200/DS-300 race timing and passive capture diagnostics for other DS models.
 // No protocol commands are sent. Timing remains the race controller.
-// Setting kept: dsType (the model that was chosen). The serial settings are only kept while the app runs.
+// Settings kept: dsType (the model that was chosen) and dsSerial (2.4.0: the serial settings, remembered like the model).
 let dsc = {
   dev: null,
   info: {},
@@ -17,6 +17,13 @@ let dsc = {
   capture: null
 };
 
+// (2.4.0) the serial settings that were saved, the first time they are needed
+const dscSavedCfg = () => {
+  if (!dsc.cfgLoaded && typeof state !== 'undefined' && state.settings && state.settings.dsSerial)
+    dsc.cfg = Hardware.serialConfig(state.settings.dsSerial);
+  dsc.cfgLoaded = true;
+  return dsc.cfg;
+};
 const DSC_SHOWN = 500,
   DSC_KEPT = 20000; // lines shown on the page; lines kept for saving (the oldest go first)
 const dscType = () => {
@@ -156,7 +163,7 @@ async function dscOpen() {
 }
 async function dscOpenNow() {
   if (!dsc.dev || !dscType()) return false;
-  const c = (dsc.cfg = Hardware.serialConfig(dsc.cfg));
+  const c = (dsc.cfg = Hardware.serialConfig(dscSavedCfg()));
   dsc.bytes = 0;
   dsc.pieces = 0;
   dsc.last = null;
@@ -297,7 +304,7 @@ function renderDsSettings(box) {
   const H = Hardware,
     can = typeof navigator !== 'undefined' && !!navigator.serial,
     type = dscType(),
-    c = dsc.cfg,
+    c = dscSavedCfg(),
     $ = id => document.getElementById(id),
     save = patch =>
       api.setSettings(patch).then(s => {
@@ -381,7 +388,7 @@ function renderDsSettings(box) {
         open: true,
         body:
           `<div class="field" style="max-width:560px"><label for="ds-pause">When the race is paused</label><select id="ds-pause"><option value="stop"${state.settings.dsPause === 'count' ? '' : ' selected'}>Do not count laps driven during the pause</option><option value="count"${state.settings.dsPause === 'count' ? ' selected' : ''}>Keep those laps and add them when the race resumes</option></select><span class="muted hint">A DS cannot switch the track off, so cars may keep driving while Timing is paused. Keep: the laps count, with the lap times the box measured; the race clock, the time limit and the race systems still stand still during the pause.</span></div>` +
-          '<ol class="muted"><li>Choose DS-200 or DS-300, set the serial speed to match the box and connect. Select DS Electronics in <em>Timing hardware in use</em>.</li><li>Before racing, check every lane using the live capture. Lane 1 on the DS is lane 1 in Timing, and so on. A connected port alone does not confirm valid packets.</li><li>Prepare the DS box to report crossings, then start the race in Timing. DS start/resume buttons never start Timing automatically.</li><li>First-crossing markers start lap measurement and never set a lap record. Consecutive laps use the DS measured duration. The first lap after a pause uses Timing’s pause-adjusted clock; race elapsed time stays on Timing’s clock.</li><li>A lost connection, counter reset or missing packet pauses Timing for review. No missing laps are invented. Check the results before resuming manually. Stop physical cars separately: Timing sends no DS power commands.</li></ol>'
+          '<ol class="muted"><li>Choose DS-200 or DS-300, set the serial speed to match the box and connect. Press <em>Connect &amp; use</em> at the top of this page.</li><li>Before racing, check every lane using the live capture. Lane 1 on the DS is lane 1 in Timing, and so on. A connected port alone does not confirm valid packets.</li><li>Prepare the DS box to report crossings, then start the race in Timing. DS start/resume buttons never start Timing automatically.</li><li>First-crossing markers start lap measurement and never set a lap record. Consecutive laps use the DS measured duration. The first lap after a pause uses Timing’s pause-adjusted clock; race elapsed time stays on Timing’s clock.</li><li>A lost connection, counter reset or missing packet pauses Timing for review. No missing laps are invented. Check the results before resuming manually. Stop physical cars separately: Timing sends no DS power commands.</li></ol>'
       },
       { id: 'guide', title: 'How to make a capture', icon: '☷', note: 'A guided check · about 5 minutes', body: guideBody },
       {
@@ -394,8 +401,7 @@ function renderDsSettings(box) {
       },
       { id: 'check', title: 'Check saved capture', icon: '✓', note: 'Offline byte-count and format check', body: checkBody }
     ],
-    footer:
-      '<p class="muted">Model choice is saved automatically. Serial settings last for this app session. Save log exports the capture to a text file.</p>'
+    footer: '<p class="muted">The model and the serial settings are saved automatically. Save log exports the capture to a text file.</p>'
   });
   HardwarePage.bind(box, 'ds');
   dscShow();
@@ -479,7 +485,11 @@ function renderDsSettings(box) {
     }
   };
   const cfgSet = patch => {
-    dsc.cfg = Hardware.serialConfig({ ...dsc.cfg, ...patch });
+    dsc.cfg = Hardware.serialConfig({ ...dscSavedCfg(), ...patch });
+    api.setSettings({ dsSerial: dsc.cfg }).then(
+      x => (state.settings = x),
+      () => {}
+    ); // (2.4.0: remembered)
   };
   $('ds-baud').onchange = e => cfgSet({ baud: Number(e.target.value) });
   $('ds-data').onchange = e => cfgSet({ data: Number(e.target.value) });

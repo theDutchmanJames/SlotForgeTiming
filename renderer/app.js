@@ -454,92 +454,11 @@ function unusedTimingText(settings = state.settings) {
   const ids = unusedTimingConnected(settings);
   if (!ids.length) return '';
   const chosen = Hardware.timingChosen(settings);
-  return `${ids.map(id => TIMING_NAMES[id]).join(' and ')} ${ids.length > 1 ? 'are' : 'is'} connected but not the timing hardware in use (${TIMING_NAMES[chosen] || chosen}), so ${ids.length > 1 ? 'their' : 'its'} laps are not counted. Change "Timing hardware in use" in App Settings, Timing Hardware.`;
+  return `${ids.map(id => TIMING_NAMES[id]).join(' and ')} ${ids.length > 1 ? 'are' : 'is'} connected but not the timing hardware in use (${TIMING_NAMES[chosen] || chosen}), so ${ids.length > 1 ? 'their' : 'its'} laps are not counted. Press Connect & use on its card in App Settings, Timing Hardware.`;
 }
 function renderHardwareArea(box) {
-  if (typeof ptPageDispose === 'function') ptPageDispose();
-  if (typeof ppPageDispose === 'function') ppPageDispose();
-  const chosen = Hardware.timingChosen(state.settings),
-    names = {
-      ds: 'DS Electronics',
-      trackmate: 'the Trackmate Interface',
-      arduino: 'the Arduino Sketch',
-      parallel: 'the Parallel Port',
-      plugin: 'the plugin interface',
-      none: 'no timing hardware'
-    };
-  const onPage = ['trackmate', 'arduino', 'parallel', 'plugin', 'ds'].includes(state.hwSub);
-  const notInUse = onPage && state.hwSub !== chosen,
-    pageName = TIMING_NAMES[state.hwSub] || '';
-  // (2.4.0) the header card: what counts the laps now, whether it is connected, and the choice to change it
-  const on = timingConnectedNow(),
-    chosenName = (Hardware.TIMING.find(t => t[0] === chosen) || [0, 'No timing hardware'])[1],
-    chosenState =
-      chosen === 'none' ? ['off', 'Laps are only counted by hand'] : on[chosen] ? ['on', 'Connected'] : ['warn', 'Not connected'];
-  box.innerHTML = `<div class="hwuse-card" id="hwuse"><span class="hwuse-ico" aria-hidden="true">${Icons.svg('timing', { size: 26 })}</span>
-      <div class="hwuse-now"><span class="hwuse-k">Timing hardware in use</span><strong class="hwuse-name">${esc(chosenName)}</strong><span class="hwuse-state" data-state="${chosenState[0]}"><i aria-hidden="true"></i>${esc(chosenState[1])}</span></div>
-      <label class="hwuse-pick" for="hw-use"><span class="hwuse-q">Which interface counts the laps in a race?</span>
-      <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
-      <p class="hwuse-note">One at a time. Only this interface counts race laps and shows on Home and the race screen. The pages below set up and test each interface; connecting one there does not put it in use.</p></div>
-    <div class="sub" id="hwtabs" role="tablist"></div>
-    <div class="hw-notinuse" id="hwnote" role="alert"${notInUse ? '' : ' hidden'}>${notInUse ? `<strong>${esc(pageName)} is not counting laps.</strong> <span>Races use ${esc(names[chosen])}. You can connect and test here, but laps from ${esc(pageName)} only count once it is the timing hardware in use.</span> <button class="btn primary" id="hw-usethis">Use ${esc(pageName)} for races</button>` : ''}</div>
-    <div id="hwbox"></div>`;
-  renderTabs(
-    document.getElementById('hwtabs'),
-    [
-      ['trackmate', 'Trackmate Interface'],
-      ['arduino', 'Arduino'],
-      ['parallel', 'Parallel Port'],
-      ['plugin', 'Plugin Interface'],
-      ['ds', 'DS Electronics'],
-      ['oxigen', 'oXigen Digital'],
-      ['other', 'Other']
-    ],
-    state.hwSub,
-    id => {
-      state.hwSub = id;
-      renderHardwareArea(box);
-    }
-  );
-  // (2.4.0) every page is a tile with a line that says how it stands: in use, connected, or nothing yet
-  document.querySelectorAll?.('#hwtabs .tab').forEach(b => {
-    const id = b.dataset.id,
-      st =
-        id === chosen
-          ? on[id]
-            ? ['on', 'In use · connected']
-            : ['warn', 'In use · not connected']
-          : on[id]
-            ? ['on', 'Connected']
-            : id === 'oxigen'
-              ? ['off', 'Coming']
-              : id === 'other'
-                ? ['off', 'More hardware']
-                : ['off', 'Not in use'];
-    b.classList.toggle('inuse', id === chosen);
-    b.insertAdjacentHTML?.('beforeend', `<span class="hwt-state" data-state="${st[0]}"><i aria-hidden="true"></i>${esc(st[1])}</span>`);
-  });
-  const use = async id => {
-    // the choice changed: the hardware that was in use is let go, the new one connects by itself when it can
-    if ((await setTimingHw(id)) === false) return;
-    if (id === 'trackmate' && typeof tmAutoConnect === 'function') tmAutoConnect();
-    if (id === 'arduino' && typeof abAutoConnect === 'function') abAutoConnect();
-    if (id === 'parallel' && typeof ppAutoConnect === 'function') ppAutoConnect();
-    if (id !== 'none') state.hwSub = id;
-    renderHardwareArea(box);
-  };
-  document.getElementById('hw-use').onchange = e => use(e.target.value);
-  document.getElementById('hw-use').disabled = raceKept();
-  const again = document.getElementById('hw-usethis');
-  if (again) again.onclick = () => use(state.hwSub);
-  if (again) again.disabled = raceKept();
-  if (state.hwSub === 'other') return;
-  if (state.hwSub === 'arduino') return renderArduinoSettings(document.getElementById('hwbox'));
-  if (state.hwSub === 'plugin') return renderPluginTimingSettings(document.getElementById('hwbox'));
-  if (state.hwSub === 'parallel') return renderParallelSettings(document.getElementById('hwbox'));
-  if (state.hwSub === 'ds') return renderDsSettings(document.getElementById('hwbox'));
-  if (state.hwSub === 'oxigen') return renderOxigenSettings(document.getElementById('hwbox'));
-  renderHardwareSettings(document.getElementById('hwbox'));
+  // (2.4.0, SlotForgeRestyle.md "Timing Desk": hwdesk.js and hwdeskview.js) the overview, the interfaces as cards, every interface under one big card
+  return renderTimingDesk(box);
 }
 
 // App Settings > Timing Hardware > oXigen Digital: only a place held for it. Nothing connects, nothing is saved and a race does not use it yet; the page is filled in when the support for oXigen Digital comes.

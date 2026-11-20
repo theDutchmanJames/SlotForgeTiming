@@ -378,7 +378,17 @@ const SettingsRail = (() => {
       body: '.calc-content'
     },
     network: { lead: 'Phones, tablets and other computers on your network.', tabs: '.connections-tabs > .tab', tabsLabel: 'Connections' },
-    hardware: { lead: 'What counts the laps, and how it is set up.', tabs: '#hwtabs > .tab', tabsLabel: 'Interfaces' },
+    // (2.4.0, "Timing Desk") the interfaces in the rail; the sections of an interface as tabs under its big card; Diagnostics only when it is switched on
+    hardware: {
+      lead: 'What counts the laps.',
+      tabs: '#hwtabs > .tab',
+      tabsLabel: 'Timing hardware',
+      secTabs: '#hwhero',
+      hide: id => {
+        const dev = typeof HwDesk !== 'undefined' && typeof state !== 'undefined' ? HwDesk.deviceOf(state.hwSub) : null;
+        return !!dev && !(state.settings && state.settings.hwDiagnostics) && dev.diag.includes(id);
+      }
+    },
     transfer: { lead: 'Backups, sharing items, and content packs.', tabs: '.transfer-views > button', tabsLabel: 'Views' },
     plugins: { lead: 'Extra features you install yourself.' }
   };
@@ -525,24 +535,57 @@ const SettingsRail = (() => {
       // what the page drew again outside the canvas goes into it
       [...box.childNodes].filter(n => n !== gs).forEach(n => canvas.append(n));
       const tabs = tabsOf(canvas, cfg),
-        secs = sectionsOf(canvas).filter(s => s.el),
+        allSecs = sectionsOf(canvas).filter(s => s.el),
+        secs = cfg.hide ? allSecs.filter(s => !cfg.hide(s.id)) : allSecs,
         tabKey = key + ':' + (tabs.find(t => t.on) || { label: '' }).label;
       if (cfg.tabs) canvas.querySelectorAll(cfg.tabs).forEach(t => t.parentElement && t.parentElement.classList.add('sr-tabsource'));
       let cur = active.get(tabKey);
       if (!secs.some(s => s.id === cur)) cur = secs[0] && secs[0].id;
       if (cur) active.set(tabKey, cur);
       // one section at a time, open, its title bar as the heading of the canvas
-      secs.forEach(s => {
+      allSecs.forEach(s => {
         s.el.classList.add('sr-sec');
         s.el.hidden = s.id !== cur;
         if (s.id === cur && !s.el.open) s.el.open = true;
       });
+      // (2.4.0) the sections as tabs in the page, under its big card (the Timing Desk)
+      if (cfg.secTabs) {
+        let bar = canvas.querySelector(':scope > .sr-sectabs');
+        if (secs.length > 1) {
+          if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'sr-sectabs';
+            bar.setAttribute('role', 'tablist');
+            const after = canvas.querySelector(cfg.secTabs);
+            if (after) after.after(bar);
+            else canvas.prepend(bar);
+            bar.onclick = ev => {
+              const b = ev.target.closest('[data-sr-sec]');
+              if (!b) return;
+              const k = key + ':' + (tabsOf(canvas, cfg).find(x => x.on) || { label: '' }).label;
+              active.set(k, b.dataset.srSec);
+              refresh(box, key);
+            };
+          }
+          let lastCapTab = '';
+          const html = secs
+            .map(s => {
+              const cap = s.cap && lastCapTab && s.cap !== lastCapTab ? '<span class="sr-tabgap" aria-hidden="true"></span>' : '';
+              if (s.cap) lastCapTab = s.cap;
+              return `${cap}<button type="button" role="tab" class="sr-sectab${s.id === cur ? ' on' : ''}" data-sr-sec="${esc(s.id)}" aria-selected="${s.id === cur}" title="${esc(s.sub)}">${esc(s.title)}</button>`;
+            })
+            .join('');
+          if (bar.innerHTML !== html) bar.innerHTML = html;
+        } else if (bar) bar.remove();
+      }
       canvas.classList.toggle('sr-hassecs', secs.length > 0);
       // (2.4.0) the Settings Sheet: the settings of what is shown become slim rows (settingssheet.js); only once per part of the page
       if (typeof SettingsSheet !== 'undefined') {
         const parts = secs.length
           ? secs.filter(s => !s.el.hidden).map(s => s.el.querySelector(':scope > .tm-content') || s.el)
-          : [...canvas.querySelectorAll(cfg.body || ':scope > *')].filter(n => !n.matches('.sr-tabsource,#hwuse,#hwnote'));
+          : [...canvas.querySelectorAll(cfg.body || ':scope > *')].filter(
+              n => !n.matches('.sr-tabsource,#hwuse,#hwnote,#hwhero,#hwdiag,.hd-box,.sr-sectabs')
+            );
         parts.forEach(p => {
           if (p.closest && p.closest('.pp-frame')) return; // (the Parallel Port page keeps its own controls)
           if (SettingsSheet.fresh(p)) SettingsSheet.convert(p);
@@ -596,7 +639,7 @@ const SettingsRail = (() => {
                 )
                 .join('')}`
             : '') +
-          (secs.length > 1 || (secs.length && !tabs.length)
+          (!cfg.secTabs && (secs.length > 1 || (secs.length && !tabs.length))
             ? `${secs[0].cap ? '' : `<span class="sr-cap">${tabs.length ? 'On this page' : 'Sections'}</span>`}${secs
                 .map(s => {
                   const cap = s.cap && s.cap !== lastCap ? `<span class="sr-cap">${esc(s.cap)}</span>` : '';
@@ -634,5 +677,15 @@ const SettingsRail = (() => {
     const btn = box.querySelector(`[data-sr-sec="${CSS.escape(id || '')}"]`);
     if (btn) btn.click();
   }
-  return { attach, detach, reveal, PAGES };
+  // (2.4.0) show a section of the page that is open (the Timing Desk: Choose the port opens Connection)
+  function show(id) {
+    const box = document.getElementById('settingsbox');
+    const key = (typeof state !== 'undefined' && state.settingsSub) || '';
+    if (!box || !PAGES[key]) return;
+    const canvas = box.querySelector('.sr-canvas');
+    const k = key + ':' + ((canvas && tabsOf(canvas, PAGES[key]).find(x => x.on)) || { label: '' }).label;
+    active.set(k, id);
+    refresh(box, key);
+  }
+  return { attach, detach, reveal, show, PAGES };
 })();

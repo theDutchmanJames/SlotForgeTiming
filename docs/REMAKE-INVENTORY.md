@@ -53,7 +53,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 - **Ideas:** choose the format first (Practice, Qualifying, Single race, Heats + finals, Endurance) and show only its fields;
   presets; a summary; a pre-race checklist on Home (lanes, cars, systems, hardware) before the race window opens.
 
-### 4. Timing Hardware area · Remake of the flow
+### 4. Timing Hardware area · Remake of the flow · **Done (2.4.0, "Timing Desk")**
 - The "Other" tab is an empty page (app.js:536). oXigen Digital is a "Coming." placeholder (app.js:547).
 - Connecting "does not put it in use" (app.js:485), so the "not counting laps" banner has to patch it.
 - Each page works differently: Trackmate saves at once and loses its serial settings when a port is picked, Parallel Port
@@ -61,7 +61,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 - **Ideas:** one "Connect & use" action, one status card per interface (connected, lanes seen, last hit), the same page frame
   everywhere (Parallel Port is the best model).
 
-### 5. DS Electronics page · Remake
+### 5. DS Electronics page · Remake · **Done (2.4.0, part of "Timing Desk")**
 - It is a protocol-capture tool for the developer shown as a setup page: "How to make a capture", "physical verification
   pending" (dsui.js:322-395).
 - It has no lane lights and no sensor check, only raw hex. Its serial settings last only for this app session.
@@ -192,5 +192,5 @@ shell, one empty-state card, one rule for red, and settings in tiers (everyday f
 3. Race Setup editor and start checks (#3), with settings in tiers.
 4. The shared fixes (explainer, editor shell, empty state, red, tiers), so every later remake starts from them.
 5. Database lists and the Car editor (**done, 2.4.0, "Garage" and "Build Sheet"**), then Results and Records (#8, **done, "Record Book"**).
-6. Timing Hardware with DS and the Lane Check (#4, #5).
+6. Timing Hardware with DS and the Lane Check (#4, #5, **done: "Timing Desk"**).
 7. Audio (#6), Widgets (#7), Paddock (#9), Calculations, then the Tier 2 reworks.

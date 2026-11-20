@@ -57,6 +57,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Garage](#garage) | The Database lists: a car drawn in its livery, a driver's helmet and callsign, a track with its lanes; figures from the races; filters with counts, sort, ticks; no red on a card | Database › Slotcars, Drivers, Tracks, Teams |
 | [Build Sheet](#build-sheet) | The car editor: the drawn car on top, a rail of sections, the gearing worked out, a service meter and log, More for the rest | Database › Slotcars › Edit |
 | [Record Book](#record-book) | Results and Records: track records as cards with their history, one filter bar, the races by month, a driver panel, a driver's history, correcting a result | Database › Results and Records › Racing Records |
+| [Timing Desk](#timing-desk) | Timing Hardware: a big card for what counts the laps, live lanes, the interfaces as cards with Connect & use, an interface's parts as tabs, Diagnostics folded away, finding the lane order | App Settings › Timing Hardware |
 | [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
@@ -1837,6 +1838,39 @@ html .rb-cols{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
 
 ---
 
+## Timing Desk
+
+App Settings › Timing Hardware (`renderer/hwdesk.js` makes the cards, `renderer/hwdeskview.js` draws the pages and wires them; the sections of an interface are tabs by
+`SettingsRail` (`secTabs`); styles under `.hd-` and `.sr-sectabs`). Nothing changed in how an interface is set up or stored; the DS serial settings are kept now
+(`dsSerial`), and `hwDiagnostics` says whether the developer sections are shown.
+
+- **The rail**: Overview · Trackmate · Arduino box · Parallel port · DS Electronics · Plugin · Forgotten devices, each with how it stands (*In use · connected*,
+  *Ready · remembered device*, *Not set up*). The dropdown *Timing hardware in use*, the yellow "not counting laps" banner, the *Other* page and the oXigen page
+  are gone.
+- **The big card** (`.hd-hero`) on the overview and on every interface page: the device's picture, a kicker (*Counts the laps* or *Interface*), the name in big
+  Barlow, its state as a pill (green connected and counting, amber not connected, blue connected but not counting, grey not set up), the lanes and where they
+  come from (*4 lanes, from Club Oval*), and the buttons: *Test the sensors*, *Disconnect*, *Connect & use*, *Connect*, *Choose the port*, *Find the lane
+  order*. A green or amber glow in its corner says how it stands. When the big card has a main button, the main buttons of the page under it turn plain.
+- **The live lanes** (`.hd-lanes`): a card per lane in its lane colour with a light that flashes on a crossing, the last lap in Roboto Mono, how long ago,
+  the sensor and the crossings since the app started.
+- **The interfaces as cards** (`.hd-card`) of equal weight: picture, name in Barlow, what it is, how it stands, *Set up* and *Connect & use*; the one in use
+  has a green edge; oXigen Digital is a dimmed *Coming later* card.
+- **An interface page**: its parts as tabs under the big card (`.sr-sectabs`), one shown at a time; its own header and side list are hidden. *Diagnostics*
+  (`.hd-fold`, dashed) at the bottom shows the developer parts.
+- **Find the lane order** (`dialog.hd-win`): a step per lane in its colour (done: filled with a tick and its sensor, now: lit), what was swapped in an amber
+  box, *Use this order*.
+
+```css
+html .hd-hero{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:22px;padding:20px 22px;border-radius:18px}
+html .hd-hero.ok{background:radial-gradient(130% 120% at 0% 0%,color-mix(in srgb,#3ecf8e 9%,var(--panel)),var(--panel) 60%)}
+html .hd-id h1{font:700 italic 38px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hd-led.hit{background:var(--c);border-color:var(--c);box-shadow:0 0 14px var(--c)}
+html .hd-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+html .sr-sectab.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);font-weight:600}
+```
+
+---
+
 ## Race Control
 
 The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
@@ -2164,3 +2198,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Garage | New: the Database lists as Garage cards (drawn cars, helmets, tracks, figures from the races), a Control Strip with filters, sort and ⋯, a list with ticks and a bar for many at once, empty cards |
 | 2026-11 | Build Sheet | New: the car editor with the drawn car, a rail, the gearing worked out, livery colours, Can it race?, a service meter and log, More for Archive, Reload and Save history |
 | 2026-11 | Record Book | New: Racing Records as a record book (record cards, filter bar, race log by month, driver panel, record history, driver history, Correct the result, CSV) |
+| 2026-11 | Timing Desk | New: Timing Hardware as a desk (big card, live lanes, interface cards, Connect & use, parts as tabs, Diagnostics, Find the lane order, Forgotten devices); the dropdown, the banner, Other and the oXigen page are gone |

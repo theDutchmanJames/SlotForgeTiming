@@ -67,7 +67,7 @@ ok('the buttons can be reached with the keyboard and show where they are (a focu
 
 // 1.51.0: the sub-tabs of the other main tabs have the same buttons, without the colours
 { const app = fs.readFileSync(R + 'app.js', 'utf8'), dbjs = require('./source.cjs').code('renderer/database.js'); // (with its parts in renderer/database/)
-  const bars = [[app, 'settingstabs'], [app, 'hwtabs'], [dbjs, 'subtabs'], [dbjs, 'respool'], [editor, 'customtabs']];
+  const bars = [[app, 'settingstabs'], [require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'hwdeskview.js'), 'utf8'), 'hwtabs'], [dbjs, 'subtabs'], [dbjs, 'respool'], [editor, 'customtabs']];
   ok('1.51.0: the five other bars of sub-tabs (Database, Results and Records, Customization, App Settings, Timing Hardware) are a .sub with role tablist, and nothing of their look is written in the page any more (it is in the style sheet)', bars.every(([src, id]) => new RegExp(`<div class="sub" id="${id}" role="tablist"></div>`).test(src) || src.includes(`sideShellHtml(`) && new RegExp(`sideShellHtml\\(\\s*'[^']+',\\s*'${id}'`).test(src)) && app.includes('<div class="sub" id="${tabsId}" role="tablist"></div>') && !/role="tablist" style=/.test(app + dbjs + editor));
   const rule = sel => (css.match(new RegExp('(?:^|\\n)' + sel.replace(/[.[\]()*+?^$|\\"=]/g, '\\$&') + '\\{([^}]*)\\}')) || [, ''])[1];
   const bar = rule('.sub[role="tablist"]'), chip = rule('.sub[role="tablist"] .tab'), hov = rule('.sub[role="tablist"] .tab:hover'), sel = rule('.sub[role="tablist"] .tab[aria-selected="true"]');
