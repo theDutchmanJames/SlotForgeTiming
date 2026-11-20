@@ -26,7 +26,8 @@ function raceEntrants({
   setup,
   teams,
   tokenSession,
-  weatherSystems
+  weatherSystems,
+  bopSource // (2.4.0: the Balance of Power profile of the setup, else the club default)
 }) {
   const people = r.rows.map(x0 => {
     const x = byTeam ? { ...x0, driverId: '' } : x0,
@@ -85,7 +86,7 @@ function raceEntrants({
   const bopCfg =
     setup.bop === 'on' && fuelCfg.on && (engineType === 'race' || engineType === 'timed')
       ? Bop.engineConfig(
-          state.settings,
+          bopSource || state.settings,
           Array.from({ length: lanes }, (_, l) => Speed.laneLength(r.track, l))
         )
       : null;
@@ -145,7 +146,7 @@ function raceLetGoAndBase() {
   return { base };
 }
 // the live state of the race screen, and the Time Token session
-function raceLiveState({ base, lanes, r, tokenSession }) {
+function raceLiveState({ base, lanes, r, tokenSession, tokenSource }) {
   if (typeof abCancelTests === 'function') abCancelTests();
   live = {
     trkCards: [],
@@ -183,7 +184,7 @@ function raceLiveState({ base, lanes, r, tokenSession }) {
   }; // (prior: the bests of the heats that are finished; memoBy: the lap times that count and the metres of every participant in the heats that are done, for a leaderboard that counts over all heats)
   Review.reset();
   // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
-  const tokenSet = Tokens.settingsOf(state.settings);
+  const tokenSet = Tokens.settingsOf(tokenSource || state.settings); // (2.4.0: the Time Token profile of the setup, else the club default)
   const tokens = tokenSession
     ? Tokens.create({ lanes, warnSeconds: tokenSet.warnSeconds, warnColor: tokenSet.warnColor, outColor: tokenSet.outColor })
     : null;
@@ -596,7 +597,9 @@ async function renderRace() {
       return [];
     }
   };
-  const [twSystems, scSystems, psSystems] = await Promise.all(['tyrewearsystems', 'safetycarsystems', 'pushsavesystems'].map(optional));
+  const [twSystems, scSystems, psSystems, bopProfiles, tokenProfiles] = await Promise.all(
+    ['tyrewearsystems', 'safetycarsystems', 'pushsavesystems', 'bopsystems', 'tokensystems'].map(optional)
+  ); // (2.4.0: the Balance of Power and Time Token profiles)
   if (!current()) return;
   const find = (list, id) => list.find(x => x.id === id);
   const timingPlugin =
@@ -669,6 +672,7 @@ async function renderRace() {
     }
   }
   const { bopCfg, damCfg, engineType, fuelCfg, lanes, penCfg, people, pitMs, wxRec, wxSeed } = raceEntrants({
+    bopSource: (setup.bopSystem && find(bopProfiles || [], setup.bopSystem)) || null,
     allDrivers,
     byTeam,
     cars,
@@ -1027,7 +1031,13 @@ async function renderRace() {
         } // (a Guest, who has no driver in the database, can hold the track record of the Token Records)
         if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
       });
-  const { tokenSet, tokens } = raceLiveState({ base, lanes, r, tokenSession }); // (for the automated tests, and the lane controls)
+  const { tokenSet, tokens } = raceLiveState({
+    base,
+    lanes,
+    r,
+    tokenSession,
+    tokenSource: (setup.tokenSystem && find(tokenProfiles || [], setup.tokenSystem)) || null
+  }); // (for the automated tests, and the lane controls)
   if (tokens)
     eng.cars.forEach(c =>
       tokens.assign(c.lane, {

@@ -25,6 +25,8 @@ const ORDER = [
   'safetycarsystems',
   'pushsavesystems',
   'weathersystems',
+  'bopsystems',
+  'tokensystems',
   'rotationsetups',
   'imagesets',
   'audiosets',
@@ -133,6 +135,8 @@ function refsOf(entity, row) {
     field('tyreWear', 'tyrewearsystems');
     field('safetyCar', 'safetycarsystems');
     field('pushSave', 'pushsavesystems');
+    field('bopSystem', 'bopsystems');
+    field('tokenSystem', 'tokensystems');
     field('weather', 'weathersystems');
     field('rotation', 'rotationsetups');
     field('audioSet', 'audiosets');

@@ -91,7 +91,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { BopSetti
 
 async function renderBopSettings(box, page) {
   page = page || {
-    open: new Set(['who', 'amount', 'effects', ...(Bop.settingsOf(state.settings).mode === 'manual' ? [] : ['auto'])]),
+    open: new Set([
+      'who',
+      'amount',
+      'effects',
+      ...(Bop.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings).mode === 'manual' ? [] : ['auto'])
+    ]),
     rail: 'who',
     tail: Promise.resolve()
   };
@@ -101,7 +106,7 @@ async function renderBopSettings(box, page) {
     box.isConnected !== false &&
     (typeof state.tab !== 'string' || state.tab === 'setup') &&
     (typeof state.setupSub !== 'string' || state.setupSub === 'bop');
-  const S = Bop.settingsOf(state.settings),
+  const S = Bop.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings),
     K = Bop.KEYS,
     el = id => document.getElementById(id);
   const I = (name, size = 18) => Icons.svg(name, { size, stroke: 1.8 });
@@ -207,7 +212,7 @@ async function renderBopSettings(box, page) {
     page: true,
     tag: 'div',
     formId: 'bop-form',
-    eyebrow: 'Settings for every race',
+    eyebrow: typeof Profiles !== 'undefined' ? Profiles.eyebrow('bop', 'every race without a profile') : 'Settings for every race',
     cls: 'setupform ss-bop',
     icon: n => I(n, 20),
     tile: I('balance', 26),
@@ -256,7 +261,9 @@ async function renderBopSettings(box, page) {
     status('Saving...');
     const job = page.tail.then(async () => {
       try {
-        state.settings = await api.setSettings(patch);
+        if (typeof Profiles !== 'undefined')
+          await Profiles.save('bop', patch); // (2.4.0: the profile that is open, or the Club default)
+        else state.settings = await api.setSettings(patch);
         if (!active()) return;
         await renderBopSettings(box, page);
         if (y !== null && window.scrollTo) window.scrollTo(0, y);
@@ -272,7 +279,8 @@ async function renderBopSettings(box, page) {
     page.tail = job;
     return job;
   };
-  const cleaned = (key, short, v) => Bop.settingsOf({ ...state.settings, [key]: v })[short];
+  const cleaned = (key, short, v) =>
+    Bop.settingsOf({ ...(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings), [key]: v })[short];
   const select = (id, key) => {
     el(id).onchange = ev => save({ [key]: ev.target.value });
   };
@@ -290,7 +298,7 @@ async function renderBopSettings(box, page) {
   number('bop-minlaps', K.minLaps, 'minLaps');
   el('bop-apply').onchange = ev => {
     const apply = cleaned(K.apply, 'apply', ev.target.value),
-      now = Bop.settingsOf(state.settings),
+      now = Bop.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings),
       follows = Math.abs(now.remove - now.apply / 2) < 1e-9;
     return save({ [K.apply]: apply, ...(follows ? { [K.remove]: apply / 2 } : {}) });
   };
@@ -305,13 +313,20 @@ async function renderBopSettings(box, page) {
     const ds = b.dataset || {};
     if (ds.bopPick && choices[ds.bopPick] && choices[ds.bopPick].some(x => x[0] === ds.val)) return save({ [K[ds.bopPick]]: ds.val });
     if (['use', 'rate', 'tank', 'lanes'].includes(ds.bopToggle))
-      return save({ [K[ds.bopToggle]]: !Bop.settingsOf(state.settings)[ds.bopToggle] });
+      return save({
+        [K[ds.bopToggle]]: !Bop.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings)[ds.bopToggle]
+      });
     if (ds.rail && sections.some(x => x.id === ds.rail)) {
       page.rail = ds.rail;
       page.open.add(ds.rail);
       const sec = el('bop-section-' + ds.rail);
       sec.open = true;
-      RailForm.sync(el, BopSettings.describe(Bop.settingsOf(state.settings)).rail, null, page.rail);
+      RailForm.sync(
+        el,
+        BopSettings.describe(Bop.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings)).rail,
+        null,
+        page.rail
+      );
       if (sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
@@ -322,7 +337,12 @@ async function renderBopSettings(box, page) {
         if (!page.open.has(x.id)) page.rail = x.id;
         page.open.add(x.id);
       } else page.open.delete(x.id);
-      RailForm.sync(el, BopSettings.describe(Bop.settingsOf(state.settings)).rail, null, page.rail);
+      RailForm.sync(
+        el,
+        BopSettings.describe(Bop.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('bop') : state.settings)).rail,
+        null,
+        page.rail
+      );
     };
   });
 }

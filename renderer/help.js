@@ -623,6 +623,7 @@ const Help = (() => {
           note: 'Even out fast and slow cars',
           body: `
         <ul>
+          <li><b>Profiles</b>: a setup chooses one; the <b>Club default</b> is used otherwise.</li>
           <li><b>Balance of Power</b> (BoP) hinders a car that is too fast and helps a car that is too slow. It works through the fuel rules, so the race setup needs a <b>fuel system</b> and Balance of Power set to On (races, timed races and heat races).</li>
           <li>A car hindered by 20% uses 20% more fuel a lap and refuels 20% slower (and, if you choose, has a 20% smaller tank), so it pits sooner or has to drive slower. A helped car gets the opposite. It counts from the next lap and the next pit stop.</li>
           <li>Race Setup, <b>Balance of Power</b>: the rail opens <b>Who decides</b>, <b>How much</b>, <b>What changes</b> and <b>Suggest and Automatic</b>. Cards and switches choose the rules; the slider previews both cars. <b>In plain words</b> reads the settings back. Every change is saved immediately. It fine-tunes: a car that is seconds a lap faster will not be caught by fuel alone.</li>
@@ -749,6 +750,7 @@ const Help = (() => {
           note: 'Selling track time per lane',
           body: `
         <ul>
+          <li><b>Profiles</b>: Race Setup › Time Tokens lists the <b>Club default</b> and your profiles (buttons, warning, colours); a Time Token Session chooses one.</li>
           <li>Choose the kind <b>Time tokens</b> in a race setup. It has no start lights, laps, fuel or penalties. On Home the button says <b>Open the session</b>. Drivers and cars are optional: a lane without a driver is a Guest.</li>
           <li>Every lane starts switched off. Press a time button on a lane (the buttons are set under Race Setup, Time Tokens) and the lane is on while the <b>Token Clock</b> counts down. The minus buttons take time off again.</li>
           <li><b>Race Setup &gt; Time Tokens</b> saves as you change it. Add or remove minute boxes, set the warning and colours, or return to the standard settings. Warning off means no early colour change; when time is up, all timing widgets of that lane use the time's-up colour.</li>

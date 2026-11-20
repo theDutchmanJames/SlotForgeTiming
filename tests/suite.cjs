@@ -268,6 +268,7 @@ module.exports = [
   ['lanecheck.test.js', 'node-test'],
   ['setupguide.test.js', 'node-test'],
   ['pluggedin.test.js', 'node-test'],
+  ['profiles.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],

@@ -218,6 +218,8 @@
     "tests/pitlane.test.js",
     "renderer/calcbench.js",
     "tests/calcbench.test.js",
+    "renderer/profiles.js",
+    "tests/profiles.test.js",
     "renderer/report.js",
     "renderer/resources.js",
     "renderer/resourceui.js",

@@ -373,12 +373,12 @@ const SETUP_NOTES = {
   bop: [
     'Balance of Power evens out a race: a car that is too fast is hindered and a car that is too slow is helped.',
     'It works through its fuel use, refuelling speed and tank.',
-    'Used by every race setup that has Balance of Power on.'
+    'Make profiles for different nights; a race setup with Balance of Power on chooses one.'
   ],
   tokens: [
     'The Time Token System sells track time: a lane is switched on with paid time and turns red when the time is up.',
     '',
-    'Used by every Time Token Session.'
+    'Make profiles for different events; a Time Token Session chooses one.'
   ],
   virtualrivals: [
     'A Virtual Rival replays a saved lap sequence as an opponent in a lane.',
@@ -523,11 +523,15 @@ async function renderSetup() {
   }
   if (sub === 'bop') {
     manager = null;
-    return renderBopSettings(document.getElementById('setupmgr'));
+    return typeof Profiles !== 'undefined'
+      ? Profiles.render('bop', document.getElementById('setupmgr'))
+      : renderBopSettings(document.getElementById('setupmgr')); // (2.4.0: profiles)
   }
   if (sub === 'tokens') {
     manager = null;
-    return renderTokenSettings(document.getElementById('setupmgr'));
+    return typeof Profiles !== 'undefined'
+      ? Profiles.render('tokens', document.getElementById('setupmgr'))
+      : renderTokenSettings(document.getElementById('setupmgr'));
   }
   await mountManager(document.getElementById('setupmgr'), entity);
 }

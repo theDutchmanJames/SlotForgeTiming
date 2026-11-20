@@ -44,7 +44,9 @@ function read(source, value) {
     damagesystems: 'damageSystem',
     tyrewearsystems: 'tyreWear',
     safetycarsystems: 'safetyCar',
-    pushsavesystems: 'pushSave'
+    pushsavesystems: 'pushSave',
+    bopsystems: 'bopSystem',
+    tokensystems: 'tokenSystem'
   }))
     collections[entity] = selected(entity, [setup[key]]);
   const display = require('./display-read').read(source, collections.layouts);

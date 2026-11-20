@@ -38,6 +38,8 @@ const READABLE = [
   'tyrewearsystems',
   'safetycarsystems',
   'pushsavesystems',
+  'bopsystems',
+  'tokensystems',
   'raceclasses',
   'multiclasssystems',
   'virtualrivalsystems'

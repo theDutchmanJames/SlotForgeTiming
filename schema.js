@@ -633,6 +633,17 @@ module.exports = {
         hint: 'Its lanes are the lanes of the race.'
       },
       {
+        key: 'tokenSystem',
+        group: 'session',
+        label: 'Time Token profile',
+        type: 'ref',
+        ref: 'tokensystems',
+        blank: 'Club default',
+        tone: 'tokens',
+        showIf: [{ sessionType: ['tokens'] }],
+        hint: 'The time buttons, the warning and the colours of the token clocks. Make profiles under Race Setup > Time Tokens; the Club default is used when none is chosen.'
+      },
+      {
         key: 'rotation',
         group: 'heats',
         label: 'Rotation setup',
@@ -1643,6 +1654,17 @@ module.exports = {
         ],
         showIf: [{ sessionType: ['race', 'heats', 'endurance'] }],
         hint: 'On: hinder the fastest car and help the slowest. Works through the Fuel System.'
+      },
+      {
+        key: 'bopSystem',
+        group: 'rules',
+        label: 'Balance of Power profile',
+        type: 'ref',
+        ref: 'bopsystems',
+        blank: 'Club default',
+        tone: 'bop',
+        showIf: [{ sessionType: ['race', 'heats', 'endurance'], bop: ['on'] }],
+        hint: 'Who decides, how much and what changes. Make profiles under Race Setup > Balance of Power; the Club default is used when none is chosen.'
       },
       {
         key: 'disabledSystems',
@@ -3640,6 +3662,10 @@ module.exports = {
       }
     ]
   },
+  // (2.4.0) Balance of Power and Time Token profiles: named settings a race setup chooses (the club default stays in the settings). A profile holds the same
+  // keys as the settings (bopMode, bopPercent…, tokenIncrements…), so Bop.settingsOf and Tokens.settingsOf read either. Edited in Race Setup > Balance of Power / Time Tokens.
+  bopsystems: { label: 'Balance of Power profile', plural: 'Balance of Power profiles', title: ['name'], internal: true, fields: [] },
+  tokensystems: { label: 'Time Token profile', plural: 'Time Token profiles', title: ['name'], internal: true, fields: [] },
   resourcesystems: { label: 'Resource System', plural: 'Resource Systems', title: ['name'], internal: true, fields: [] },
   multiclasssystems: { label: 'Multi-Class System', plural: 'Multi-Class Systems', title: ['name'], internal: true, fields: [] },
   virtualrivalsystems: { label: 'Virtual Rival System', plural: 'Virtual Rival Systems', title: ['name'], internal: true, fields: [] },

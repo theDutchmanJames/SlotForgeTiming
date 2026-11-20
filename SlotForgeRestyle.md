@@ -44,6 +44,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket; connect inside, cars from the library, Commentary, Back to the guide | The setup guide on Home |
 | [Plugged In](#plugged-in) | The Home cards for a USB device that was plugged in: why they ask, a failed connect on the card, the DS model, Undo | Home |
+| [Profile Cards](#profile-cards) | Balance of Power and Time Tokens as named profiles: the Club default and profile cards with Used by; the editor of a profile as its window | Race Setup › Balance of Power, Time Tokens |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1301,6 +1302,26 @@ html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:c
 .mb-strip{display:flex;align-items:center;gap:18px;height:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%)}
 ```
 
+## Profile Cards
+
+Race Setup › **Balance of Power** and **Time Tokens** (`renderer/profiles.js`; the editors are those of before, `bopui.js` and `tokenui.js`, editing the profile
+that is open; styles under `.pf-`). A bar with *＋ New … profile* and one line on how a setup chooses; then a card per profile, the **Club default** first.
+
+- **A card** (`.pf-card`): an icon tile in the colour of the system (purple for Balance of Power, teal for Time Tokens), the kicker in Roboto Mono caps,
+  the name in Barlow italic, chips (*Manual · 20% · Both*, *6 add buttons · Warning · 60 s*), the rows of the editor in two columns (Roboto Mono caps
+  titles), *Used by …* in bold names, and *Edit*, *Copy*, *Rename*, *Delete* (red text, on the right). The Club default has a 3 px accent edge on top
+  and a *Club default* badge, and no Rename or Delete.
+- **Edit** opens the editor of before as its window, its eyebrow saying which profile (*Balance of Power profile · Endurance*, or *Club default · …*).
+- **A name** is asked in the app's own small window (`.pf-ask`). Delete asks first, and says which setups still use a profile instead of deleting it.
+- **The race setup** has *Balance of Power profile* (under Rules, when Balance of Power is on) and *Time Token profile* (in a Time Token Session),
+  *Club default* first.
+
+```css
+html .pf-card.pf-def{box-shadow:inset 0 3px 0 var(--accent)}
+html .pf-ic{background:color-mix(in srgb,var(--pf) 18%,transparent);color:var(--pf)}
+html .pf-top h3{font:800 italic 20px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+```
+
 ## Plugged In
 
 The Home cards for a USB device that was plugged in (`renderer/hwdetect.js`, glue in `app.js` mountHwDetect; styles under `#hm-detect .dx`). Each card has
@@ -2370,3 +2391,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Lane Check (rework) | The sensor test asks for the lanes one at a time and offers to swap a lane that lit another's sensor; pit lane, Track call and track power as checks; Connect in the window |
 | 2026-11 | Start Lights (rework) | The setup guide connects inside the guide, picks cars from the shared library, has Lanes & sensors (the Lane Check) and a Commentary step, and a Back to the guide pill |
 | 2026-11 | Plugged In | New: the detected hardware cards on Home say why they ask, keep a failed connect on the card, take the DS model, and can undo Not timing hardware |
+| 2026-11 | Profile Cards | New: Balance of Power and Time Tokens as named profiles a race setup chooses; the Club default keeps the settings of before |

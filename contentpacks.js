@@ -20,7 +20,9 @@ const ENTITIES = [
   'tyrewearsystems',
   'safetycarsystems',
   'pushsavesystems',
-  'weathersystems'
+  'weathersystems',
+  'bopsystems',
+  'tokensystems'
 ];
 const clone = x => JSON.parse(JSON.stringify(x));
 const object = x => !!x && typeof x === 'object' && !Array.isArray(x);

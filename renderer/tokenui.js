@@ -59,7 +59,7 @@ let tokenSettingsTail = Promise.resolve();
 // ---- the settings page ----
 async function renderTokenSettings(box) {
   const page = {
-    s: Tokens.settingsOf(state.settings),
+    s: Tokens.settingsOf(typeof Profiles !== 'undefined' ? Profiles.source('tokens') : state.settings),
     rail: 'add',
     open: new Set(['add', 'take', 'warning']),
     pending: 0,
@@ -113,7 +113,10 @@ async function renderTokenSettings(box) {
     tag: 'div',
     formId: 'tk-form',
     cls: 'setupform ss-tok',
-    eyebrow: 'Settings for every Time Token Session',
+    eyebrow:
+      typeof Profiles !== 'undefined'
+        ? Profiles.eyebrow('tokens', 'every Time Token Session without a profile')
+        : 'Settings for every Time Token Session',
     tile: I('tokens', 26),
     name: '<h3 class="tk-title">Time Tokens</h3>',
     caption: 'Time Tokens',
@@ -168,7 +171,9 @@ async function renderTokenSettings(box) {
     const job = tokenSettingsTail.then(async () => {
       let ok = false;
       try {
-        state.settings = await api.setSettings(patch);
+        if (typeof Profiles !== 'undefined')
+          await Profiles.save('tokens', patch); // (2.4.0: the profile that is open, or the Club default)
+        else state.settings = await api.setSettings(patch);
         ok = true;
         if (active()) {
           el('tk-msg').textContent = '';
