@@ -326,4 +326,5 @@ module.exports = [
   ['helpdesk.test.js', 'node-test'],
   ['layouttry.test.js', 'node-test'],
   ['sensorbench.test.js', 'node-test'],
+  ['designfixes.test.js', 'node-test'],
 ];

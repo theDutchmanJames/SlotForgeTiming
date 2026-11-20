@@ -874,11 +874,12 @@ async function renderImageSets(box) {
             const have = setCount(r),
               all = setSlots(r).length,
               p = pics(r);
-            return `<div class="card lcard"><div class="lsketch lpics">${p.length ? p.map(src => `<img src="${esc(src)}" alt="" loading="lazy">`).join('') : '<span class="muted">No pictures yet</span>'}</div><div class="lbody"><h3>${esc(r.name)}</h3><p class="muted">${esc((SET_KINDS.find(k => k[0] === r.kind) || [0, r.kind])[1])}</p><div class="lprog${all && have >= all ? ' full' : ''}"><i style="width:${all ? Math.round((100 * have) / all) : 0}%"></i></div><div class="lmeta"><span>${have} of ${all}</span>${all && have >= all ? '<span>complete</span>' : ''}</div></div><div class="lactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></div>`;
+            return `<div class="card lcard"><div class="lsketch lpics">${p.length ? p.map(src => `<img src="${esc(src)}" alt="" loading="lazy">`).join('') : '<span class="muted">No pictures yet</span>'}</div><div class="lbody"><h3>${esc(r.name)}</h3><p class="muted">${esc((SET_KINDS.find(k => k[0] === r.kind) || [0, r.kind])[1])}</p><div class="lprog${all && have >= all ? ' full' : ''}"><i style="width:${all ? Math.round((100 * have) / all) : 0}%"></i></div><div class="lmeta"><span>${have} of ${all}</span>${all && have >= all ? '<span>complete</span>' : ''}</div><div class="lt-usedline" data-lt-uses="${esc(r.id)}"></div></div><div class="lactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></div>`;
           })
           .join('')}</div>`
       : '<p class="muted">No picture sets yet.</p>');
 
+  if (typeof LayoutTry !== 'undefined') LayoutTry.uses(box).catch(() => {}); // (2.4.0: the layouts that use each set)
   const onSetClick = (box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b) return;

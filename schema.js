@@ -126,7 +126,8 @@ module.exports = {
         unit: 'm',
         type: 'tracklength',
         optional: true,
-        hint: 'The length of the outside lane if you use the Lane length modifier below, otherwise the length of every lane.'
+        optionalMark: false, // (2.4.0: the sheet says "Missing" when it is empty; "(optional)" beside it said the opposite)
+        hint: 'The length of every lane; with the Lane length modifier below, of the outside lane.'
       },
       {
         key: 'laneModifier',

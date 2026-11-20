@@ -294,6 +294,7 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
             ? ', track power on'
             : ', track power off'
           : '');
+      if (e.setAttribute) e.setAttribute('title', e.textContent); // (2.4.0: the whole line, when the race bar has to cut it)
       if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn');
       if (e.dataset) e.dataset.state = st.state || ''; // (2.4.0: the status as a pill with a light: on, warn, off)
     }

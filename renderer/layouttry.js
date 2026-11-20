@@ -223,6 +223,17 @@ const LayoutTry = (() => {
     });
   }
 
+  // (2.4.0) the chart designs and picture sets: the layouts and leaderboard rows that use each, filled in under its card
+  async function uses(box) {
+    if (!box || !box.querySelectorAll || typeof LayoutCheck === 'undefined') return;
+    const els = [...box.querySelectorAll('[data-lt-uses]')];
+    if (!els.length) return;
+    const read = e => Promise.resolve(api.list ? api.list(e) : []).catch(() => []);
+    const lists = await Promise.all([read('layouts'), read('rowdesigns')]);
+    els.forEach(el => {
+      if (el.isConnected !== false) el.innerHTML = LayoutCheck.usesLine(LayoutCheck.layoutsUsing(el.dataset.ltUses, lists));
+    });
+  }
   // ---- Delete: the race setups that use it, and what they use instead -> { instead } or null ----
   async function askDelete(l, layouts) {
     const all = await setups(true),
@@ -281,6 +292,7 @@ const LayoutTry = (() => {
   }
   return {
     MOMENTS,
+    uses,
     paintFrame,
     lanesOf,
     start,

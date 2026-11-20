@@ -73,7 +73,12 @@ function openForm(e, item, preset) {
                         ? Speed.modifier(item)
                         : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined
                           ? f.default
-                          : item[f.key]
+                          : e === 'damagesystems' &&
+                              f.type === 'number' &&
+                              (item[f.key] === undefined || item[f.key] === '') &&
+                              typeof Damage !== 'undefined'
+                            ? ((Damage.clean({}) || {})[f.key] ?? item[f.key]) // (2.4.0: a value never saved shows what the race uses, as the rail says)
+                            : item[f.key]
         : preset && !f.custom && preset[f.key] !== undefined
           ? preset[f.key]
           : f.default;

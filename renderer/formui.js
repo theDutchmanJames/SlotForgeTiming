@@ -28,7 +28,7 @@
   const wrap = (f, cls, inner) =>
     `<div class="field${f.full || cls.includes('full') ? ' full' : ''} fu ${cls}" data-key="${esc(f.id)}">${inner}</div>`;
   const question = (f, label) =>
-    `<span class="fu-q" id="ql-${esc(f.id)}">${esc(label)}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</span>`;
+    `<span class="fu-q" id="ql-${esc(f.id)}">${esc(label)}${f.optional && f.optionalMark !== false ? ' <span class="muted">(optional)</span>' : ''}</span>`;
 
   // a row of buttons, one of them chosen
   function seg(f, v, ctx) {

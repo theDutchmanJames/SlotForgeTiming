@@ -150,7 +150,7 @@ async function renderRecordBook(box, o = {}) {
   const shownRecs = f.allRecs ? recs : recs.slice(0, 4);
   box.innerHTML = `<div class="rb">
 <section aria-label="Track records"><div class="rb-h"><h3>Track records</h3><span>The fastest lap ever driven on each track${recs.length > 4 ? ` · <button type="button" class="rb-link" data-rb-allrecs>${f.allRecs ? 'Show 4' : `All ${recs.length} tracks ›`}</button>` : ''}</span></div>${recs.length ? `<div class="rb-recs">${shownRecs.map(recHtml).join('')}</div>` : '<p class="muted">No records yet.</p>'}</section>
-<div class="rb-strip" role="search"><label class="rb-search">${RB_ICON.search}<span class="hs-vh">Find a race</span><input type="search" data-rb-q value="${esc(f.q)}" placeholder="Find a race or a driver" maxlength="100"></label>
+<div class="rb-strip" role="search"><label class="rb-search">${RB_ICON.search}<span class="hs-vh">Find a race</span><input type="search" data-rb-q value="${esc(f.q)}" placeholder="Race or driver" maxlength="100"></label>
 <label class="rb-sel"><span>Track</span><select data-rb-f="track">${opt('', 'All', f.track)}${tracks.map(t => opt(t.id, t.name || 'Track', f.track)).join('')}</select></label>
 <label class="rb-sel"><span>Driver</span><select data-rb-f="driver">${opt('', 'All', f.driver)}${raced.map(d => opt(d.id, d.name || 'Driver', f.driver)).join('')}</select></label>
 <div class="rb-chips" role="group" aria-label="Kind">${kindChips.map(k => `<button type="button" class="gx-chip${k.id === f.kind ? ' on' : ''}${k.id === 'champ' ? ' ch' : ''}" data-rb-kind="${k.id}" aria-pressed="${k.id === f.kind}">${esc(k.label)}<small>${k.n}</small></button>`).join('')}</div>

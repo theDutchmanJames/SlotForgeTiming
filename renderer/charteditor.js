@@ -21,11 +21,12 @@ async function renderChartEditor(box) {
       ? `<div class="lgrid">${designs
           .map(r => {
             const d = ChartWidgets.clean(r);
-            return `<div class="card lcard"><div class="lsketch lchart" data-chart-preview="${esc(r.id)}"></div><div class="lbody"><h3>${esc(d.name)}</h3><p class="muted">${esc(valueOf(d))}</p><div class="lmeta"><span>${esc(ChartWidgets.STYLES.find(x => x[0] === d.style)[1])}</span></div></div><div class="lactions"><button class="btn" data-chart-edit="${esc(r.id)}">Edit</button><button class="btn" data-chart-copy="${esc(r.id)}">Duplicate</button><button class="btn danger" data-chart-delete="${esc(r.id)}">Delete</button></div></div>`;
+            return `<div class="card lcard"><div class="lsketch lchart" data-chart-preview="${esc(r.id)}"></div><div class="lbody"><h3>${esc(d.name)}</h3><p class="muted">${esc(valueOf(d))}</p><div class="lmeta"><span>${esc(ChartWidgets.STYLES.find(x => x[0] === d.style)[1])}</span></div><div class="lt-usedline" data-lt-uses="${esc(r.id)}"></div></div><div class="lactions"><button class="btn" data-chart-edit="${esc(r.id)}">Edit</button><button class="btn" data-chart-copy="${esc(r.id)}">Duplicate</button><button class="btn danger" data-chart-delete="${esc(r.id)}">Delete</button></div></div>`;
           })
           .join('')}</div>`
       : '<div class="lempty"><p class="muted">No chart designs yet. Create your first chart above.</p></div>'
   }<p id="chart-list-message" role="status"></p>`;
+  if (typeof LayoutTry !== 'undefined') LayoutTry.uses(box).catch(() => {}); // (2.4.0: the layouts that use each design)
   if (typeof document !== 'undefined' && box.querySelector)
     designs.forEach(r => {
       const el = box.querySelector(`[data-chart-preview="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(r.id) : r.id}"]`);

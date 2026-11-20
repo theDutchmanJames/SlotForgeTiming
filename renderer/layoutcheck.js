@@ -13,7 +13,9 @@
     racedistance: 'distleft',
     distleft: 'racedistance',
     trackrecord: 'record',
-    record: 'trackrecord'
+    record: 'trackrecord',
+    racename: 'session',
+    setup: 'session'
   };
   // one letter wrong, missing, extra or two swapped, twice at most ("nmae" for "name")
   function dist(a, b) {
@@ -51,9 +53,10 @@
           .sort((a, b) => a[1] - b[1])[0],
         start = own
           .map(x => [x, prefix(x, k)])
-          .filter(([, n]) => n >= 4)
+          .filter(([, n]) => n >= Math.max(4, Math.ceil(k.length * 0.6))) // (most of the word: "race" alone does not make {racename} {racedistance})
           .sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0];
-      const suggest = (SAME[k] && own.includes(SAME[k]) && SAME[k]) || (typo && typo[0]) || (start && start[0]) || '';
+      const head = own.filter(x => x.length >= 4 && k.startsWith(x)).sort((a, b) => b.length - a.length)[0]; // ("bestlap": {best})
+      const suggest = (SAME[k] && own.includes(SAME[k]) && SAME[k]) || (typo && typo[0]) || head || (start && start[0]) || '';
       out.push({ word: k, other: other.includes(k) ? (lane ? 'race' : 'lane') : '', suggest });
       return m;
     });
@@ -101,7 +104,23 @@
     });
     return [...by].map(([sid, patch]) => ({ id: sid, patch }));
   }
-  const api = { unknownWords, problems, advice, usedBy, deletePlan };
+  // (2.4.0) the layouts and leaderboard rows whose widgets use a chart design or a picture set (its id in a widget's options) -> [names]
+  function layoutsUsing(id, lists) {
+    if (!id) return [];
+    const has = w => w && w.opt && JSON.stringify(w.opt).includes(JSON.stringify(String(id)));
+    return []
+      .concat(...(lists || []).map(l => l || []))
+      .filter(l => l && (l.widgets || []).some(has))
+      .map(l => l.name || '(unnamed)');
+  }
+  // the line on a card: "Used in 2 layouts · QA layout, Club night TV" (as the Widget Builder says it)
+  function usesLine(names) {
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    return names.length
+      ? `Used in <b>${names.length} ${names.length === 1 ? 'layout' : 'layouts'}</b> · ${esc(names.slice(0, 3).join(', '))}${names.length > 3 ? ' +' + (names.length - 3) : ''}`
+      : '<span class="lt-none">Not in a layout yet</span>';
+  }
+  const api = { unknownWords, problems, advice, usedBy, deletePlan, layoutsUsing, usesLine };
   root.LayoutCheck = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

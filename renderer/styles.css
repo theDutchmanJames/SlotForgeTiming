@@ -6249,7 +6249,7 @@ html:is([data-theme="light"],[data-theme="ocean"]) :is(.rc-v.fl){color:#7a3fd1}
 }
 @media (max-width:700px){html .rc-tr{grid-template-columns:30px 5px minmax(0,1fr) 46px 64px}html .rc-tr>:nth-child(4),html .rc-tr>:nth-child(7){display:none}}
 html .rc-bar .rc-in{grid-template-columns:minmax(280px,1fr) auto auto auto}
-html .rc-bar #tmstatus{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .rc-bar #tmstatus{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html .rc-mh .rc-live,html .rc-mh b{white-space:nowrap}
 html .rc-mh small{flex:1 1 auto;min-width:0}
 html #racehost>p.muted:has(~ #raceactive.rc-on:not([hidden])){display:none}
@@ -6347,9 +6347,9 @@ html .gx-gear{display:inline-flex;padding:3px;gap:2px;border-radius:10px;border:
 html .gx-gear>button{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:13px;color:var(--muted);cursor:pointer}
 html .gx-gear>button.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);font-weight:600}
 html .gx-gear>button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-html .gx-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px;margin:0 0 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html .gx-strip{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px;margin:0 0 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
 html .gx-strip>.btn{display:inline-flex;align-items:center;gap:6px;height:32px}
-html .gx-search{flex:1 1 170px;min-width:0;margin:0}
+html .gx-search{flex:1 1 120px;min-width:0;margin:0}
 html .gx-search>label{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--muted)}
 html .gx-search input{flex:1;min-width:0;height:30px;padding:0;border:0;background:transparent;box-shadow:none;color:var(--ink);font-size:13px}
 html .gx-search input:focus{outline:none}
@@ -7731,3 +7731,7 @@ html .tmx-sw button:disabled{opacity:.45;cursor:not-allowed}
 .tmx-rel{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid var(--line);border-radius:12px;font-size:13px}
 .tmx-safe{margin:0;color:var(--muted);font-size:12.5px}
 @media (max-width:700px){.tmx-state{grid-template-columns:44px minmax(0,1fr)}.tmx-state .tmx-sw{grid-column:1/-1}.tmx-race li{grid-template-columns:1fr auto}.tmx-race li span:last-child{grid-column:1/-1}}
+/* 2.4.0 (design pass, checked again): the Tracks bar fits one line at 1366 px: the word Sort goes (the icon and the select say it) */
+@media (max-width:1500px){html .gx-sort>span{display:none}}
+/* 2.4.0 ("Try It"): a Widget Builder card whose text has a word it does not know */
+html .wk-warn{display:block;margin-top:6px;color:color-mix(in srgb,#f2b705 70%,var(--ink));font-size:12px;line-height:1.4}
