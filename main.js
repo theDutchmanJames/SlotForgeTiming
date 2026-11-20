@@ -106,6 +106,7 @@ ipcMain.handle = (channel, handler) =>
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
+let pendingImportList = null; // (2.4.0) its items with the ones of mine they are (transfer.matches)
 
 // The app windows only ever show index.html: a link, a dropped file or injected markup may not take a window to another page or open a new one
 function guardWindow(w) {
@@ -1026,7 +1027,7 @@ function registerBackupHandlers() {
     for (const entity of transfer.ORDER) if (entity !== 'laps') items[entity] = await records.transferChoices(entity);
     return items;
   });
-  bulkAccess.handle('transfer:export', async (e, picks, extras) => {
+  bulkAccess.handle('transfer:export', async (e, picks, extras, fileName) => {
     // picks: the ticked items; extras: the ticked things they use
     const all = {};
     [picks, extras].forEach(src =>
@@ -1038,7 +1039,13 @@ function registerBackupHandlers() {
     const c = transfer.check(bundle);
     if (!c.ok) return { saved: false, error: c.error };
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), {
-      defaultPath: 'slotforge-timing-export.json',
+      defaultPath:
+        typeof fileName === 'string' && fileName.trim()
+          ? fileName
+              .replace(/[\\/:*?"<>|]/g, ' ')
+              .trim()
+              .replace(/(\.json)?$/i, '.json')
+          : 'slotforge-timing-export.json', // (2.4.0: a name made from what is in it)
       filters: [{ name: 'SlotForge Timing export', extensions: ['json'] }]
     });
     if (canceled || !filePath) return { saved: false };
@@ -1059,23 +1066,40 @@ function registerBackupHandlers() {
       if (fs.statSync(filePaths[0]).size > 500 * 1024 * 1024) return { ok: false, error: 'The file is too big.' };
       const bundle = JSON.parse(fs.readFileSync(filePaths[0], 'utf8')),
         c = transfer.check(bundle);
-      if (c.ok) pendingImport = bundle;
-      return { ...c, file: path.basename(filePaths[0]) };
+      if (!c.ok) return { ...c, file: path.basename(filePaths[0]) };
+      pendingImport = bundle;
+      // (2.4.0, Backup Vault) every item with the one of mine that it is (the same identity, or the same name)
+      const existing = {};
+      for (const e of transfer.ORDER) if (e !== 'laps' && bundle.items[e]?.length) existing[e] = await records.transferChoices(e);
+      pendingImportList = transfer.matches(bundle, existing);
+      return {
+        ...c,
+        file: path.basename(filePaths[0]),
+        made: bundle.date || '',
+        appVersion: bundle.appVersion || '',
+        items: pendingImportList
+      };
     } catch {
       return { ok: false, error: 'The file could not be read: it is not an export file from this app.' };
     }
   });
-  bulkAccess.handle('transfer:apply', async () => {
+  bulkAccess.handle('transfer:apply', async (_e, choices) => {
     if (!pendingImport) throw new Error('No file chosen.');
     await lifecycle.idle();
     bulkAccess.idle();
     if (!pendingImport) throw new Error('No file chosen.');
-    const counts = await bulkStorage.importItems(pendingImport);
+    // (2.4.0) added as copies, or replacing the item that is already here, or skipped
+    const p = transfer.plan(pendingImport, pendingImportList || transfer.matches(pendingImport, {}), choices || {});
+    const has = Object.values(p.bundle.items || {}).some(l => Array.isArray(l) && l.length);
+    const counts = has ? await bulkStorage.importItems(p.bundle) : {};
+    for (const r of p.replace) await records.update(r.e, r.id, r.row);
     pendingImport = null;
-    return counts;
+    pendingImportList = null;
+    return { ...counts, ...(p.replace.length ? { _replaced: p.replace.length } : {}), ...(p.skipped ? { _skipped: p.skipped } : {}) };
   }); // (1.61.2: nothing is being written to the database file while the import is saved)
   bulkAccess.handle('transfer:cancel', () => {
     pendingImport = null;
+    pendingImportList = null;
   });
   // Complete backup: the whole database in one file, and restoring it
   const sharedBackup = async e => {
@@ -1101,26 +1125,33 @@ function registerBackupHandlers() {
           : bulkStorage.backup(target, { version: app.getVersion() })
     });
   };
-  bulkAccess.handle('library:restore', async e => {
+  bulkAccess.handle('library:restore', async (e, backupId) => {
     paddockIdle(e);
+    // (2.4.0) a backup of the list (the page showed what it holds and asked); otherwise a folder is chosen and the question asked here
+    const picked = typeof backupId === 'string' && backupId ? backupById(backupId) : null;
+    if (backupId && (!picked || !picked.folder)) throw Error('That backup is not there any more.');
     const client = library(),
-      choice = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {
-        title: 'Choose a complete shared-library backup folder',
-        properties: ['openDirectory']
-      });
+      choice = picked
+        ? { canceled: false, filePaths: [picked.path] }
+        : await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {
+            title: 'Choose a complete shared-library backup folder',
+            properties: ['openDirectory']
+          });
     if (choice.canceled || !choice.filePaths?.length) return { canceled: true };
     bulkAccess.idle();
     await require('./shared-library-backup').verify(choice.filePaths[0]);
-    const answer = await dialog.showMessageBox(BrowserWindow.fromWebContents(e.sender), {
-      type: 'warning',
-      title: 'Restore the shared car library',
-      message: 'Replace the car library and racing history used by both apps?',
-      detail:
-        'This restores all Paddock library data from this backup. Timing settings, drivers and current recovery data stay as they are. A complete before-restore backup is retained. Old pending saves will be held for review, never automatically replayed into the restored library. Timing will restart to perform the restore.',
-      buttons: ['Cancel', 'Restore shared library and restart'],
-      defaultId: 0,
-      cancelId: 0
-    });
+    const answer = picked
+      ? { response: 1 }
+      : await dialog.showMessageBox(BrowserWindow.fromWebContents(e.sender), {
+          type: 'warning',
+          title: 'Restore the shared car library',
+          message: 'Replace the car library and racing history used by both apps?',
+          detail:
+            'This restores all Paddock library data from this backup. Timing settings, drivers and current recovery data stay as they are. A complete before-restore backup is retained. Old pending saves will be held for review, never automatically replayed into the restored library. Timing will restart to perform the restore.',
+          buttons: ['Cancel', 'Restore shared library and restart'],
+          defaultId: 0,
+          cancelId: 0
+        });
     if (answer.response !== 1) return { canceled: true };
     paddockIdle(e);
     if (appWork.jobs.size !== 1) throw Error('Wait for the other Timing operations to finish before restoring.');
@@ -1155,7 +1186,11 @@ function registerBackupHandlers() {
     return { restarting: true };
   });
   bulkAccess.handle('backup:save', async e => {
-    if (sharedLibrary) return sharedBackup(e);
+    if (sharedLibrary) {
+      const r = await sharedBackup(e);
+      if (r && r.saved && r.path) await noteBackup(r.path, { kind: 'hand', outside: true }).catch(() => {});
+      return r;
+    }
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), {
       defaultPath: `slotforge-timing-backup-${localDate()}.json`,
       filters: [{ name: 'SlotForge Timing backup', extensions: ['json'] }]
@@ -1164,6 +1199,7 @@ function registerBackupHandlers() {
     await resourceStore.idle();
     await lifecycle.idle();
     await bulkStorage.backup(filePath, { version: app.getVersion() });
+    await noteBackup(filePath, { kind: 'hand', outside: true }).catch(() => {}); // (2.4.0: it shows in the list of backups)
     return { saved: true, path: filePath };
   });
   bulkAccess.handle('backup:open', async e => {
@@ -1241,6 +1277,19 @@ function registerBackupHandlers() {
     );
     return { safety };
   });
+  // ---- (2.4.0, SlotForgeRestyle.md "Backup Vault") the index of the backups (backup-index.js) and what the app holds now ----
+  const BackupIndex = require('./backup-index');
+  const backupIndexFile = path.join(app.getPath('userData'), 'backup-index.json');
+  const holdsNow = async () => {
+    const out = {};
+    for (const e of BackupIndex.KEYS) out[e] = ((await records.transferChoices(e).catch(() => [])) || []).length;
+    return out;
+  };
+  const noteBackup = async (target, o) => {
+    const ix = BackupIndex.read(backupIndexFile);
+    BackupIndex.record(ix, target, { ...o, counts: await holdsNow().catch(() => null) });
+    BackupIndex.write(backupIndexFile, ix);
+  };
   // ---- automatic backups (2.3.0, auto-backup.js): the same backup as Back up, by itself, every day or week the app is used ----
   const autoBackup = require('./auto-backup').createAutoBackup({
     settings: () => lifecycle.settings(),
@@ -1272,12 +1321,99 @@ function registerBackupHandlers() {
         });
       return bulkStorage.backup(target, { version: require('./package.json').version });
     },
+    afterMake: (target, o) => noteBackup(target, { kind: o.kind, note: o.note }).catch(() => {}),
     onChange: st => {
       if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('autobackup:status', st);
     }
   });
   bulkAccess.handle('autobackup:status', () => autoBackup.status());
   bulkAccess.handle('autobackup:now', () => autoBackup.run('by hand'));
+  // (2.4.0) every backup in a list, newest first, with what it holds; a backup by hand or for safety; one picked to restore
+  const backupEntries = () => {
+    const ix = BackupIndex.tidy(BackupIndex.read(backupIndexFile));
+    return BackupIndex.entries(ix, require('./auto-backup').list(autoBackup.status().folder));
+  };
+  const backupById = id => backupEntries().find(x => x.id === id) || null;
+  const sizeOf = p => {
+    try {
+      const st = fs.statSync(p);
+      if (!st.isDirectory()) return st.size;
+      return fs.readdirSync(p).reduce((n, x) => n + sizeOf(path.join(p, x)), 0);
+    } catch {
+      return 0;
+    }
+  };
+  bulkAccess.handle('backups:list', async () => {
+    const st = autoBackup.status(),
+      list = backupEntries().map(x => ({ ...x, bytes: sizeOf(x.path) }));
+    return {
+      status: st,
+      list,
+      now: await holdsNow(),
+      sameDrive: BackupIndex.sameDrive(st.folder, app.getPath('userData')),
+      shared: !!sharedLibrary
+    };
+  });
+  // what an older backup without counts holds (a backup file of one piece is read; a folder says only what its manifest says)
+  bulkAccess.handle('backups:summary', async (_e, id) => {
+    const b = backupById(id);
+    if (!b) throw Error('That backup is not there any more.');
+    if (b.folder) {
+      try {
+        const m = JSON.parse(fs.readFileSync(path.join(b.path, 'manifest.json'), 'utf8'));
+        return { folder: true, appVersion: m.appVersion || '', date: m.createdAt || b.date };
+      } catch {
+        return { folder: true };
+      }
+    }
+    if (fs.statSync(b.path).size > 1024 * 1024 * 1024) return { error: 'The file is too big to read.' };
+    const c = backup.check(JSON.parse(fs.readFileSync(b.path, 'utf8')));
+    if (!c.ok) return { error: c.error };
+    const counts = Object.fromEntries(BackupIndex.KEYS.map(k => [k, c.counts[k] || 0]));
+    const ix = BackupIndex.read(backupIndexFile);
+    BackupIndex.record(ix, b.path, {
+      kind: b.kind,
+      note: b.note,
+      counts,
+      date: c.date || b.date,
+      outside: !!(ix.items[b.id] && ix.items[b.id].outside)
+    });
+    BackupIndex.write(backupIndexFile, ix);
+    return { counts, appVersion: c.appVersion, date: c.date || b.date, laps: c.laps };
+  });
+  bulkAccess.handle('backups:make', async (_e, o) => {
+    const kind = o && ['hand', 'safety'].includes(o.kind) ? o.kind : 'hand';
+    return autoBackup.run(kind === 'safety' ? 'for safety' : 'by hand', { kind, note: o && o.note });
+  });
+  bulkAccess.handle('backups:show', async (_e, id) => {
+    const b = backupById(id);
+    if (!b) throw Error('That backup is not there any more.');
+    require('electron').shell.showItemInFolder(b.path);
+    return true;
+  });
+  // a backup of the list to restore: read and checked as with Restore from a backup (a folder of the shared library is restored with library:restore)
+  bulkAccess.handle('backups:pick', async (_e, id) => {
+    pendingRestore = null;
+    pendingRestoreSource = null;
+    const b = backupById(id);
+    if (!b) return { ok: false, error: 'That backup is not there any more.' };
+    const sessions = (await records.transferChoices('sessions').catch(() => [])) || [];
+    const since = sessions.filter(x => String(x.date || '') > String(b.date || '')).sort((x, y) => (x.date < y.date ? 1 : -1));
+    const lost = { races: since.length, last: since[0] ? { name: since[0].setupName || '', date: since[0].date } : null };
+    if (b.folder) return { ok: true, folder: true, shared: !!sharedLibrary, entry: b, lost, now: await holdsNow() };
+    try {
+      if (fs.statSync(b.path).size > 1024 * 1024 * 1024) return { ok: false, error: 'The file is too big.' };
+      const bytes = fs.readFileSync(b.path),
+        c = backup.check(JSON.parse(bytes.toString('utf8')));
+      if (c.ok) {
+        pendingRestore = JSON.parse(bytes.toString('utf8'));
+        pendingRestoreSource = { file: b.path, sha256: require('node:crypto').createHash('sha256').update(bytes).digest('hex') };
+      }
+      return { ...c, file: b.name, entry: b, lost, now: await holdsNow(), shared: !!sharedLibrary };
+    } catch {
+      return { ok: false, error: 'The file could not be read: it is not a backup file from this app.' };
+    }
+  });
   bulkAccess.handle('autobackup:folder', async e => {
     const choice = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {
       title: 'Choose the folder for the automatic backups',

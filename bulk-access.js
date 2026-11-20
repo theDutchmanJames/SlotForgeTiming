@@ -13,7 +13,8 @@ module.exports = function createBulkAccess({ ipcMain, getMain, isRacing }) {
       'backup:restore',
       'backup:native-save',
       'backup:native-restore',
-      'library:restore'
+      'library:restore',
+      'backups:pick'
     ].includes(name);
     ipcMain.handle(name, async (event, ...args) => {
       const win = getMain();

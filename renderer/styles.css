@@ -7335,3 +7335,94 @@ html .rsform.ts-teams .memlist .memname{font-weight:600;font-size:13px;margin-ri
 html .rsform.ts-teams .memlist .btn{height:24px;min-width:24px;padding:0 6px;border:0;border-radius:999px;background:transparent;font-size:12px}
 html .rsform.ts-teams .memlist .btn.danger{color:var(--muted)}
 html .rsform.ts-teams .memlist .btn.danger:hover{color:var(--accent-text,var(--accent))}
+
+/* (2.4.0, SlotForgeRestyle.md "Backup Vault") App Settings > Import and Export: Backups, Export, Import */
+html{--bv-ok:#3ecf8e;--bv-warn:#f2b705;--bv-bad:#e5484d;--bv-warn-text:color-mix(in srgb,#f2b705 62%,var(--ink))}
+html .bv-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center;padding:18px 20px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));border-radius:16px;background:linear-gradient(110deg,color-mix(in srgb,var(--c) 10%,var(--panel)),var(--panel) 60%);--c:var(--bv-ok)}
+html .bv-hero.bv-late{--c:var(--bv-warn)}
+html .bv-hero.bv-bad{--c:var(--bv-bad)}
+html .bv-hero.bv-off{--c:var(--muted)}
+html .bv-shield{display:grid;place-items:center;width:58px;height:58px;border-radius:14px;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent)}
+html .bv-k{font:600 11px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb,var(--c,var(--muted)) 75%,var(--ink))}
+html .bv-hero h3{margin:2px 0 4px;font:800 italic 30px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .bv-hero p{margin:0;font-size:13px;color:var(--muted)}
+html .bv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+html .bv-chip{display:inline-flex;align-items:baseline;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
+html .bv-chip b{font:600 12.5px 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+html .bv-chip.warn{border-color:color-mix(in srgb,var(--bv-warn) 50%,var(--line));color:var(--bv-warn-text)}
+html .bv-act{display:grid;gap:8px;min-width:220px}
+html .bv-msg{margin:8px 2px 0;min-height:1em}
+html .bv-card{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+html .bv-ch{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+html .bv-ch h4{margin:0;font:800 italic 19px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .bv-ch small{font-size:12.5px;color:var(--muted)}
+html .bv-sp{flex:1}
+html .bv-list{width:100%;border-collapse:collapse;font-size:13px}
+html .bv-list th{padding:8px 12px;text-align:left;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+html .bv-list td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+html .bv-list tr:last-child td{border-bottom:0}
+html .bv-d b{display:block;font:600 13.5px 'SF Roboto Mono',Consolas,monospace}
+html .bv-d small{font-size:11.5px;color:var(--muted)}
+html .bv-latest .bv-d b::after{content:'Latest';margin-left:8px;padding:1px 7px;border-radius:999px;font:600 10px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--bv-ok);background:color-mix(in srgb,var(--bv-ok) 14%,transparent)}
+html .bv-kind{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border:1px solid var(--line);border-radius:999px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+html .bv-kind i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+html .bv-n{font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .bv-a{text-align:right;white-space:nowrap}
+html .bv-a .btn+.btn{margin-left:6px}
+html .bv-empty{padding:14px 16px;margin:0}
+html .bv-sched{display:grid;grid-template-columns:minmax(0,1.4fr) 120px minmax(0,2fr);gap:14px;padding:14px 16px}
+html .bv-sched>label{display:grid;gap:6px;align-content:start;font-size:12.5px;color:var(--muted)}
+html .bv-folder{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:var(--ink)}
+html .bv-folder b{font:500 12px 'SF Roboto Mono',Consolas,monospace;word-break:break-all}
+html .bv-on{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+html .bv-foot{padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+html .bv-large>p,html .bv-large>.row{margin:12px 16px}
+html .bv-dlg{max-width:620px}
+html .bv-cmp{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+html .bv-cmp th{padding:6px 10px;text-align:right;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+html .bv-cmp td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);font:600 13px 'SF Roboto Mono',Consolas,monospace}
+html .bv-cmp th:first-child,html .bv-cmp td:first-child{text-align:left;font-family:inherit;font-weight:500}
+html .bv-cmp td.bv-diff{color:var(--accent-text,var(--accent))}
+html .bv-lost{display:grid;gap:4px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--bv-warn) 45%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--bv-warn) 7%,var(--panel));font-size:13px}
+html .bv-lost b{color:var(--bv-warn-text)}
+html .bv-safe{margin:10px 0 0;font-size:12.5px}
+html .tr-ex{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+html .tr-ex .bv-card{margin-top:0}
+html .tr-bar{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+html .tr-bar input{flex:1;min-width:180px}
+html .tr-kinds{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line)}
+html .tr-k{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
+html .tr-k.on{border-color:var(--accent);color:var(--ink);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+html .tr-k b{font:600 11.5px 'SF Roboto Mono',Consolas,monospace}
+html .tr-k i{font-style:normal;font-size:11px;color:var(--accent-text,var(--accent))}
+html .tr-rows{max-height:480px;overflow:auto}
+html .tr-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer}
+html .tr-row small{font-size:12px;color:var(--muted)}
+html .tr-uses{font:500 11.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted);text-align:right}
+html .tr-none,html .tr-more{margin:0;padding:10px 14px;font-size:12.5px}
+html .tr-file{padding:16px}
+html .tr-file h3{margin:4px 0 10px;font:800 italic 24px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;overflow-wrap:anywhere}
+html .tr-sum{display:grid;gap:6px;margin:0 0 12px;padding:0;list-style:none;font-size:13px}
+html .tr-sum li{display:flex;justify-content:space-between;gap:8px}
+html .tr-sum li b{font-family:'SF Roboto Mono',Consolas,monospace}
+html .tr-sum li.tr-also{display:block;color:var(--muted)}
+html .tr-sum li.tr-also summary{display:flex;justify-content:space-between;gap:8px;cursor:pointer;list-style:none}
+html .tr-sum li.tr-also summary::-webkit-details-marker{display:none}
+html .tr-sum li.tr-also label{display:flex;margin:4px 0 0 10px;font-size:12.5px}
+html .tr-alsonote,html .tr-note{font-size:12px}
+html .tr-name{display:grid;gap:4px;margin-bottom:12px;font-size:12px;color:var(--muted)}
+html .tr-go{width:100%;margin-bottom:6px}
+html .tr-imfile .bv-ch{border-bottom:1px solid var(--line)}
+html .tr-fi{display:grid;place-items:center;width:44px;height:52px;border-radius:8px;background:color-mix(in srgb,var(--ink) 7%,var(--panel));font:700 11px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .tr-grp{padding:8px 16px 2px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .tr-it{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px) auto;gap:12px;align-items:center;padding:8px 16px;border-top:1px solid var(--line);font-size:13.5px}
+html .tr-st{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+html .tr-st i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+html .tr-st em{font-style:normal;color:var(--ink)}
+html .tr-imsum{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line);font-size:13px}
+html .tr-imsum b{font-family:'SF Roboto Mono',Consolas,monospace}
+html .tr-im>.row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+@media (max-width:980px){html .tr-ex{grid-template-columns:minmax(0,1fr)}html .bv-hero{grid-template-columns:auto minmax(0,1fr)}html .bv-act{grid-column:1/-1}html .tr-it{grid-template-columns:minmax(0,1fr) auto}html .tr-st{grid-column:1}}
+html .tr-imfile>.bv-ch:first-child{flex-wrap:nowrap;align-items:center}
+html .tr-imfile>.bv-ch:first-child>div{flex:1;min-width:0}
+html .tr-imfile>.bv-ch:first-child h4{margin-bottom:4px}

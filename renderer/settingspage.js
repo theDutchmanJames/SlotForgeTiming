@@ -87,16 +87,16 @@ const AppSettingsPage = (() => {
     transfer: {
       title: 'Import and Export',
       icon: 'database',
-      pills: ['Share selected items', 'Import copies', 'Complete backups'],
+      pills: ['Every backup listed', 'Restore any of them', 'Share selected items'],
       description:
-        'Export selected items to share them, import items as copies, or save a complete backup. Restoring a backup replaces the current database.',
-      help: 'Imports add copies. A complete restore replaces your data and asks for confirmation; the existing safety backup remains part of that process.',
-      first: 'export',
+        'Every backup in one list with what it holds, Restore on each; export selected items to share them; import items as copies or replacing yours.',
+      help: 'A restore or an import first saves what you have now as a backup, so you can always go back to it from the list.',
+      first: 'backups',
+      // (2.4.0, SlotForgeRestyle.md "Backup Vault") three sections: the backups (automatic, by hand, for safety) in one, Export, Import
       sections: [
-        ['auto', 'Automatic backups', 'Made by itself, kept for you', 'clock'],
-        ['backup', 'Complete backup', 'Everything in one file', 'database'],
+        ['backups', 'Backups', 'Made by itself and by hand', 'clock'],
         ['export', 'Export', 'Choose items to share', 'custom'],
-        ['import', 'Import', 'Add items from a file', 'database']
+        ['import', 'Import', 'Add or replace from a file', 'database']
       ]
     }
   };
@@ -144,7 +144,7 @@ const AppSettingsPage = (() => {
           ? trState.pending
             ? 'import'
             : trState.bk
-              ? 'backup'
+              ? 'backups'
               : null
           : null;
     if (reveal) {

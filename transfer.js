@@ -363,6 +363,10 @@ function apply(db, bundle) {
   ORDER.forEach(e => {
     map[e] = Object.create(null);
     had[e] = d[e].length;
+    // (2.4.0, Backup Vault: bundle.keep[e][file id] = the id it gets: an item of mine it is linked to (skipped or replaced), or the id chosen
+    // beforehand for a copy, so a replaced item can be linked to the copies)
+    const keep = bundle.keep && bundle.keep[e];
+    if (keep && typeof keep === 'object') Object.keys(keep).forEach(k => typeof keep[k] === 'string' && keep[k] && (map[e][k] = keep[k]));
   });
   const hadFields = Object.entries(d.customFields).map(([e, list]) => [e, list.length]);
   const rollback = () => {
@@ -404,7 +408,7 @@ function apply(db, bundle) {
         }
         if (e === 'tracks' && Object.hasOwn(row, 'trackDesign')) row.trackDesign = TrackDesign.validateSaved(row.trackDesign);
         const oldId = row.id;
-        row.id = crypto.randomUUID();
+        row.id = map[e][oldId] && !d[e].some(x => x.id === map[e][oldId]) ? map[e][oldId] : crypto.randomUUID();
         map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
         if (e === 'racesetups') {
@@ -448,4 +452,72 @@ function apply(db, bundle) {
   return counts;
 }
 
-module.exports = { FORMAT, ORDER, collect, dependencies, check, apply, titleOf, refsOf };
+// (2.4.0, SlotForgeRestyle.md "Backup Vault") Import: which items of a file are already here. existing: { entity: [{ id, ...the keys of its title }] }
+// -> [{ e, id, title, match: { id, title } | null, how: 'id' | 'name' }]: the same identity (a file made from this database), or else the same name
+const MATCHED = e => e !== 'laps';
+function matches(bundle, existing) {
+  const out = [];
+  for (const e of ORDER) {
+    if (!MATCHED(e)) continue;
+    const mine = (existing && existing[e]) || [];
+    for (const row of (bundle.items && bundle.items[e]) || []) {
+      const title = e === 'sessions' ? [row.setupName, row.date].filter(Boolean).join(' · ') : titleOf(e, row),
+        byId = mine.find(x => x.id === row.id),
+        byName = !byId && e !== 'sessions' && title ? mine.find(x => titleOf(e, x) === title) : null,
+        m = byId || byName;
+      out.push({
+        e,
+        id: row.id,
+        title,
+        match: m ? { id: m.id, title: e === 'sessions' ? [m.setupName, m.date].filter(Boolean).join(' · ') : titleOf(e, m) } : null,
+        how: byId ? 'id' : byName ? 'name' : ''
+      });
+    }
+  }
+  return out;
+}
+// The import as chosen: choices['e:id'] = 'copy' (the standard), 'replace' (an item that is already here takes the file's content) or 'skip'.
+// -> { bundle: what is added (with keep: links to my items, and the ids of the copies chosen now), replace: [{ e, id (mine), row (the file's, its
+// links pointing at the ids it gets) }], skipped }. newId: makes an id (crypto.randomUUID). A sessions or a lap is never replaced.
+function plan(bundle, list, choices, newId = () => crypto.randomUUID()) {
+  const b = clone(bundle),
+    keep = {},
+    drop = {},
+    replace = [];
+  let skipped = 0;
+  for (const m of list) {
+    const how = (choices && choices[m.e + ':' + m.id]) || 'copy';
+    ((keep[m.e] = keep[m.e] || {}), (drop[m.e] = drop[m.e] || new Set()));
+    if (how === 'skip') {
+      drop[m.e].add(m.id);
+      skipped++;
+      if (m.match) keep[m.e][m.id] = m.match.id;
+    } else if (how === 'replace' && m.match && m.e !== 'sessions') {
+      drop[m.e].add(m.id);
+      keep[m.e][m.id] = m.match.id;
+      replace.push({ e: m.e, id: m.match.id, from: m.id });
+    } else keep[m.e][m.id] = newId();
+  }
+  for (const e of Object.keys(drop)) if (b.items[e]) b.items[e] = b.items[e].filter(r => !drop[e].has(r.id));
+  // the laps of a session that is skipped go with it
+  const goneSessions = drop.sessions || new Set();
+  if (goneSessions.size && b.items.laps) b.items.laps = b.items.laps.filter(l => !goneSessions.has(l.sessionId));
+  b.keep = keep;
+  const rows = replace.map(r => {
+    const row = clone((bundle.items[r.e] || []).find(x => x.id === r.from));
+    delete row.id;
+    delete row.paddock;
+    delete row.paddockJournal;
+    delete row.paddockDelivery;
+    delete row.custom;
+    refsOf(r.e, row).forEach(ref => ref.set((keep[ref.entity] && keep[ref.entity][ref.get()]) || ''));
+    // (a setting the file does not have is empty there: mine is emptied too, so it ends up the same as the file's)
+    ((schema[r.e] && schema[r.e].fields) || []).forEach(f => {
+      if (!Object.hasOwn(row, f.key)) row[f.key] = f.type === 'members' ? [] : '';
+    });
+    return { e: r.e, id: r.id, row };
+  });
+  return { bundle: b, replace: rows, skipped };
+}
+
+module.exports = { FORMAT, ORDER, collect, dependencies, check, apply, titleOf, refsOf, matches, plan };

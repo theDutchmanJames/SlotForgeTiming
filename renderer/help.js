@@ -53,7 +53,7 @@ const Help = (() => {
           id: 'sqlitebackups',
           title: 'SQLite backups and recovery',
           note: 'Keep recovery copies and restore safely',
-          body: `<ul><li>Under <b>App Settings → Import and Export → Complete backup</b>, choose a <b>native backup folder</b> for large collections. Keep the entire folder together. JSON compatibility backups remain available for smaller collections, with a runtime limit of about 512 MiB.</li><li>Restoring restarts Timing, retains the previous SQLite generation and a safety snapshot, and selects a verified copy. Allow disk space for all copies.</li><li>Failed conversion or restore offers to close and retry, or cancel and reopen the previous database. Interrupted first installation retries next launch; it has no previous database. A damaged selected database never silently falls back to older JSON.</li><li>Before downgrading, export a current JSON compatibility backup within its size limit and restore it in a compatible build. Native backup folders require SQLite-capable Timing. Keep the whole profile when investigating recovery; do not delete storage markers or copy an open database file alone.</li></ul>`
+          body: `<ul><li>Under <b>App Settings → Import and Export → Backups</b>, <b>For large collections</b>, choose a <b>native backup folder</b>. Keep the entire folder together. JSON compatibility backups remain available for smaller collections, with a runtime limit of about 512 MiB.</li><li>Restoring restarts Timing, retains the previous SQLite generation and a safety snapshot, and selects a verified copy. Allow disk space for all copies.</li><li>Failed conversion or restore offers to close and retry, or cancel and reopen the previous database. Interrupted first installation retries next launch; it has no previous database. A damaged selected database never silently falls back to older JSON.</li><li>Before downgrading, export a current JSON compatibility backup within its size limit and restore it in a compatible build. Native backup folders require SQLite-capable Timing. Keep the whole profile when investigating recovery; do not delete storage markers or copy an open database file alone.</li></ul>`
         },
         {
           id: 'sqliteperformance',
@@ -1394,9 +1394,11 @@ const Help = (() => {
           note: 'Share items and keep a safe copy',
           body: `
         <ul>
-          <li>App Settings, <b>Import and Export</b>. <b>Export</b> saves ticked items (a track, a layout, a whole group) in a file that another copy of the app can import. What an item depends on can come along.</li>
-          <li><b>Import</b> adds copies and never changes what you have. A name you already have gets "(imported)" after it.</li>
-          <li>A <b>complete backup</b> keeps the database, layouts, pictures, sounds, settings and past races. SQLite users can choose a native backup folder for large collections; JSON compatibility backups use one file. <b>Restore</b> restores those items. The separate Content Pack and code-plugin libraries are not included; export content packs and keep original plugin packages separately. Copies already added from packs are included.</li>
+          <li>App Settings, <b>Import and Export</b>, <b>Backups</b>: the last backup and the next one, and <b>Your backups</b>: every backup (automatic, by hand, for safety) with what it holds and <b>Restore…</b>. A restore shows what is lost and first saves what you have now as a backup <b>Before a restore</b>.</li>
+          <li><b>Back up now</b> takes a note (Before club night); backups by hand are never removed. Keep the folder on another drive or a USB stick.</li>
+          <li><b>Export</b>: find and tick items; <b>Your file</b> lists them with what they use.</li>
+          <li><b>Import</b> marks every item <b>New</b> or <b>Already here</b>: <b>Add a copy</b>, <b>Replace mine</b> or <b>Skip</b>. A backup is made first.</li>
+          <li>Content Pack and plugin libraries are not in a backup: export packs separately.</li>
         </ul>`
         }
       ]

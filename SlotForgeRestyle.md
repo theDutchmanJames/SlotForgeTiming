@@ -51,6 +51,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Track Sheet](#track-sheet) | The track editor: lanes as tiles, Every lane as a lane strip, a box per sector name, Raced on under the rail | Database › Tracks › Edit |
 | [Driver Sheet](#driver-sheet) | The driver editor: On the record tiles, the callsign in three letter boxes, Racing or Retired; the Delete question with Retire and Merge first | Database › Drivers › Edit, Delete |
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
+| [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1372,6 +1373,31 @@ race* or *No drivers yet*; **On the record** as for a driver; the drivers of the
 The race setup's **Distance of every lane** and **swap distances** are boxes too (`.ts-boxes`, `.ts-box`: a box per lane with its lane colour, or a box per
 swap with + and −), instead of a list typed with commas.
 
+## Backup Vault
+
+App Settings › Import and Export (`renderer/transferui.js`; `auto-backup.js` list and kinds, `backup-index.js`, `transfer.js` matches and plan, `main.js`
+backups:*; styles under `.bv-` and `.tr-`). Three sections: **Backups**, **Export**, **Import**. The sections are kept out of the Settings Sheet rows
+(`.bv` in `generalpage.js`), like the Pit Lane.
+
+- **The status card** (`.bv-hero`): a shield tile, a Roboto Mono kicker (*Backups · safe*, *· late*, *· the last one failed*), the headline in Barlow
+  italic caps (*Backed up today, 21:04*), a line (*Every week by itself, the newest 5 kept. The next one is due on …*), chips (backups, size in all, an
+  amber *On the same drive as your data* warning), and on the right a note box, **Back up now** and **Save a backup to…**. Green, amber, red or grey by tone.
+- **Your backups** (`.bv-list`): newest first, the date in Roboto Mono with *Latest*, the note or how long ago under it, the kind as a dotted pill
+  (*Automatic* green, *By hand* blue, *For safety* amber), what it holds (*35 drivers · 9 tracks · 318 races*), the size, **Show** and **Restore…**.
+- **The restore question** (`.bv-dlg`): the backup next to now in a table (a number that differs in the accent text colour), *What is lost* in an amber
+  box, the note that a *Before a restore* backup is made first; *Keep what I have* has the focus.
+- **Schedule** (`.bv-sched`): On, how often as a Gear Selector, keep the newest, the folder; **For large collections** holds the native backup.
+- **Export** (`.tr-ex`): a search, the kinds as chips with counts and *N ticked* (`.tr-k`), a row per item with what it uses in Roboto Mono; **Your file**
+  (`.tr-file`): the name in Barlow (*Check race + 1*), the counts, *+ the tracks they use* (each folds open to untick), the file name, Export.
+- **Import** (`.tr-im`): the file card, *What is in it* with a row per item: a dot (*New* green, *Already here: Club Oval* amber) and Add a copy / Replace
+  mine / Skip (one for all on top), the sum (*Adds 1 · replaces 1 · skips 10*), *A backup is made first*.
+
+```css
+html .bv-hero{grid-template-columns:auto minmax(0,1fr) auto;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));background:linear-gradient(110deg,color-mix(in srgb,var(--c) 10%,var(--panel)),var(--panel) 60%)}
+html .bv-kind i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+html .tr-k.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+```
+
 ## Finalize Review
 
 The director's final check after a race or heat (`renderer/review.js` finishHtml, `race.js` rerunHeat, `raceover.js` checkedHtml/asideHtml, `stats.js`
@@ -2510,3 +2536,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Rotation Board | New: rotation lanes from a track, participants from an entry list or picked drivers, Lane fairness with the words and Even out, a lane warning on the card |
 | 2026-11 | Finalize Review | New: the heat named in the final check, Your changes with the place before and after and Undo, Run this heat again, Delete the whole race with the heats saved; the changes kept with the result on the break, Race Over, the Record Book and the Race Report |
 | 2026-11 | Track Sheet, Driver Sheet, Team Sheet | New: the track, driver and team editors as sheets (lanes as tiles, Every lane, sector boxes, On the record, the callsign boxes, More), the Delete question with Retire and Merge first, lane boxes in a race setup |
+| 2026-11 | Backup Vault | New: Import and Export as Backups (status card, every backup with Restore and what is lost, notes, safety backups), an Export picker with Your file, an Import preview with Add a copy, Replace mine or Skip |

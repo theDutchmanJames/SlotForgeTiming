@@ -1,31 +1,52 @@
-// App Settings > Import and Export: pick items (a layout, a driver, a whole race setup...) and save them to a file; read such a file and add its items as copies.
-const trState = { picks: {}, skip: new Set(), open: new Set(), pending: null, msg: '', bk: null, bkMsg: '' }; // skip: "entity:id" of things the ticked items use that the user does not want in the file
+// App Settings > Import and Export (2.4.0, SlotForgeRestyle.md "Backup Vault"): three sections.
+// - Backups: how safe the data is (the last backup, the next one, a warning when the backups are on the same drive), every backup in a list with what it
+//   holds and Restore… (a backup of what is there now is made first, "Before a restore"), Back up now with a note, Save a backup to…, the schedule of
+//   the automatic backups, and the native backup for large collections.
+// - Export: a picker (a search, the kinds as chips with counts) and Your file: what goes in it with what the items use, the file name.
+// - Import: the items of a file, each New or Already here, with Add a copy, Replace mine or Skip (a backup is made first).
+const trState = {
+  picks: {},
+  skip: new Set(),
+  open: new Set(),
+  pending: null,
+  msg: '',
+  bk: null,
+  bkMsg: '',
+  exKind: '',
+  exQ: '',
+  exName: '',
+  uses: {},
+  choices: {},
+  bvNote: '',
+  sums: {}
+}; // skip: "entity:id" of things the ticked items use that the user does not want in the file; uses: "entity:id" -> what an item uses (words)
 const TR_GROUPS = [
+  ['Race setups', ['racesetups']],
+  ['Tracks', ['tracks']],
+  ['Drivers', ['drivers']],
+  ['Slot cars', ['slotcars']],
+  ['Teams', ['teams']],
   [
-    'Database',
+    'Systems',
     [
-      'resourcesystems',
-      'tracks',
-      'slotcars',
-      'drivers',
-      'teams',
-      'racesetups',
       'fuelrules',
       'penaltysystems',
       'damagesystems',
       'tyrewearsystems',
       'safetycarsystems',
       'pushsavesystems',
+      'weathersystems',
       'raceclasses',
       'multiclasssystems',
       'virtualrivalsystems',
-      'weathersystems',
-      'rotationsetups',
-      'championships'
+      'resourcesystems',
+      'rotationsetups'
     ]
   ],
-  ['Look and sound', ['layouts', 'rowdesigns', 'chartdesigns', 'imagesets', 'audiosets', 'customwidgets']],
-  ['History', ['sessions']]
+  ['Championships', ['championships']],
+  ['Layouts and widgets', ['layouts', 'rowdesigns', 'chartdesigns', 'imagesets', 'customwidgets']],
+  ['Sounds', ['audiosets']],
+  ['Races', ['sessions']]
 ];
 const ORDER_DEPS = [
   'resourcesystems',
@@ -55,11 +76,96 @@ const ORDER_DEPS = [
   'sessions'
 ];
 const trLabel = (e, r) => (e === 'sessions' ? [r.setupName, r.date].filter(Boolean).join(' · ') || '(session)' : titleOf(e, r));
+const trKind = (e, n) => ((state.schema[e] && (n === 1 ? state.schema[e].label : state.schema[e].plural)) || e).toLowerCase();
 
-const TR_FOLDERS = ['auto', 'backup', 'export', 'import'];
-// ---- automatic backups (2.3.0, auto-backup.js in the main process) ----
+const TR_FOLDERS = ['backups', 'export', 'import'];
+// ---- words of the backups (pure, for the tests too) ----
 const abSize = n =>
   n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' kB';
+const BV_WORDS = {
+  drivers: ['driver', 'drivers'],
+  tracks: ['track', 'tracks'],
+  slotcars: ['slot car', 'slot cars'],
+  racesetups: ['race setup', 'race setups'],
+  sessions: ['race', 'races']
+};
+const bvHolds = c =>
+  c ? ['drivers', 'tracks', 'sessions'].map(k => `${Number(c[k]) || 0} ${BV_WORDS[k][(Number(c[k]) || 0) === 1 ? 0 : 1]}`).join(' · ') : '';
+// "Today, 21:04", "Yesterday, 08:32", "Tue 17 Nov, 08:32" (now: the moment it is said)
+function bvWhen(iso, now = Date.now()) {
+  const d = new Date(iso);
+  if (!iso || isNaN(d)) return '–';
+  const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    day = x => new Date(x).toDateString(),
+    n = new Date(now);
+  if (day(d) === day(n)) return 'Today, ' + t;
+  if (day(d) === day(n - 864e5)) return 'Yesterday, ' + t;
+  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t;
+}
+function bvAgo(iso, now = Date.now()) {
+  const days = Math.floor((now - Date.parse(iso)) / 864e5);
+  return !Number.isFinite(days) || days < 1 ? '' : days === 1 ? '1 day ago' : `${days} days ago`;
+}
+// the card on top: { tone: 'ok' | 'late' | 'bad' | 'off', kicker, title, line }
+function bvHealth(st, list, now = Date.now()) {
+  const last = list && list.length ? list[0] : null,
+    every = st && st.every === 'week' ? 'Every week' : 'Every day the app is used',
+    keep = st ? `the newest ${st.keep} kept` : '';
+  if (st && st.ok === false)
+    return {
+      tone: 'bad',
+      kicker: 'Backups · the last one failed',
+      title: 'The last backup failed',
+      line: `${st.error || ''}${last ? ` The last good one is from ${bvWhen(last.date, now)}.` : ''}`.trim()
+    };
+  if (!last)
+    return {
+      tone: st && st.on ? 'late' : 'off',
+      kicker: 'Backups · none yet',
+      title: 'No backup yet',
+      line:
+        st && st.on
+          ? 'The first one is made a minute or two after the app starts, or press Back up now.'
+          : 'Automatic backups are off: press Back up now, or switch them on below.'
+    };
+  const late = st && st.on && st.next && Date.parse(st.next) < now - 864e5;
+  const next =
+    st && st.on && st.next
+      ? ` The next one is due on ${new Date(st.next).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}.`
+      : '';
+  return {
+    tone: late ? 'late' : st && st.on ? 'ok' : 'off',
+    kicker: late ? 'Backups · late' : st && st.on ? 'Backups · safe' : 'Backups · automatic backups off',
+    title: `Backed up ${bvWhen(last.date, now)
+      .replace(/^Today/, 'today')
+      .replace(/^Yesterday/, 'yesterday')}`,
+    line: st && st.on ? `${every} by itself, ${keep}.${next}` : 'Automatic backups are off: make one by hand now and then.'
+  };
+}
+// what a restore loses, in words: the races since the backup, and what is more now than in the backup
+function bvLost(backupCounts, now, lost) {
+  const bits = [];
+  if (lost && lost.races)
+    bits.push(
+      `${lost.races} ${lost.races === 1 ? 'race' : 'races'} raced since then${lost.last ? ` (the last on ${new Date(lost.last.date).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}${lost.last.name ? ', “' + lost.last.name + '”' : ''})` : ''}`
+    );
+  if (backupCounts && now)
+    ['drivers', 'tracks', 'slotcars', 'racesetups'].forEach(k => {
+      const d = (Number(now[k]) || 0) - (Number(backupCounts[k]) || 0);
+      if (d > 0) bits.push(`${d} ${BV_WORDS[k][d === 1 ? 0 : 1]} added since`);
+    });
+  return bits.length ? bits.join(', ') + '.' : 'Nothing that the backup does not have, as far as the app can tell.';
+}
+// the export file's name: the first ticked item, and how many more
+function trFileName(first, n) {
+  const base =
+    String(first || 'SlotForge items')
+      .replace(/[\\/:*?"<>|]/g, ' ')
+      .trim() || 'SlotForge items';
+  return `${base}${n > 1 ? ' + ' + (n - 1) : ''}.json`;
+}
+
+// ---- automatic backups: the schedule ----
 function autoBackupText(st) {
   if (!st) return '';
   if (st.running) return 'Making a backup now…';
@@ -70,16 +176,13 @@ function autoBackupText(st) {
     return st.on ? 'No automatic backup yet: the first one is made a minute or two after the app starts.' : 'Automatic backups are off.';
   return `Last backup: ${last}${st.bytes ? ', ' + abSize(st.bytes) : ''}. ${st.count} kept in the folder.`;
 }
-function autoBackupHtml(st) {
+function bvScheduleHtml(st) {
   if (!st) return '<p class="muted">Automatic backups work in the desktop app.</p>';
-  return `<p class="muted">A complete backup by itself, the same as <em>Complete backup</em> below, on the days you use the app. The oldest ones are removed, so the folder does not keep growing. Never during a race.</p>
-    <div class="row"><label class="inline"><input type="checkbox" id="ab-on"${st.on ? ' checked' : ''}> Make backups by itself</label>
-      <label>How often <select id="ab-every"><option value="day"${st.every === 'day' ? ' selected' : ''}>Every day the app is used</option><option value="week"${st.every === 'week' ? ' selected' : ''}>Every week</option></select></label>
-      <label>Keep the newest <input id="ab-keep" type="number" min="1" max="60" value="${esc(st.keep)}" style="width:4.5em"></label></div>
-    <div class="row"><span class="muted">Folder: <b>${esc(st.folder)}</b></span></div>
-    <div class="row"><button type="button" class="btn" id="ab-folder">Change folder…</button>${st.folder !== st.defaultFolder ? '<button type="button" class="btn" id="ab-default">Use the standard folder</button>' : ''}<button type="button" class="btn" id="ab-open">Open the folder</button><button type="button" class="btn primary" id="ab-now"${st.running ? ' disabled' : ''}>Back up now</button></div>
-    <p class="${st.ok === false ? 'ab-bad' : 'muted'}" id="ab-msg" role="status">${esc(autoBackupText(st))}</p>
-    <p class="muted">A backup on another drive or a USB stick also survives a broken disk: choose a folder there. To restore one, use <em>Restore from a backup</em> below (with the shared library: App Settings, Connections, Shared Library).</p>`;
+  return `<div class="bv-card"><div class="bv-ch"><h4>Schedule</h4><small>when backups are made by themselves</small><span class="bv-sp"></span><label class="bv-on"><input type="checkbox" id="ab-on"${st.on ? ' checked' : ''}> On</label></div>
+    <div class="bv-sched"><label>How often<span class="bs-gearsel" role="group"><button type="button" data-ab-every="day" class="${st.every === 'day' ? 'on' : ''}">Every day used</button><button type="button" data-ab-every="week" class="${st.every === 'week' ? 'on' : ''}">Every week</button></span></label>
+    <label>Keep the newest<input id="ab-keep" type="number" min="1" max="60" value="${esc(st.keep)}"></label>
+    <label>Folder<span class="bv-folder"><b>${esc(st.folder)}</b><button type="button" class="btn sm" id="ab-folder">Change…</button>${st.folder !== st.defaultFolder ? '<button type="button" class="btn sm" id="ab-default">Use the standard folder</button>' : ''}</span></label></div>
+    <div class="bv-foot">Never during a race. Only its own automatic backups are removed when there are more than ${esc(st.keep)}; backups made by hand stay.</div></div>`;
 }
 function bindAutoBackup(box) {
   const $ = id => box.querySelector('#' + id),
@@ -90,7 +193,7 @@ function bindAutoBackup(box) {
     redraw();
   };
   $('ab-on').onchange = e => set({ on: e.target.checked });
-  $('ab-every').onchange = e => set({ every: e.target.value });
+  box.querySelectorAll('[data-ab-every]').forEach(b => (b.onclick = () => set({ every: b.dataset.abEvery })));
   $('ab-keep').onchange = e => {
     const n = Math.floor(Number(e.target.value));
     if (n >= 1 && n <= 60) set({ keep: n });
@@ -100,20 +203,52 @@ function bindAutoBackup(box) {
     if (folder) set({ folder });
   };
   if ($('ab-default')) $('ab-default').onclick = () => set({ folder: '' });
-  $('ab-open').onclick = () => api.autoBackupOpen().catch(e => ($('ab-msg').textContent = 'Could not open the folder: ' + e.message));
-  $('ab-now').onclick = async () => {
-    $('ab-now').disabled = true;
-    $('ab-msg').textContent = 'Making a backup now…';
-    try {
-      const r = await api.autoBackupNow();
-      if (r && r.skipped) $('ab-msg').textContent = 'Not now: ' + r.skipped + '.';
-      else redraw();
-    } catch (e) {
-      $('ab-msg').textContent = 'Could not make the backup: ' + e.message;
-      $('ab-now').disabled = false;
-    }
-  };
 }
+
+// ---- the restore question: what the backup holds next to what there is now, and what is lost ----
+function bvRestoreHtml(pick, counts) {
+  const e = pick.entry || {},
+    now = pick.now || {},
+    rows = ['drivers', 'tracks', 'slotcars', 'racesetups', 'sessions'];
+  const when = bvWhen(e.date);
+  const table = counts
+    ? `<table class="bv-cmp"><thead><tr><th></th><th>In the backup</th><th>Now</th></tr></thead><tbody>${rows
+        .map(k => {
+          const a = Number(counts[k]) || 0,
+            b = Number(now[k]) || 0;
+          return `<tr><td>${esc(BV_WORDS[k][1][0].toUpperCase() + BV_WORDS[k][1].slice(1))}</td><td>${a}</td><td${a !== b ? ' class="bv-diff"' : ''}>${b}</td></tr>`;
+        })
+        .join('')}</tbody></table>`
+    : `<p class="muted">${pick.folder ? 'A backup folder of the shared library: the car library and the racing history of both apps, and the settings of Timing.' : 'What it holds could not be read.'}</p>`;
+  return `<h3>Restore the backup of ${esc(when)}?</h3><div class="appdlg-body"><p>The app goes back to how it was then.${counts ? ' Next to what you have now:' : ''}</p>${table}
+    <div class="bv-lost"><b>What is lost</b><span>${esc(bvLost(counts, now, pick.lost))}</span></div>
+    <p class="muted bv-safe">What you have now is first saved as a backup “Before a restore”, so you can come back to it from the list. Timing restarts to restore.</p></div>
+    <div class="row appdlg-buttons"><button type="button" class="btn" data-bv-answer="">Keep what I have</button><button type="button" class="btn danger" data-bv-answer="yes">Restore the backup of ${esc(isNaN(new Date(e.date)) ? '' : new Date(e.date).toLocaleDateString([], { day: 'numeric', month: 'short' }))} and restart</button></div>`;
+}
+function bvAsk(html) {
+  return new Promise(resolve => {
+    const d = document.createElement('dialog');
+    d.className = 'appdlg bv-dlg';
+    d.innerHTML = html;
+    document.body.appendChild(d);
+    const done = v => {
+      d.close();
+      d.remove();
+      resolve(v);
+    };
+    d.addEventListener('click', ev => {
+      const b = ev.target.closest && ev.target.closest('[data-bv-answer]');
+      if (b) done(b.dataset.bvAnswer === 'yes');
+    });
+    d.addEventListener('cancel', ev => {
+      ev.preventDefault();
+      done(false);
+    });
+    d.showModal();
+    d.querySelector('[data-bv-answer=""]').focus();
+  });
+}
+
 async function renderTransferSettings(box) {
   box.onclick = box.oninput = box.onchange = null;
   if (!api.exportData) {
@@ -141,105 +276,206 @@ async function renderTransferSettings(box) {
   };
   const picked = () => Object.values(trState.picks).reduce((n, s) => n + s.size, 0);
   const sel = e => trState.picks[e] || (trState.picks[e] = new Set());
-  const itemsHtml = e =>
-    lists[e].length
-      ? `<label class="inline"><input type="checkbox" data-all="${e}"${lists[e].every(r => sel(e).has(r.id)) ? ' checked' : ''}> All ${esc(state.schema[e].plural.toLowerCase())}</label><div class="trlist">${lists[e].map(r => `<label class="inline"><input type="checkbox" data-item="${e}:${esc(r.id)}"${sel(e).has(r.id) ? ' checked' : ''}> ${esc(trLabel(e, r))}</label>`).join('')}</div>`
-      : '<span class="muted">none yet</span>';
   const pending = trState.pending,
     bk = trState.bk;
-  // three folders, as on the Results and Records page: each opens and closes, the choice is remembered while the app runs
-  const tf = (id, title, note, body) => folderHtml('transfer', id, title, note, `<div class="fbody">${body}</div>`);
-  const abSt = api.autoBackupStatus ? await api.autoBackupStatus().catch(() => null) : null;
-  box.innerHTML =
-    folderTools +
-    tf(
-      'auto',
-      'Automatic backups',
-      !abSt
-        ? ''
-        : !abSt.on
-          ? 'off'
-          : abSt.ok === false
-            ? 'the last one failed'
-            : (abSt.every === 'week' ? 'every week' : 'every day') + ', keeping ' + abSt.keep,
-      autoBackupHtml(abSt)
-    ) +
-    tf(
-      'backup',
-      'Complete backup',
-      bk ? 'a backup file is waiting' : 'keep a complete recovery copy',
-      `<p class="muted">A complete backup contains the database, layouts, pictures, sounds, settings, past races and laps. Restoring it puts the app back exactly as it was when the backup was made. The backup also holds your settings, including the Race Director password, so keep it somewhere safe. Installed Content Pack libraries are separate; export those packs separately. Copied content is included in the database backup.</p>
-    ${sqlite ? '<div class="card"><strong>Native SQLite backup — recommended for large collections</strong><p>Creates a verified backup folder without the JSON size limit. Keep the entire folder together. Restoring verifies a separate copy on restart and retains the previous database. Requires a SQLite-capable Timing build.</p><div class="row"><button class="btn primary" id="bk-native-save">Create native backup folder…</button><button class="btn" id="bk-native-restore">Restore native backup folder…</button></div></div><p class="muted">JSON compatibility backup: for older builds and smaller collections. Very large collections need the native format above.</p>' : ''}
-    <div class="row"><button class="btn${sqlite ? '' : ' primary'}" id="bk-save">${sqlite ? 'Save JSON backup...' : 'Save a complete backup...'}</button><button class="btn" id="bk-open">${sqlite ? 'Restore JSON backup...' : 'Restore from a backup...'}</button></div>
-    <p class="muted" id="bk-msg">${esc(trState.bkMsg)}</p>
+  const tf = (id, title, note, body) => folderHtml('transfer', id, title, note, `<div class="fbody"><div class="bv">${body}</div></div>`); // (.bv: the settings sheet leaves it as it is)
+  const bv = api.backupList ? await api.backupList().catch(() => null) : null,
+    abSt = bv ? bv.status : api.autoBackupStatus ? await api.autoBackupStatus().catch(() => null) : null,
+    blist = (bv && bv.list) || [];
+  // ---- Backups ----
+  const health = bvHealth(abSt, blist);
+  const KIND = { auto: ['Automatic', '#3ecf8e'], hand: ['By hand', '#3b82f6'], safety: ['For safety', '#f2b705'] };
+  const sumOf = b => b.counts || (trState.sums[b.id] && trState.sums[b.id].counts) || null;
+  const holdsCell = b => {
+    const c = sumOf(b),
+      s = trState.sums[b.id];
+    return c
+      ? esc(bvHolds(c))
+      : b.folder
+        ? `Backup folder${s && s.appVersion ? ' · version ' + esc(s.appVersion) : ''}`
+        : s && s.error
+          ? esc(s.error)
+          : '<span class="muted">reading…</span>';
+  };
+  const totalBytes = blist.reduce((n, b) => n + (b.bytes || 0), 0);
+  const backupsBody = `<div class="bv-hero bv-${health.tone}"><span class="bv-shield" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/>${health.tone === 'ok' ? '<path d="M8.5 12l2.5 2.5 4.5-5"/>' : '<path d="M12 8v5M12 16.5v.01"/>'}</svg></span>
+    <div><span class="bv-k">${esc(health.kicker)}</span><h3>${esc(health.title)}</h3><p>${esc(health.line)}</p>
+    <div class="bv-chips"><span class="bv-chip"><b>${blist.length}</b> ${blist.length === 1 ? 'backup' : 'backups'}</span>${totalBytes ? `<span class="bv-chip"><b>${esc(abSize(totalBytes))}</b> in all</span>` : ''}${bv && bv.sameDrive ? '<span class="bv-chip warn">⚠ On the same drive as your data: choose a folder on a USB stick or another drive</span>' : ''}</div></div>
+    <div class="bv-act"><input id="bv-note" maxlength="120" placeholder="A note, e.g. Before club night" value="${esc(trState.bvNote)}" aria-label="A note for the backup"><button type="button" class="btn primary" id="ab-now"${abSt && abSt.running ? ' disabled' : ''}>Back up now</button><button type="button" class="btn" id="bk-save">${shared ? 'Save a backup folder to…' : 'Save a backup to…'}</button></div></div>
+    <p class="muted bv-msg" id="bk-msg" role="status">${esc(trState.bkMsg)}</p>
+    <div class="bv-card"><div class="bv-ch"><h4>Your backups</h4><small>newest first · Restore puts the app back as it was then</small><span class="bv-sp"></span>${api.autoBackupOpen ? '<button type="button" class="btn sm" id="ab-open">Open the folder</button>' : ''}<button type="button" class="btn sm" id="bk-open">${shared ? 'Restore from another folder…' : 'Restore from another file…'}</button></div>
+    ${
+      blist.length
+        ? `<table class="bv-list"><thead><tr><th>When</th><th>Kind</th><th>What it holds</th><th>Size</th><th></th></tr></thead><tbody>${blist
+            .map(
+              (b, i) =>
+                `<tr${i === 0 ? ' class="bv-latest"' : ''}><td class="bv-d"><b>${esc(bvWhen(b.date))}</b><small>${esc(b.note ? '“' + b.note + '”' : bvAgo(b.date) || b.name)}</small></td><td><span class="bv-kind" style="--c:${KIND[b.kind] ? KIND[b.kind][1] : '#888'}"><i></i>${esc(KIND[b.kind] ? KIND[b.kind][0] : b.kind)}</span></td><td class="bv-n">${holdsCell(b)}</td><td class="bv-n">${b.bytes ? esc(abSize(b.bytes)) : ''}</td><td class="bv-a"><button type="button" class="btn sm ghost" data-bv-show="${esc(b.id)}" title="Show it in its folder">Show</button><button type="button" class="btn sm" data-bv-restore="${esc(b.id)}">Restore…</button></td></tr>`
+            )
+            .join('')}</tbody></table>`
+        : '<p class="muted bv-empty">No backup yet. Back up now makes the first one.</p>'
+    }</div>
     ${
       bk
         ? `<div class="card"><strong>${esc(bk.file || 'File')}</strong>${bk.date ? ` (made ${esc(new Date(bk.date).toLocaleString())}${bk.appVersion ? `, version ${esc(bk.appVersion)}` : ''})` : ''} contains:<ul>${
             Object.entries(bk.counts || {})
-              .map(
-                ([e, n]) =>
-                  `<li>${n} ${esc(((state.schema[e] && (n === 1 ? state.schema[e].label : state.schema[e].plural)) || e).toLowerCase())}</li>`
-              )
+              .map(([e, n]) => `<li>${n} ${esc(trKind(e, n))}</li>`)
               .join('') || '<li>no items</li>'
           }${bk.laps ? `<li>${bk.laps} laps</li>` : ''}</ul>
-      <p><strong>Restoring replaces everything you have now</strong> with the contents of this file. The data you have now is first kept in a safety file next to the database.</p>
+      <p><strong>Restoring replaces everything you have now</strong> with the contents of this file. What you have now is first saved as a backup “Before a restore”.</p>
       <div class="row"><button class="btn primary" id="bk-apply">Replace everything with this backup</button><button class="btn" id="bk-cancel">Cancel</button></div></div>`
         : ''
-    }`
-    ) +
-    tf(
-      'export',
-      'Export',
-      picked() ? picked() + ' ticked' : 'choose what to save in a file',
-      `<p class="muted">Tick what to save in a file: single items or whole groups. The file can be imported on this or another computer.</p>
-    ${TR_GROUPS.map(([g, es]) => `<details class="trgroup" data-key="g:${esc(g)}"${trState.open.has('g:' + g) ? ' open' : ''}><summary><strong>${esc(g)}</strong></summary>${es.map(e => `<details class="trent" data-key="e:${e}"${trState.open.has('e:' + e) ? ' open' : ''}><summary>${esc(state.schema[e].plural)} (${lists[e].length})${sel(e).size ? ` · ${sel(e).size} ticked` : ''}</summary>${itemsHtml(e)}</details>`).join('')}</details>`).join('')}
-    ${
-      Object.keys(deps).length
-        ? `<h4>Also take what these items use</h4><p class="muted">Untick anything you do not want in the file (for example the track of a race setup). Links to things left out are emptied on import.</p>
-      ${ORDER_DEPS.filter(e => deps[e])
-        .map(
-          e =>
-            `<div class="trdep"><strong>${esc(state.schema[e].plural)}</strong> <label class="inline"><input type="checkbox" data-dall="${e}"${deps[e].every(d => d.required || !trState.skip.has(e + ':' + d.id)) ? ' checked' : ''}> all</label><div class="trlist">${deps[e].map(d => `<label class="inline"><input type="checkbox" data-dep="${e}:${esc(d.id)}"${d.required || !trState.skip.has(e + ':' + d.id) ? ' checked' : ''}${d.required ? ' disabled' : ''}> ${esc(labelOf(e, d.id))}${d.required ? ' <span class="muted">(needed by a session)</span>' : ''}</label>`).join('')}</div></div>`
-        )
-        .join('')}`
-        : ''
     }
-    <p class="muted">Sessions always include their laps, track, drivers and slotcars.</p>
-    <div class="row"><button class="btn primary" id="tr-export"${picked() ? '' : ' disabled'}>Export ${picked()} ticked item${picked() === 1 ? '' : 's'} to a file...</button><button class="btn" id="tr-none"${picked() ? '' : ' disabled'}>Untick all</button><span id="tr-msg" class="muted" role="status">${esc(trState.msg)}</span></div>`
-    ) +
-    tf(
-      'import',
-      'Import',
-      pending ? 'a file is waiting' : 'add items from a file',
-      `<p class="muted">Items from a file are added as copies: nothing you have is changed. Links between the items are kept, and a name you already have gets "(imported)" after it.</p>
-    <p class="muted"><b>Cars from SlotForge Paddock:</b> choose <b>SlotForge Timing</b> as the export format in Paddock, then import that JSON file here. Car details, race classes and pictures become independent copies. Reimporting creates additional copies; it does not refresh existing cars or send race results back. For a live connection, use <b>Database → Slotcars → Dealership Cars</b>.</p>
-    <div class="row"><button class="btn" id="tr-open">Choose a file to import...</button></div>
+    ${bvScheduleHtml(abSt)}
+    ${
+      sqlite && !shared
+        ? '<div class="bv-card bv-large"><div class="bv-ch"><h4>For large collections</h4><small>a native SQLite backup folder, without the size limit of one file</small></div><p class="muted">Keep the entire folder together. Restoring verifies a separate copy on restart and keeps the previous database. It needs a Timing that can use SQLite.</p><div class="row"><button class="btn" id="bk-native-save">Create native backup folder…</button><button class="btn" id="bk-native-restore">Restore native backup folder…</button></div></div>'
+        : ''
+    }`;
+  // ---- Export ----
+  const kinds = TR_GROUPS.map(([name, es]) => ({
+    name,
+    es,
+    n: es.reduce((a, e) => a + (lists[e] || []).length, 0),
+    ticked: es.reduce((a, e) => a + sel(e).size, 0)
+  }));
+  if (!trState.exKind || !kinds.some(k => k.name === trState.exKind)) trState.exKind = (kinds.find(k => k.n) || kinds[0]).name;
+  const kind = kinds.find(k => k.name === trState.exKind),
+    q = trState.exQ.trim().toLowerCase(),
+    rows = [];
+  kind.es.forEach(e =>
+    (lists[e] || []).forEach(r => {
+      if (!q || trLabel(e, r).toLowerCase().includes(q)) rows.push({ e, r });
+    })
+  );
+  const shown = rows.slice(0, 80);
+  const firstPicked = (() => {
+    for (const [, es] of TR_GROUPS) for (const e of es) for (const id of sel(e)) return labelOf(e, id);
+    return '';
+  })();
+  const depList = ORDER_DEPS.filter(e => deps[e]);
+  const depCount = depList.reduce((n, e) => n + deps[e].filter(d => d.required || !trState.skip.has(e + ':' + d.id)).length, 0);
+  const fileName = trState.exName || trFileName(firstPicked, picked());
+  const exportBody = `<div class="tr-ex"><div class="bv-card tr-pick"><div class="tr-bar"><input id="tr-q" placeholder="Find a track, a driver, a race setup…" value="${esc(trState.exQ)}" aria-label="Find items"><button type="button" class="btn sm" id="tr-all"${shown.length ? '' : ' disabled'}>Tick all shown</button></div>
+    <div class="tr-kinds" role="group" aria-label="Kinds">${kinds.map(k => `<button type="button" class="tr-k${k.name === trState.exKind ? ' on' : ''}" data-tr-kind="${esc(k.name)}" aria-pressed="${k.name === trState.exKind}">${esc(k.name)} <b>${k.n}</b>${k.ticked ? `<i>${k.ticked} ticked</i>` : ''}</button>`).join('')}</div>
+    <div class="tr-rows">${
+      shown.length
+        ? shown
+            .map(
+              ({ e, r }) =>
+                `<label class="tr-row"><input type="checkbox" data-item="${e}:${esc(r.id)}"${sel(e).has(r.id) ? ' checked' : ''}><span><b>${esc(trLabel(e, r))}</b>${kind.es.length > 1 ? ` <small>· ${esc(state.schema[e].label)}</small>` : ''}</span><span class="tr-uses">${sel(e).has(r.id) && trState.uses[e + ':' + r.id] ? esc(trState.uses[e + ':' + r.id]) : ''}</span></label>`
+            )
+            .join('')
+        : `<p class="muted tr-none">${q ? 'Nothing found.' : 'none yet'}</p>`
+    }${rows.length > shown.length ? `<p class="muted tr-more">${rows.length - shown.length} more: use the search</p>` : ''}</div></div>
+    <div class="bv-card tr-file"><span class="bv-k">Your file</span><h3>${picked() ? esc(fileName.replace(/\.json$/, '')) : 'Nothing ticked yet'}</h3>
+    <ul class="tr-sum">${kinds
+      .flatMap(k => k.es.filter(e => sel(e).size).map(e => `<li><span>${esc(state.schema[e].plural)}</span><b>${sel(e).size}</b></li>`))
+      .join('')}${depList
+      .map(e => {
+        const on = deps[e].filter(d => d.required || !trState.skip.has(e + ':' + d.id)).length;
+        return `<li class="tr-also"><details><summary><span>+ the ${esc(trKind(e, 2))} they use</span><b>${on}</b></summary><label class="inline"><input type="checkbox" data-dall="${e}"${deps[e].every(d => d.required || !trState.skip.has(e + ':' + d.id)) ? ' checked' : ''}> all</label>${deps[e].map(d => `<label class="inline"><input type="checkbox" data-dep="${e}:${esc(d.id)}"${d.required || !trState.skip.has(e + ':' + d.id) ? ' checked' : ''}${d.required ? ' disabled' : ''}> ${esc(labelOf(e, d.id))}${d.required ? ' <span class="muted">(needed by a session)</span>' : ''}</label>`).join('')}</details></li>`;
+      })
+      .join('')}</ul>
+    ${depList.length ? '<p class="muted tr-alsonote">Also take what these items use: untick anything you do not want in the file. Links to things left out are emptied on import.</p>' : ''}
+    <label class="tr-name">File name<input id="tr-name" value="${esc(fileName)}"${picked() ? '' : ' disabled'}></label>
+    <button class="btn primary tr-go" id="tr-export"${picked() ? '' : ' disabled'}>Export ${picked()} ${picked() === 1 ? 'item' : 'items'}${depCount ? ' and what they use' : ''}…</button><button class="btn sm ghost" id="tr-none"${picked() ? '' : ' disabled'}>Untick all</button>
+    <p class="muted tr-note">Races always take their laps, track, drivers and slot cars. The file can be imported here or on another computer.</p><p id="tr-msg" class="muted" role="status">${esc(trState.msg)}</p></div></div>`;
+  // ---- Import ----
+  const items = pending && Array.isArray(pending.items) ? pending.items : null;
+  const choiceOf = m =>
+    trState.choices[m.e + ':' + m.id] || (m.match ? (m.how === 'id' && m.e !== 'sessions' ? 'replace' : 'copy') : 'copy');
+  const segOf = (m, now) => {
+    const opts = m.match
+      ? m.e === 'sessions'
+        ? [
+            ['copy', 'Add a copy'],
+            ['skip', 'Skip']
+          ]
+        : [
+            ['copy', 'Add a copy'],
+            ['replace', 'Replace mine'],
+            ['skip', 'Skip']
+          ]
+      : [
+          ['copy', 'Add'],
+          ['skip', 'Skip']
+        ];
+    return `<span class="bs-gearsel" role="group">${opts.map(([v, l]) => `<button type="button" class="${now === v ? 'on' : ''}" data-im="${esc(m.e + ':' + m.id)}" data-val="${v}" aria-pressed="${now === v}">${l}</button>`).join('')}</span>`;
+  };
+  const tally = items ? items.reduce((t, m) => ((t[choiceOf(m)] = (t[choiceOf(m)] || 0) + 1), t), {}) : {};
+  const here = items ? items.filter(m => m.match).length : 0;
+  const allNow = items && here ? [...new Set(items.filter(m => m.match && m.e !== 'sessions').map(choiceOf))] : [];
+  const importBody = `<div class="tr-im"><div class="row"><button class="btn" id="tr-open">${pending ? 'Choose another file…' : 'Choose a file to import…'}</button>${pending ? '' : '<span class="muted">An export file from SlotForge Timing, or from SlotForge Paddock (choose SlotForge Timing as the export format there).</span>'}</div>
     ${
       pending
-        ? `<div class="card"><strong>${esc(pending.file || 'File')}</strong> contains:<ul>${Object.entries(pending.summary)
+        ? `<div class="bv-card tr-imfile"><div class="bv-ch"><span class="tr-fi">JSON</span><div><h4>${esc(String(pending.file || 'File').replace(/\.json$/i, ''))}</h4><small>${esc(pending.file || '')}${pending.appVersion ? ' · from SlotForge Timing ' + esc(pending.appVersion) : ''}${pending.made ? ' · made ' + esc(new Date(pending.made).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })) : ''} · contains: ${Object.entries(
+            pending.summary || {}
+          )
+            .map(([e, s]) => `${s.count} ${esc(trKind(e, s.count))}`)
+            .join(', ')}</small></div></div>
+        ${
+          items
+            ? `<div class="bv-ch tr-imhead"><h4>What is in it</h4><small>${here ? `${here} ${here === 1 ? 'is' : 'are'} already here` : 'all new'}</small><span class="bv-sp"></span>${
+                here
+                  ? `<small>When an item is already here</small><span class="bs-gearsel" role="group">${[
+                      ['copy', 'Add a copy'],
+                      ['replace', 'Replace mine'],
+                      ['skip', 'Skip']
+                    ]
+                      .map(
+                        ([v, l]) =>
+                          `<button type="button" class="${allNow.length === 1 && allNow[0] === v ? 'on' : ''}" data-imall="${v}">${l}</button>`
+                      )
+                      .join('')}</span>`
+                  : ''
+              }</div>
+          ${[...new Set(items.map(m => m.e))]
             .map(
-              ([e, s]) =>
-                `<li>${s.count} ${esc((s.count === 1 ? state.schema[e].label : state.schema[e].plural).toLowerCase())}${s.names.filter(Boolean).length ? ': ' + esc(s.names.filter(Boolean).join(', ')) + (s.count > s.names.length ? ', ...' : '') : ''}</li>`
+              e =>
+                `<div class="tr-grp">${esc(state.schema[e] ? state.schema[e].plural : e)}</div>${items
+                  .filter(m => m.e === e)
+                  .slice(0, 60)
+                  .map(m => {
+                    const now = choiceOf(m);
+                    return `<div class="tr-it"><span><b>${esc(m.title || '(no name)')}</b></span><span class="tr-st" style="--c:${m.match ? '#f2b705' : '#3ecf8e'}"><i></i>${m.match ? `Already here: <em>${esc(m.match.title || m.match.id)}</em>` : 'New'}</span>${segOf(m, now)}</div>`;
+                  })
+                  .join('')}`
             )
-            .join('')}</ul>
-      <div class="row"><button class="btn primary" id="tr-apply">Add to my data</button><button class="btn" id="tr-cancel">Cancel</button></div></div>`
+            .join('')}
+          <div class="tr-imsum"><span>Adds <b>${tally.copy || 0}</b> · replaces <b>${tally.replace || 0}</b> · skips <b>${tally.skip || 0}</b></span><span class="bv-sp"></span><span class="muted">A backup is made first</span><button class="btn" id="tr-cancel">Cancel</button><button class="btn primary" id="tr-apply"${(tally.copy || 0) + (tally.replace || 0) ? '' : ' disabled'}>Import ${(tally.copy || 0) + (tally.replace || 0)} ${(tally.copy || 0) + (tally.replace || 0) === 1 ? 'item' : 'items'}</button></div>`
+            : `<div class="tr-imsum"><span>${Object.entries(pending.summary || {})
+                .map(
+                  ([e, s]) =>
+                    `${s.count} ${esc(trKind(e, s.count))}${s.names.filter(Boolean).length ? ': ' + esc(s.names.filter(Boolean).join(', ')) + (s.count > s.names.length ? ', ...' : '') : ''}`
+                )
+                .join(
+                  '; '
+                )}</span><span class="bv-sp"></span><button class="btn" id="tr-cancel">Cancel</button><button class="btn primary" id="tr-apply">Add to my data</button></div>`
+        }</div>`
         : ''
-    }`
-    );
-  if (shared) {
-    box.querySelector('#bk-save').closest('.fbody').innerHTML =
-      `<p>A complete backup folder contains the common car library and racing history, plus Timing settings and recovery data. Keep every file in this folder together.</p><p>Restoring the shared library affects both apps. Timing settings, drivers and local recovery data stay as they are. A before-restore backup is retained; old pending saves are held for review.</p><div class="row"><button class="btn primary" id="bk-save">Create complete backup folder…</button><button class="btn" id="bk-library-restore">Restore shared library…</button></div><p class="muted" role="status" id="bk-msg">${esc(trState.bkMsg)}</p>`;
-  }
+    }<p class="muted tr-msg2" role="status">${pending ? '' : esc(trState.msg)}</p></div>`;
+  const bad = abSt && abSt.ok === false;
+  box.innerHTML =
+    folderTools +
+    tf(
+      'backups',
+      'Backups',
+      bad
+        ? 'the last one failed'
+        : blist.length
+          ? 'last: ' +
+            bvWhen(blist[0].date)
+              .replace(/^Today/, 'today')
+              .replace(/^Yesterday/, 'yesterday')
+          : 'none yet',
+      backupsBody
+    ) +
+    tf('export', 'Export', picked() ? picked() + ' ticked' : 'choose what to save in a file', exportBody) +
+    tf('import', 'Import', pending ? 'a file is waiting' : 'add or replace items from a file', importBody);
+  if (shared && box.querySelector('#bk-open')) box.querySelector('#bk-open').id = 'bk-library-restore';
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'transfer');
   if (typeof TransferViews !== 'undefined') TransferViews.attach(box, 'items');
   folderWire(box);
-  box.onclick = ev => {
-    const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null;
-    if (fa) {
-      folderAll('transfer', TR_FOLDERS, fa.dataset.folderall === '1');
-      renderTransferSettings(box);
-    }
-  };
   const $ = id => document.getElementById(id),
     msg = t => {
       trState.msg = t;
@@ -251,7 +487,91 @@ async function renderTransferSettings(box) {
     const m = $('bk-msg');
     if (m) m.textContent = t;
   };
-  if (shared)
+  const redraw = () => renderTransferSettings(box);
+  // a backup that keeps what there is now, before a restore or an import (false when it could not be made)
+  const safety = async note => {
+    if (!api.backupMake) return true;
+    const r = await api.backupMake({ kind: 'safety', note });
+    if (r && r.skipped) {
+      bmsg(`Not now: ${r.skipped}.`);
+      msg(`Not now: ${r.skipped}.`);
+      return false;
+    }
+    if (r && r.ok === false) {
+      bmsg('The backup before it could not be made: ' + (r.error || '') + ' Nothing was changed.');
+      msg('The backup before it could not be made: ' + (r.error || '') + ' Nothing was changed.');
+      return false;
+    }
+    return true;
+  };
+  box.onclick = async ev => {
+    const t = ev.target && ev.target.closest ? ev.target : null;
+    const fa = t ? t.closest('[data-folderall]') : null;
+    if (fa) {
+      folderAll('transfer', TR_FOLDERS, fa.dataset.folderall === '1');
+      return redraw();
+    }
+    const b = t && t.closest('[data-tr-kind],[data-im],[data-imall],[data-bv-restore],[data-bv-show]');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.trKind) {
+      trState.exKind = d.trKind;
+      return redraw();
+    }
+    if (d.im) {
+      trState.choices[d.im] = d.val;
+      return redraw();
+    }
+    if (d.imall) {
+      (items || [])
+        .filter(m => m.match && (m.e !== 'sessions' || d.imall !== 'replace'))
+        .forEach(m => (trState.choices[m.e + ':' + m.id] = d.imall));
+      return redraw();
+    }
+    if (d.bvShow) return api.backupShow(d.bvShow).catch(x => bmsg('Could not show it: ' + x.message));
+    if (d.bvRestore) {
+      try {
+        const pick = await api.backupPick(d.bvRestore);
+        if (!pick || pick.ok === false) return bmsg((pick && pick.error) || 'That backup could not be read.');
+        const counts =
+          (pick.entry && pick.entry.counts) ||
+          (trState.sums[d.bvRestore] && trState.sums[d.bvRestore].counts) ||
+          (pick.counts
+            ? Object.fromEntries(['drivers', 'tracks', 'slotcars', 'racesetups', 'sessions'].map(k => [k, pick.counts[k] || 0]))
+            : null);
+        if (!(await bvAsk(bvRestoreHtml(pick, counts)))) {
+          if (api.backupCancel) await api.backupCancel();
+          return;
+        }
+        bmsg('Saving what you have now as a backup “Before a restore”…');
+        if (!(await safety('Before a restore'))) return;
+        bmsg('Restoring…');
+        const result = pick.folder ? await api.libraryRestore(d.bvRestore) : await api.backupRestore();
+        bmsg(result?.restarting ? 'Restarting to restore the backup.' : result?.canceled ? 'Cancelled.' : 'The backup is restored.');
+      } catch (x) {
+        bmsg('Could not restore the backup: ' + x.message);
+      }
+    }
+  };
+  box.oninput = ev => {
+    const t = ev.target;
+    if (t && t.id === 'tr-q') {
+      trState.exQ = t.value;
+      clearTimeout(trState.qTimer);
+      trState.qTimer = setTimeout(() => {
+        redraw().then(() => {
+          const i = $('tr-q');
+          if (i) {
+            i.focus();
+            i.setSelectionRange(i.value.length, i.value.length);
+          }
+        });
+      }, 250);
+    }
+    if (t && t.id === 'tr-name') trState.exName = t.value;
+    if (t && t.id === 'bv-note') trState.bvNote = t.value;
+  };
+  if (shared && $('bk-library-restore'))
     $('bk-library-restore').onclick = async () => {
       const button = $('bk-library-restore');
       button.disabled = true;
@@ -264,7 +584,7 @@ async function renderTransferSettings(box) {
         button.disabled = false;
       }
     };
-  if (sqlite && !shared)
+  if (sqlite && !shared && $('bk-native-save'))
     for (const [id, action] of [
       ['bk-native-save', 'nativeBackup'],
       ['bk-native-restore', 'nativeRestore']
@@ -289,30 +609,50 @@ async function renderTransferSettings(box) {
         }
       };
   bindAutoBackup(box);
+  if ($('ab-open')) $('ab-open').onclick = () => api.autoBackupOpen().catch(e => bmsg('Could not open the folder: ' + e.message));
+  if ($('ab-now'))
+    $('ab-now').onclick = async () => {
+      $('ab-now').disabled = true;
+      bmsg('Making a backup now…');
+      try {
+        const r = api.backupMake ? await api.backupMake({ kind: 'hand', note: trState.bvNote }) : await api.autoBackupNow();
+        if (r && r.skipped) bmsg('Not now: ' + r.skipped + '.');
+        else if (r && r.ok === false) bmsg('Could not make the backup: ' + r.error);
+        else {
+          trState.bvNote = '';
+          bmsg('Backed up.');
+          redraw();
+        }
+      } catch (e) {
+        bmsg('Could not make the backup: ' + e.message);
+        if ($('ab-now')) $('ab-now').disabled = false;
+      }
+    };
   $('bk-save').onclick = async () => {
     try {
       const res = await api.backupSave();
       bmsg(res && res.saved ? `Backup saved: ${res.path}` : 'Not saved.');
+      if (res && res.saved && api.backupList) redraw();
     } catch (x) {
       bmsg('Could not save the backup: ' + x.message);
     }
   };
-  if (!shared)
+  if (!shared && $('bk-open'))
     $('bk-open').onclick = async () => {
       try {
         const res = await api.backupOpen();
         if (!res || res.canceled) {
           trState.bk = null;
-          return renderTransferSettings(box);
+          return redraw();
         }
         if (!res.ok) {
           trState.bk = null;
           trState.bkMsg = res.error;
-          return renderTransferSettings(box);
+          return redraw();
         }
         trState.bk = res;
         trState.bkMsg = '';
-        renderTransferSettings(box);
+        redraw();
       } catch (x) {
         bmsg('Could not read the file: ' + x.message);
       }
@@ -321,19 +661,20 @@ async function renderTransferSettings(box) {
     $('bk-cancel').onclick = async () => {
       await api.backupCancel();
       trState.bk = null;
-      renderTransferSettings(box);
+      redraw();
     };
     $('bk-apply').onclick = async () => {
-      const pending = trState.bk;
+      const chosenBk = trState.bk;
       if (
         !(await Dialog.confirm(
-          'Replace everything you have now with this backup? This cannot be undone from the app (a safety file is kept next to the database).',
+          'Replace everything you have now with this backup? What you have now is first saved as a backup “Before a restore”.',
           { ok: 'Replace with backup', danger: true }
         ))
       )
         return;
-      if (trState.bk !== pending) return; // (the backup was cancelled or another one chosen meanwhile)
+      if (trState.bk !== chosenBk) return; // (the backup was cancelled or another one chosen meanwhile)
       try {
+        if (!(await safety('Before a restore'))) return;
         const result = await api.backupRestore();
         trState.bk = null;
         bmsg(result?.restarting ? 'Restarting to verify and restore the backup.' : 'The backup is restored.');
@@ -353,17 +694,17 @@ async function renderTransferSettings(box) {
           if (t.checked) trState.skip.delete(e + ':' + d.id);
           else trState.skip.add(e + ':' + d.id);
         });
-      return renderTransferSettings(box);
+      return redraw();
     }
     if (ds.dep) {
       if (t.checked) trState.skip.delete(ds.dep);
       else trState.skip.add(ds.dep);
-      return renderTransferSettings(box);
+      return redraw();
     }
     if (ds.all) {
       const e = ds.all;
       trState.picks[e] = new Set(t.checked ? lists[e].map(r => r.id) : []);
-      return renderTransferSettings(box);
+      return redraw();
     }
     if (ds.item) {
       const i = ds.item.indexOf(':'),
@@ -372,7 +713,21 @@ async function renderTransferSettings(box) {
       if (t.checked) sel(e).add(id);
       else sel(e).delete(id);
       trState.msg = '';
-      return renderTransferSettings(box);
+      trState.exName = '';
+      // what the ticked item uses, in words, next to it
+      if (t.checked && api.exportDeps && !trState.uses[ds.item])
+        Promise.resolve(api.exportDeps({ [e]: [id] }))
+          .then(dd => {
+            const words = ORDER_DEPS.filter(x => dd && dd[x] && dd[x].length)
+              .map(x => dd[x].map(d => labelOf(x, d.id)).filter(n => n !== '(missing)'))
+              .flat();
+            trState.uses[ds.item] = words.length
+              ? 'uses ' + words.slice(0, 3).join(', ') + (words.length > 3 ? ` +${words.length - 3}` : '')
+              : '';
+            redraw();
+          })
+          .catch(() => {});
+      return redraw();
     }
   };
   if (typeof box.addEventListener === 'function') {
@@ -396,10 +751,17 @@ async function renderTransferSettings(box) {
       sharedStatus.restoreRecovery.folder;
     box.prepend(notice);
   }
+  if ($('tr-all'))
+    $('tr-all').onclick = () => {
+      shown.forEach(({ e, r }) => sel(e).add(r.id));
+      trState.exName = '';
+      redraw();
+    };
   $('tr-none').onclick = () => {
     trState.picks = {};
     trState.msg = '';
-    renderTransferSettings(box);
+    trState.exName = '';
+    redraw();
   };
   $('tr-export').onclick = async () => {
     const extras = {};
@@ -408,7 +770,7 @@ async function renderTransferSettings(box) {
       if (ids.length) extras[e] = ids;
     });
     try {
-      const res = await api.exportData(chosen, extras);
+      const res = await api.exportData(chosen, extras, ($('tr-name') && $('tr-name').value) || fileName);
       msg(res && res.saved ? `Saved ${Object.values(res.counts || {}).reduce((a, b) => a + b, 0)} items: ${res.path}` : 'Not saved.');
     } catch (x) {
       msg('Could not export: ' + x.message);
@@ -417,18 +779,19 @@ async function renderTransferSettings(box) {
   $('tr-open').onclick = async () => {
     try {
       const res = await api.importOpen();
+      trState.choices = {};
       if (!res || res.canceled) {
         trState.pending = null;
-        return renderTransferSettings(box);
+        return redraw();
       }
       if (!res.ok) {
         trState.pending = null;
-        msg(res.error);
-        return renderTransferSettings(box);
+        trState.msg = res.error;
+        return redraw();
       }
       trState.pending = res;
       trState.msg = '';
-      renderTransferSettings(box);
+      redraw();
     } catch (x) {
       msg('Could not read the file: ' + x.message);
     }
@@ -437,22 +800,41 @@ async function renderTransferSettings(box) {
     $('tr-cancel').onclick = async () => {
       await api.importCancel();
       trState.pending = null;
-      renderTransferSettings(box);
+      trState.choices = {};
+      redraw();
     };
     $('tr-apply').onclick = async () => {
       try {
-        const counts = await api.importApply();
+        const choices = {};
+        (items || []).forEach(m => (choices[m.e + ':' + m.id] = choiceOf(m)));
+        if (items && !(await safety('Before an import'))) return;
+        const counts = await api.importApply(items ? choices : undefined);
+        const replaced = counts._replaced || 0,
+          skipped = counts._skipped || 0;
+        delete counts._replaced;
+        delete counts._skipped;
         trState.pending = null;
+        trState.choices = {};
+        const added = Object.entries(counts).map(([e, n]) => `${n} ${trKind(e, n)}`);
         trState.msg =
-          'Added ' +
-          Object.entries(counts)
-            .map(([e, n]) => `${n} ${(n === 1 ? state.schema[e].label : state.schema[e].plural).toLowerCase()}`)
-            .join(', ') +
+          (added.length ? 'Added ' + added.join(', ') : 'Nothing added') +
+          (replaced ? `, replaced ${replaced}` : '') +
+          (skipped ? `, skipped ${skipped}` : '') +
           '.';
-        renderTransferSettings(box);
+        redraw();
       } catch (x) {
         msg('Could not import: ' + x.message);
       }
     };
   }
+  // the backups that do not say what they hold yet are read, one at a time (once per run of the app)
+  if (api.backupSummary) {
+    const todo = blist.filter(b => !b.counts && !trState.sums[b.id]).slice(0, 6);
+    if (todo.length)
+      (async () => {
+        for (const b of todo) trState.sums[b.id] = await api.backupSummary(b.id).catch(x => ({ error: x.message }));
+        if (box.isConnected !== false && state.tab === 'settings') redraw();
+      })();
+  }
 }
+if (typeof module !== 'undefined') module.exports = { bvHealth, bvLost, bvWhen, bvHolds, trFileName, bvRestoreHtml };

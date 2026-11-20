@@ -70,7 +70,7 @@ test('the settings search finds a setting by a few words in any order, with its 
   assert.equal(SI.search('timing hard')[0].k, 'page');
   assert.deepEqual(SI.search('  '), []);
   assert.deepEqual(SI.search('xyzzy'), []);
-  assert(SI.search('backup').some(e => e.t === 'Automatic backups'));
+  assert(SI.search('backup').some(e => e.t === 'Your backups')); // (2.4.0, Backup Vault: one Backups section);
   assert(SI.search('pair').some(e => e.t === 'Pair a phone'));
   assert(SI.search('e', 99).length <= 99);
 });
