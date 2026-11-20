@@ -112,6 +112,8 @@ function prune(folder, keep) {
 function createAutoBackup(o) {
   const now = o.now || (() => Date.now());
   let running = null,
+    runningKind = '',
+    queued = 0,
     timer = null;
   const readState = () => {
     try {
@@ -141,8 +143,19 @@ function createAutoBackup(o) {
   // opts (2.4.0): { kind: 'auto' | 'hand' (Back up now) | 'safety' (before a restore or an import), note }: a backup by hand or for safety is kept
   // (only automatic ones are removed), and is made also while an import is busy (never during a race)
   async function run(reason = 'scheduled', opts = {}) {
-    if (running) return running;
     const kind = KINDS.includes(opts.kind) ? opts.kind : 'auto';
+    if (running && runningKind === kind) return running;
+    // (2.4.0 review) a backup of another kind asked for during a run (Back up now while the automatic one runs) is made after it, not dropped
+    if (running) {
+      queued++;
+      try {
+        await running.catch(() => {});
+      } finally {
+        queued--;
+      }
+      return run(reason, opts);
+    }
+    runningKind = kind;
     running = (async () => {
       const cfg = config(o.settings(), o.defaultFolder),
         busy = o.busy ? o.busy() : '';
@@ -181,8 +194,13 @@ function createAutoBackup(o) {
       return await running;
     } finally {
       running = null;
+      runningKind = '';
       if (o.onChange) o.onChange(status());
     }
+  }
+  // (2.4.0 review) resolves when no backup is being made or waits for its turn: closing the app and a restore wait for it
+  async function idle() {
+    while (running || queued) await (running || new Promise(r => setImmediate(r))).catch(() => {});
   }
   // a check now and then: a backup when one is due (a failed one is tried again at the next check, not at once)
   async function tick() {
@@ -197,6 +215,7 @@ function createAutoBackup(o) {
     timer = setTimeout(function again() {
       tick().catch(() => {});
       timer = setTimeout(again, everyMs);
+      if (timer.unref) timer.unref(); // (2.4.0 review)
     }, firstMs);
     if (timer.unref) timer.unref();
   }
@@ -204,7 +223,7 @@ function createAutoBackup(o) {
     if (timer) clearTimeout(timer);
     timer = null;
   }
-  return { run, tick, start, stop, status };
+  return { run, tick, start, stop, status, idle };
 }
 
 module.exports = { createAutoBackup, config, due, nameOf, own, list, prune, PREFIX, OWN, ANY };

@@ -90,7 +90,9 @@ function read(s, kind, o = {}) {
       if (o.ids && (!Array.isArray(o.ids) || o.ids.length > 32 || o.ids.some(x => typeof x !== 'string')))
         throw Error('Invalid selected cars.');
       const revision = C.revision(s);
-      if (o.revision && o.revision !== revision) throw Error('Paddock cars changed while reading. Retry the operation.');
+      // (2.4.0 review) only a change of the cars or their classes stops a read of several pages
+      if (o.revision && !C.unchangedSince(s, ['slotcars', 'raceclasses'], o.revision))
+        throw Error('Paddock cars changed while reading. Retry the operation.');
       const where = ["entity='slotcars'", 'id>?'],
         args = [o.after || ''];
       if (o.ids) {

@@ -245,7 +245,32 @@ function records(laps, trackId, token) {
   }
   return { track, driverId, personal: [...personal], pace: [...pace] };
 }
+// (2.4.0 review, speed) the pass over every lap is kept for the next Home visit while nothing was saved (the catalogue revision changes on every commit)
+// and the same track, cards, last race, week and year are asked for: 150-250 ms of the main process for a big database, on every visit to Home
+const summaryCache = new WeakMap();
 function jsonSource(db) {
-  return { meta: e => db.list(e), sessions: () => db.list('sessions'), laps: () => db.list('laps') };
+  const src = { meta: e => db.list(e), sessions: () => db.list('sessions'), laps: () => db.list('laps') };
+  src.homeSummary = (o, ctx) => {
+    let rev = null;
+    try {
+      rev = require('./catalogue-read').jsonRevision(db);
+    } catch {
+      /* (no revision: no cache) */
+    }
+    if (!rev || !db || typeof db !== 'object') return summarize(src, o, ctx);
+    const key = JSON.stringify([
+      rev,
+      o.trackId,
+      [...new Set(o.boards.map(b => b.key))].sort(),
+      ctx.last ? ctx.last.id : '',
+      Home.weekStart(ctx.now).getTime(),
+      Home.yearStart(ctx.now).getTime()
+    ]);
+    const hit = summaryCache.get(db);
+    const value = hit && hit.key === key ? hit.value : summarize(src, o, ctx);
+    if (!hit || hit.key !== key) summaryCache.set(db, { key, value });
+    return { ...value, compact: value.compact.slice(), lanes: value.lanes.map(x => ({ ...x })) }; // (the lists are copied: a card may sort them)
+  };
+  return src;
 }
 module.exports = { CARDS, SESSION, session, options, home, navigation, records, jsonSource };

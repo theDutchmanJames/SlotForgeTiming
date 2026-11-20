@@ -90,15 +90,20 @@ async function requestRestore(profile, file, sha256, { beforePublish = () => {} 
   const value = { format: REQUEST, version: 1, id: crypto.randomUUID(), kind: 'restore', baseGeneration: active.generation, sha256 };
   const target = path.join(profile, 'sqlite', 'restore-input-' + value.id + '.json');
   require('./storage-space').check(target, fs.statSync(file).size * 8, 'Stage database restore');
-  await fs.promises.copyFile(file, target, fs.constants.COPYFILE_EXCL);
-  if ((await digest(target)) !== sha256) throw Error('Backup changed after it was reviewed. Open it again before restoring.');
-  const fd = fs.openSync(target, 'r+');
   try {
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
+    await fs.promises.copyFile(file, target, fs.constants.COPYFILE_EXCL);
+    if ((await digest(target)) !== sha256) throw Error('Backup changed after it was reviewed. Open it again before restoring.');
+    const fd = fs.openSync(target, 'r+');
+    try {
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    await beforePublish();
+  } catch (error) {
+    fs.rmSync(target, { force: true }); // (2.4.0 review) a restore that is not staged leaves no copy of the backup behind
+    throw error;
   }
-  await beforePublish();
   publish(requestFile(profile), value);
   return value;
 }
@@ -134,18 +139,23 @@ async function requestNativeRestore(profile, source, { beforePublish = () => {} 
   };
   const target = path.join(profile, 'sqlite', 'restore-input-' + value.id);
   fs.mkdirSync(target);
-  require('./storage-space').check(target, fs.statSync(snapshot).size * 3, 'Stage native restore');
-  const staged = path.join(target, 'snapshot.sqlite');
-  await fs.promises.copyFile(snapshot, staged, fs.constants.COPYFILE_EXCL);
-  if ((await digest(staged)) !== manifest.sha256) throw Error('Native backup checksum mismatch. Nothing was selected.');
-  const fd = fs.openSync(staged, 'r+');
   try {
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
+    require('./storage-space').check(target, fs.statSync(snapshot).size * 3, 'Stage native restore');
+    const staged = path.join(target, 'snapshot.sqlite');
+    await fs.promises.copyFile(snapshot, staged, fs.constants.COPYFILE_EXCL);
+    if ((await digest(staged)) !== manifest.sha256) throw Error('Native backup checksum mismatch. Nothing was selected.');
+    const fd = fs.openSync(staged, 'r+');
+    try {
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    publish(path.join(target, 'manifest.json'), manifest);
+    await beforePublish();
+  } catch (error) {
+    fs.rmSync(target, { recursive: true, force: true }); // (2.4.0 review) nor a staged folder
+    throw error;
   }
-  publish(path.join(target, 'manifest.json'), manifest);
-  await beforePublish();
   publish(requestFile(profile), value);
   return value;
 }

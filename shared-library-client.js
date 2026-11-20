@@ -22,6 +22,16 @@ const rejectCodes = new Set([
   'RECEIPT_MISMATCH'
 ]);
 const fail = (code, message) => Object.assign(Error(message), { code });
+// (2.4.0 review) the blocked outcomes that Save history can acknowledge (paddock-shared-store.js "resolve")
+const REVIEWABLE = [
+  'RECOVERY_CHANGED',
+  'RECEIPT_MISMATCH',
+  'OPERATION_CONFLICT',
+  'COMMAND_CONFLICT',
+  'CAR_MERGED',
+  'MERGE_SETTINGS_REQUIRED',
+  'SETTINGS_CONFLICT'
+];
 rejectCodes.add('CAR_WISHLIST');
 for (const code of [
   'CAR_MERGED',
@@ -404,11 +414,13 @@ class SharedLibraryClient {
       const s = await this.status();
       if (input.databaseId !== s.databaseId || input.recoveryId !== s.recoveryId)
         throw fail('RECOVERY_CHANGED', 'Reopen this editor after the library changed.');
+      // (2.4.0 review) only a save that can still be resolved holds the record: a refused one (a revision conflict, an invalid field)
+      // cannot be acknowledged, and kept every later save of that car or field refused for good
       if (
         (await this.operations()).some(
           r =>
             r.request.databaseId === s.databaseId &&
-            ['pending', 'blocked'].includes(r.state) &&
+            (r.state === 'pending' || (r.state === 'blocked' && REVIEWABLE.includes(r.code))) &&
             (input.carId ? r.request.carId === input.carId : r.request.action === 'definition')
         )
       )

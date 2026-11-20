@@ -29,7 +29,7 @@ async function plLoad() {
     dealerCars = 0;
   if (library?.available) cars = (await api.list('slotcars').catch(() => [])).filter(c => !c.retired).length;
   if (status.connected && status.connection?.mode !== 'local' && api.paddockCatalogue)
-    dealerCars = ((await api.paddockCatalogue(false).catch(() => [])) || []).length;
+    dealerCars = ((await api.paddockCatalogue(false).catch(() => null))?.cars || []).length; // (2.4.0 review: the catalogue is a view { cars, … })
   return { status, library, keep: keep || {}, sessions, cars, dealerCars };
 }
 const plPill = (c, t) => `<span class="pl-pill" style="--c:${c}"><i></i>${esc(t)}</span>`;
@@ -270,11 +270,13 @@ async function plReconnect(box) {
   } finally {
     plBusy = false;
   }
-  if (r.ok)
-    return renderPitLane(
+  if (r.ok) {
+    await renderPitLane(
       box,
       r.how === 'found' ? 'Found the Dealership on a new address and connected.' : 'Connected to the Dealership again.'
     );
+    return r; // (2.4.0 review) Fix it goes on with its next step after a reconnect that worked
+  }
   plHosts = null;
   await renderPitLane(
     box,

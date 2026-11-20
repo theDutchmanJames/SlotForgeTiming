@@ -300,6 +300,28 @@ async function dscAutoConnect() {
   }
 }
 
+// (2.4.0 review) the port list the main process asked about (dsc.pick), drawn into the page that is on screen
+function dscDrawPick() {
+  const el = typeof document !== 'undefined' && document.getElementById('ds-pick');
+  if (!el) return;
+  const p = dsc.pick;
+  if (!p) {
+    el.innerHTML = '';
+    el.onclick = null;
+    return;
+  }
+  const list = p.list;
+  el.innerHTML = `<div class="card"><strong>Choose a port</strong>${list.length ? list.map((d, i) => `<div class="row"><button class="btn" data-pick="${i}">${esc(d.displayName || d.name || d.portName || 'Port')} <span class="muted">${esc(d.portName || '')} ${d.vendorId !== undefined ? '(' + Hardware.hex4(d.vendorId) + ':' + Hardware.hex4(d.productId) + ')' : ''}</span></button></div>`).join('') : '<p class="muted">No ports found. Check the cable, or the adapter.</p>'}<button class="btn" data-pick="-1">Cancel</button></div>`;
+  el.onclick = ev => {
+    const b = ev.target.closest('[data-pick]');
+    if (!b) return;
+    const i = Number(b.dataset.pick);
+    dsc.pick = null;
+    dscDrawPick();
+    dsc.picked = i >= 0 && list[i] ? [list[i].portName, list[i].displayName].filter(Boolean).join(' · ') : '';
+    p.res(i >= 0 && list[i] ? list[i].portId || list[i].deviceId : '');
+  };
+}
 function renderDsSettings(box) {
   const H = Hardware,
     can = typeof navigator !== 'undefined' && !!navigator.serial,
@@ -409,23 +431,22 @@ function renderDsSettings(box) {
   dscMsg(dsc.message);
 
   // the main process lists the ports it found; the person picks one here
+  // (2.4.0 review) the open question is kept in dsc.pick, so a redraw of the page shows it again instead of leaving it unanswered
   const choose = list =>
     new Promise(res => {
-      const el = $('ds-pick');
-      if (!el) return res('');
-      el.innerHTML = `<div class="card"><strong>Choose a port</strong>${list.length ? list.map((d, i) => `<div class="row"><button class="btn" data-pick="${i}">${esc(d.displayName || d.name || d.portName || 'Port')} <span class="muted">${esc(d.portName || '')} ${d.vendorId !== undefined ? '(' + H.hex4(d.vendorId) + ':' + H.hex4(d.productId) + ')' : ''}</span></button></div>`).join('') : '<p class="muted">No ports found. Check the cable, or the adapter.</p>'}<button class="btn" data-pick="-1">Cancel</button></div>`;
-      el.onclick = ev => {
-        const b = ev.target.closest('[data-pick]');
-        if (!b) return;
-        const i = Number(b.dataset.pick);
-        el.innerHTML = '';
-        dsc.picked = i >= 0 && list[i] ? [list[i].portName, list[i].displayName].filter(Boolean).join(' · ') : '';
-        res(i >= 0 && list[i] ? list[i].portId || list[i].deviceId : '');
-      };
+      if (dsc.pick) dsc.pick.res(null);
+      if (!$('ds-pick')) {
+        dsc.pick = null;
+        return res('');
+      }
+      dsc.pick = { list, res };
+      dscDrawPick();
     });
+  dscDrawPick();
   if (api.onHwChoose)
     api.onHwChoose(async (_kind, list) => {
-      api.hwChosen(await choose(list));
+      const id = await choose(list);
+      if (id !== null) api.hwChosen(id); // (null: an older question the main process already dropped)
     });
 
   $('ds-find').onclick = async () => {

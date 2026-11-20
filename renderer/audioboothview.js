@@ -112,6 +112,7 @@ function audioBoothChange(ev) {
     if (f.size > Sound.MAX_FILE) return Dialog.alert(`That file is too big (${(f.size / 1e6).toFixed(1)} MB).`);
     const rd = new FileReader();
     rd.onload = () => {
+      if (audBooth !== b || typeof audEd === 'undefined' || !audEd || audEd.draft !== b.d) return; // (2.4.0 review: the editor was left meanwhile)
       audioNameSet(id, { file: String(rd.result), fileName: f.name });
       b.step();
       audioSelect(b.box, b.d);
@@ -136,7 +137,8 @@ async function audioRecordName(id, btn) {
     return Dialog.alert('The microphone could not be used: ' + (e && e.message ? e.message : e));
   }
   const recorder = new MediaRecorder(stream),
-    parts = [];
+    parts = [],
+    booth = audBooth; // (2.4.0 review) the editor the name is recorded for: another set opened meanwhile does not get it
   audRec = { id, recorder, stream, timer: 0 };
   btn.textContent = '■ Stop';
   btn.classList.add('rec-on');
@@ -145,9 +147,12 @@ async function audioRecordName(id, btn) {
     stream.getTracks().forEach(tr => tr.stop());
     audRec = null;
     const blob = new Blob(parts, { type: recorder.mimeType || 'audio/webm' });
+    const same = () => audBooth === booth && typeof audEd !== 'undefined' && audEd && audEd.draft === booth.d;
+    if (!same()) return;
     if (!blob.size) return audioSelect(audBooth.box, audBooth.d);
     const rd = new FileReader();
     rd.onload = () => {
+      if (!same()) return;
       audioNameSet(id, { file: String(rd.result), fileName: 'Recorded name' });
       audBooth.step();
       audioSelect(audBooth.box, audBooth.d);

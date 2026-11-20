@@ -64,10 +64,12 @@ async function renderChampionships(box) {
     if (b.dataset.dup) {
       const x = clone(r.c);
       x.name = (x.name + ' (copy)').slice(0, Champ.LIMITS.name);
+      delete x.adjustments; // (2.4.0 review) the points given by hand belong to the season of the original, not to the copy
       x.rounds.forEach(q => {
         delete q.id;
         q.sessions.forEach(s => {
           delete s.id;
+          delete s.skipped;
         });
       });
       await api.add('championships', Champ.clean(x));
@@ -127,6 +129,25 @@ const chOpenAtStart = d => {
   if (ChampWords.teamBits(d).length) s.add('teams');
   return s;
 };
+// (2.4.0 review) what the editor writes keeps what was saved elsewhere meanwhile: the adjustments of the standings, and a skipped session (Home) whose
+// race setup the editor did not change. data: the record the editor writes; saved: the record as it is stored now (or null)
+function champKeepSaved(data, saved) {
+  if (!saved) return data;
+  const out = JSON.parse(JSON.stringify(data));
+  if (Array.isArray(saved.adjustments) && saved.adjustments.length) out.adjustments = JSON.parse(JSON.stringify(saved.adjustments));
+  else delete out.adjustments;
+  const was = new Map();
+  (saved.rounds || []).forEach(r => (r.sessions || []).forEach(s => was.set(r.id + ':' + s.id, s)));
+  out.rounds.forEach(r =>
+    r.sessions.forEach(s => {
+      const w = was.get(r.id + ':' + s.id);
+      if (!w || w.setup !== s.setup) return;
+      if (w.skipped === true) s.skipped = true;
+      else delete s.skipped;
+    })
+  );
+  return out;
+}
 const CH_SPRINT_HINT = { nearest: '12.5 becomes 13', up: '12.2 becomes 13', down: '12.8 becomes 12', none: '12.5 stays 12.5' };
 
 function renderChampionshipEditor(box) {
@@ -482,7 +503,15 @@ function renderChampionshipEditor(box) {
     try {
       U.hist.touch();
       const token = U.hist.commit(); // (the state that is written is the one the steps call saved)
-      const data = clone(Champ.clean(d));
+      let data = clone(Champ.clean(d));
+      // (2.4.0 review) the adjustments (standings) and the skipped sessions (Home) are changed elsewhere while the editor is open: the saved ones stay
+      if (chEd.id)
+        data = champKeepSaved(
+          data,
+          await Promise.resolve()
+            .then(() => api.getRecord('championships', chEd.id))
+            .catch(() => null)
+        );
       if (chEd.id) await api.update('championships', chEd.id, data);
       else {
         const row = await api.add('championships', data);
@@ -492,6 +521,8 @@ function renderChampionshipEditor(box) {
       chEd.dirty = !U.hist.isClean();
       say('Saved.');
       frame(); // (a championship that is saved shows on the Home tab)
+    } catch (x) {
+      say('Could not save: ' + (x && x.message ? x.message : x)); // (2.4.0 review)
     } finally {
       saving = false;
     }

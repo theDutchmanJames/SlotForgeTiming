@@ -227,6 +227,11 @@ function wwModeSwitch(box) {
       );
     wbEd.draft = next;
     wbEd.dirty = true;
+    // (2.4.0 review) the switch is a step of its own: Undo goes back to the other kind, not to an older draft poured into this one
+    if (wbEd.history) {
+      wbEd.history.touch();
+      wbEd.history.commit();
+    }
     return renderWidgetBuilder(box);
   };
 }

@@ -124,16 +124,28 @@ function merge(d, fromId, intoId, relabelLapsWhere) {
     return next;
   };
   const named = e => e.driverId === fromId || (e.changes || []).some(change => change.driverId === fromId);
+  // (2.4.0 review) every driver link of a result (team members, stints, best lap by, class and heat rows, virtual rivals), as an export follows them
+  const T = require('./transfer'),
+    linked = (entity, row) => T.refsOf(entity, row).filter(r => r.entity === 'drivers' && r.get() === fromId);
   for (const s of d.sessions || []) {
     const affected =
       (d.laps || []).some(l => l.sessionId === s.id && l.driverId === fromId) ||
       (s.standings || []).some(row => row.driverId === fromId) ||
+      linked('sessions', s).length > 0 ||
       (s.paddockJournal?.heats || []).some(h => (h.entries || []).some(named));
     if (affected) PaddockRecords.withdraw(d, s, 'Timing records were changed in this session.');
   }
   relabelLapsWhere(l => l.driverId === fromId, Object.assign({ driverId: intoId }, name !== undefined ? { driverName: name } : {}));
   for (const s of d.sessions || []) {
     if (Array.isArray(s.standings) && s.standings.some(row => row.driverId === fromId)) s.standings = s.standings.map(relabel);
+    if (linked('sessions', s).length) {
+      // (2.4.0 review) copies, never changed in place (a failed merge puts the session's own fields back)
+      const copy = {};
+      for (const k of ['standings', 'classStandings', 'heatResults', 'virtualRivals', 'rivalClassification', 'multiclass'])
+        if (s[k] !== undefined) copy[k] = structuredClone(s[k]);
+      linked('sessions', copy).forEach(r => r.set(intoId));
+      Object.assign(s, copy);
+    }
     const heats = s.paddockJournal?.heats;
     if (Array.isArray(heats) && heats.some(h => (h.entries || []).some(named)))
       s.paddockJournal = {

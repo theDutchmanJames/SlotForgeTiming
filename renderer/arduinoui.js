@@ -205,7 +205,7 @@ async function abOpenNow() {
           for (;;) {
             const { value, done } = await ab.reader.read();
             if (done) break;
-            if (value && value.length) abReceive(value);
+            if (ab.open && ab.gen === gen && value && value.length) abReceive(value); // (2.4.0 review: bytes read after Disconnect are not race events)
           }
         } catch (x) {
           ab.lines.push(`${((performance.now() - ab.t0) / 1000).toFixed(3).padStart(9)}  ERROR  ${x.message}`);
@@ -237,7 +237,7 @@ async function abOpenNow() {
     })();
     // an Arduino resets when the port opens: give it a moment, then ask for SlotForge mode, the settings and the readings (the page is open)
     setTimeout(async () => {
-      if (!ab.open) return;
+      if (!ab.open || ab.gen !== gen) return; // (2.4.0 review: only for this connection, not one made again within 2.5 s)
       await abSend(ArduinoBox.C.version(), 'SlotForge mode');
       await abSend(ArduinoBox.C.list());
       abStreamOn = false;
@@ -314,10 +314,11 @@ async function abUseVirtual() {
   ab.info = ab.dev.getInfo();
   return abOpen();
 }
-async function abAutoConnect() {
+// force: a Connect press (2.4.0 review: the "connect when the app starts" choice is for the start only)
+async function abAutoConnect(force = false) {
   try {
     const t = abSettings();
-    if (!t.auto || ab.open || Hardware.timingChosen(state.settings) !== 'arduino') return false; // (only the timing hardware in use connects by itself)
+    if ((!t.auto && !force) || ab.open || Hardware.timingChosen(state.settings) !== 'arduino') return false; // (only the timing hardware in use connects by itself)
     if (t.virtual) {
       ab.dev = ArduinoSim.createSim().asPort();
       ab.info = ab.dev.getInfo();

@@ -523,7 +523,7 @@
       ['running', 'paused', 'review'].includes(S0.phase) &&
       S0.eng.cars.some(x => x.laps.length)
     )
-      pts += ch.list[S0.rowOf(c.real || c).pos - 1] || 0;
+      pts += ch.list[(S0.rowOf(c.real || c).physicalPos || S0.rowOf(c.real || c).pos) - 1] || 0; // (2.4.0 review: the place without a virtual rival, as the Champ Points widget)
     return pts;
   }
   // what a widget of an overall car shows; null: it is made from the fields of the car, as for any car
@@ -856,13 +856,15 @@
       }
       if (type === 'textlane')
         return {
-          html: Wd.fillText(opt.text || '', {
+          // (2.4.0 review) the same text and words as a car on track: {lap} is the lap it is on, a word a rival has no value for is a dash
+          html: Wd.fillText(opt.text ?? Wd.TEXT_LANE_DEFAULT, {
+            ...Object.fromEntries(Wd.TEXT_LANE_VARS.map(([k]) => [k, '–'])),
             name: values.name,
             car: values.carname,
             lane: c.lane >= 0 ? String(c.lane + 1) : 'Virtual',
             position: values.position,
             laps: c.laps.length,
-            lap: c.laps.length,
+            lap: c.done ? c.laps.length : c.laps.length + 1,
             laptime: values.laptime,
             last: c.laps.length ? E.fmtTime(c.laps.at(-1)) : '–',
             best: values.bestlap,

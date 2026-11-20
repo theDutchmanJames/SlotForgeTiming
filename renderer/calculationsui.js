@@ -798,6 +798,22 @@ const CalculationPage = (() => {
       box._cbDirty = n > 0;
     };
     box._cbDirty = false;
+    // (2.4.0 review) a form saved with its own button is saved: what it holds now is where Undo goes back to, and the bar no longer counts it
+    forms.forEach(f => {
+      if (!f._submit) return;
+      f.onsubmit = async ev => {
+        const said = f.querySelector('.calc-save');
+        if (said) said.textContent = ''; // (an earlier "Saved" is not taken for this one)
+        await f._submit(ev);
+        const msg = f.querySelector('.calc-save')?.textContent || '';
+        if (/^Saved/.test(msg))
+          snap.set(
+            f,
+            fieldsOf(f).map(el => [el, el.value])
+          );
+        show();
+      };
+    });
     const rules = box.querySelector('.cb-rules');
     rules.addEventListener('input', show);
     rules.addEventListener('change', show);

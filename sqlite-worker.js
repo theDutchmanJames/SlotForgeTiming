@@ -6,6 +6,7 @@ let store = null,
   closed = false;
 const reads = new Set(['get', 'field', 'page', 'sessionLaps', 'asset']);
 parentPort.on('message', ({ id, operation, args }) => {
+  parentPort.postMessage({ id, started: true }); // (2.4.0 review) the client times a request from here, not while it waits its turn
   try {
     if (closed) throw Error('SQLite worker is closed.');
     let value;

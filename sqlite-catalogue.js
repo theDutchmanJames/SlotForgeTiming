@@ -72,6 +72,9 @@ function revision(s) {
   return (
     s.statement("SELECT value FROM info WHERE key='catalogueIdentity'").get().value +
     ':' +
+    // (2.4.0 review) a native restore gives a new editor generation: its journal numbers are never taken for the old ones
+    (s.statement("SELECT value FROM info WHERE key='editorGeneration'").get()?.value || '') +
+    ':' +
     String(s.statement('SELECT COALESCE(MAX(sequence),0) AS n FROM changes').get().n)
   );
 }
@@ -91,6 +94,7 @@ function unchangedSince(store, tables, since) {
   if (cut < 0 || since.slice(0, cut) !== now.slice(0, now.lastIndexOf(':')) || !Number.isSafeInteger(seq)) return false; // (another database, or a restore)
   const first = store.statement('SELECT MIN(sequence) n FROM changes').get().n;
   if (first !== null && first > seq + 1) return false; // (the journal no longer reaches back to the cursor)
+  if (seq > Number(now.slice(now.lastIndexOf(':') + 1))) return false; // (2.4.0 review: a cursor from beyond this journal, as after a restore)
   const rows = store.statement('SELECT changed FROM changes WHERE sequence>? ORDER BY sequence LIMIT 1001').all(seq);
   if (rows.length > 1000) return false;
   for (const { changed } of rows) {

@@ -340,7 +340,9 @@ class WorkingStore extends SqliteStore {
     const old = this.statement('SELECT ordinal FROM records WHERE entity=? AND id=?').get(entity, id);
     if (old) this.erase(entity, id);
     else {
-      this.root(id, 'meta');
+      // (2.4.0 review) a new record of a collection belongs to its collection root, never a meta root named after its id
+      if (entity === '@meta') this.root(id, 'meta');
+      else this.root(entity);
       this.touch(entity, id);
     }
     this.putRecord(entity, id, old?.ordinal ?? this.nextOrdinal(entity), value);
@@ -402,6 +404,13 @@ class WorkingStore extends SqliteStore {
           const T = require('./transfer'),
             data = { customFields: this.get('@meta', 'customFields', true)?.value || {} };
           for (const e of T.ORDER) data[e] = (input.items[e] || []).map(r => this.get(e, r.id, true)?.value).filter(Boolean);
+          // (2.4.0 review) the titles of the other local items too, so a clash of names is marked "(imported)" as in JSON storage
+          for (const e of T.ORDER) {
+            if (!input.items[e]?.length || ['sessions', 'laps', 'slotcars'].includes(e) || !schema[e]?.title) continue;
+            const have = new Set(data[e].map(r => r.id));
+            for (const { id } of this.statement('SELECT id FROM records WHERE entity=? ORDER BY ordinal').all(e))
+              if (!have.has(id)) data[e].push({ id, ...Object.fromEntries(schema[e].title.map(k => [k, this.field(e, id, [k]).value])) });
+          }
           require('./shared-library-import').applyPrivate(data, input.items);
           for (const e of T.ORDER) if (e !== 'slotcars') for (const row of data[e]) if (!this.get(e, row.id)) this.insert(e, row);
           this.replace('@meta', 'customFields', data.customFields);

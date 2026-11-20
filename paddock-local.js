@@ -2,6 +2,8 @@
 const http = require('node:http');
 const Discovery = require('./paddock-local-discovery');
 const automaticStates = new Set(['queued', 'pending', 'approved', 'unavailable']);
+// (2.4.0 review) the errors after which the local credential and descriptor are no longer valid
+const credentialCodes = ['UNAUTHENTICATED', 'INSTANCE_CHANGED', 'DATABASE_MISMATCH', 'LOCAL_UNAVAILABLE'];
 function safeError(e) {
   return ['UNAUTHENTICATED', 'INSTANCE_CHANGED'].includes(e.code)
     ? 'Paddock restarted or changed its local credential. Timing will rediscover the selected library.'
@@ -198,8 +200,14 @@ module.exports = {
         this.openLocalEvents(status);
         if ((this.localDirty || !hadStream) && this.scalable && !this.isRacing?.()) {
           const cursor = this.localEventCursor;
-          await this.browseScalable(status);
-          if (cursor === this.localEventCursor) this.localDirty = false;
+          // (2.4.0 review) a catalogue that cannot be refreshed is shown as such; the saves, transfers and results below still go
+          try {
+            await this.browseScalable(status);
+            if (cursor === this.localEventCursor) this.localDirty = false;
+          } catch (e) {
+            if (credentialCodes.includes(e.code) || e.code === 'PADDOCK_STOPPED') throw e;
+            this.catalogueError = safeError(e);
+          }
         }
         await this.syncSharedOperations?.();
         await this.syncLocalTransfers(false);
@@ -211,10 +219,16 @@ module.exports = {
     } catch (e) {
       this.connected = false;
       this.error = safeError(e);
-      this.localDescriptor = null;
-      this.code = '';
-      this.closeLocalEvents();
+      // (2.4.0 review) only a changed credential or library identity forgets the connection; a race starting during the tick, a
+      // busy moment or a bad answer is tried again at the next tick without a full rediscovery
+      if (credentialCodes.includes(e.code)) {
+        this.localDescriptor = null;
+        this.code = '';
+        this.closeLocalEvents();
+      }
     } finally {
+      // (2.4.0 review) one chain of ticks: a startLocal() during this tick set a timer that is replaced here, not doubled
+      clearTimeout(this.localTimer);
       if (!this.stopped && !this.quiescing)
         this.localTimer = setTimeout(
           () => this.localTick(),
@@ -352,16 +366,20 @@ module.exports = {
           }
         }
       } catch (e) {
-        const attention = [
-          'IMPORT_CONFLICT',
-          'ORIGIN_CONFLICT',
-          'TARGET_CHANGED',
-          'LOCAL_RECONCILE',
-          'LOCAL_RECEIPT_MISMATCH',
-          'INVALID_IMPORT',
-          'INVALID_PAYLOAD',
-          'PAYLOAD_TOO_LARGE'
-        ].includes(e.code);
+        // (2.4.0 review) an approved car that is already linked elsewhere (LINK_CONFLICT, or the SQLite link's message) needs the
+        // user: it was retried at every tick without saying so
+        const attention =
+          [
+            'IMPORT_CONFLICT',
+            'ORIGIN_CONFLICT',
+            'TARGET_CHANGED',
+            'LOCAL_RECONCILE',
+            'LOCAL_RECEIPT_MISMATCH',
+            'INVALID_IMPORT',
+            'INVALID_PAYLOAD',
+            'PAYLOAD_TOO_LARGE',
+            'LINK_CONFLICT'
+          ].includes(e.code) || /already (has a link|linked)/.test(e.message || '');
         await this.storage.localChange({ action: 'error', transferId: summary.id, attention, message: safeError(e) });
         if (manual) throw e;
         if (!attention) break;

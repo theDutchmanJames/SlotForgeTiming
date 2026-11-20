@@ -382,8 +382,20 @@ async function renderTransferSettings(box) {
     <p class="muted tr-note">Races always take their laps, track, drivers and slot cars. The file can be imported here or on another computer.</p><p id="tr-msg" class="muted" role="status">${esc(trState.msg)}</p></div></div>`;
   // ---- Import ----
   const items = pending && Array.isArray(pending.items) ? pending.items : null;
+  // (2.4.0 review) 60 rows of each kind are shown; one that is already here and not shown is skipped unless chosen (Replace mine for all above, say), so
+  // nothing of yours is replaced that you did not see
+  const TR_SHOWN = 60,
+    unseen = new Set();
+  if (items)
+    [...new Set(items.map(m => m.e))].forEach(e =>
+      items
+        .filter(m => m.e === e)
+        .slice(TR_SHOWN)
+        .forEach(m => unseen.add(m))
+    );
   const choiceOf = m =>
-    trState.choices[m.e + ':' + m.id] || (m.match ? (m.how === 'id' && m.e !== 'sessions' ? 'replace' : 'copy') : 'copy');
+    trState.choices[m.e + ':' + m.id] ||
+    (m.match ? (unseen.has(m) ? 'skip' : m.how === 'id' && m.e !== 'sessions' ? 'replace' : 'copy') : 'copy');
   const segOf = (m, now) => {
     const opts = m.match
       ? m.e === 'sessions'
@@ -434,12 +446,18 @@ async function renderTransferSettings(box) {
               e =>
                 `<div class="tr-grp">${esc(state.schema[e] ? state.schema[e].plural : e)}</div>${items
                   .filter(m => m.e === e)
-                  .slice(0, 60)
+                  .slice(0, TR_SHOWN)
                   .map(m => {
                     const now = choiceOf(m);
                     return `<div class="tr-it"><span><b>${esc(m.title || '(no name)')}</b></span><span class="tr-st" style="--c:${m.match ? '#f2b705' : '#3ecf8e'}"><i></i>${m.match ? `Already here: <em>${esc(m.match.title || m.match.id)}</em>` : 'New'}</span>${segOf(m, now)}</div>`;
                   })
-                  .join('')}`
+                  .join('')}${(() => {
+                  const hidden = items.filter(m => m.e === e && unseen.has(m)),
+                    here = hidden.filter(m => m.match).length;
+                  return hidden.length
+                    ? `<p class="muted tr-more">${hidden.length} more not shown: ${hidden.length - here} new ${hidden.length - here === 1 ? 'one is' : 'ones are'} added${here ? `, ${here} already here ${here === 1 ? 'is' : 'are'} skipped unless you choose for all above` : ''}.</p>`
+                    : '';
+                })()}`
             )
             .join('')}
           <div class="tr-imsum"><span>Adds <b>${tally.copy || 0}</b> · replaces <b>${tally.replace || 0}</b> · skips <b>${tally.skip || 0}</b></span><span class="bv-sp"></span><span class="muted">A backup is made first</span><button class="btn" id="tr-cancel">Cancel</button><button class="btn primary" id="tr-apply"${(tally.copy || 0) + (tally.replace || 0) ? '' : ' disabled'}>Import ${(tally.copy || 0) + (tally.replace || 0)} ${(tally.copy || 0) + (tally.replace || 0) === 1 ? 'item' : 'items'}</button></div>`
@@ -544,6 +562,12 @@ async function renderTransferSettings(box) {
     if (d.bvRestore) {
       try {
         const pick = await api.backupPick(d.bvRestore);
+        // (2.4.0 review) the app holds one backup to restore: picking this one forgets a file opened with "Restore from another file…", so its card goes
+        if (trState.bk) {
+          trState.bk = null;
+          const card = box.querySelector('#bk-apply');
+          if (card && card.closest('.card')) card.closest('.card').remove();
+        }
         if (!pick || pick.ok === false) return bmsg((pick && pick.error) || 'That backup could not be read.');
         const counts =
           (pick.entry && pick.entry.counts) ||

@@ -127,12 +127,21 @@
     return iso ? new Date(iso + 'T12:00:00') : null;
   };
   // a round date in words: "Thu 5 Nov 2026" (o.short: "Thu 5 Nov"); a date that could not be read stays as it was typed
+  // (2.4.0 review, speed) the two formatters are made once, not on every date drawn
+  const DATE_FMT = {};
   function dateText(v, o = {}) {
     const d = dateParts(v);
     if (!d) return String(v || '');
-    return d
-      .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(o.short ? {} : { year: 'numeric' }) })
-      .replace(/,/g, '');
+    const k = o.short ? 'short' : 'long';
+    const f =
+      DATE_FMT[k] ||
+      (DATE_FMT[k] = new Intl.DateTimeFormat('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        ...(o.short ? {} : { year: 'numeric' })
+      }));
+    return f.format(d).replace(/,/g, '');
   }
   const keepDate = v => dateOf(v) || str(v, LIMITS.date);
   const cleanRound = r => ({

@@ -112,7 +112,8 @@ function page(s, pool, value) {
   return s.transaction(() => {
     const revision = C.revision(s),
       token = pool === 'tokens' ? 1 : 0;
-    for (const c of Object.values(opts)) if (c) H.checkRevision(c.revision, revision);
+    // (2.4.0 review) a page cursor is stale only when sessions, laps or tracks (their names order the record lists) changed
+    for (const c of Object.values(opts)) if (c && !C.unchangedSince(s, ['sessions', 'laps', 'tracks'], c.revision)) throw Order.stale();
     const result = { revision };
     for (const section of ['sessions', 'tracks', 'personal']) {
       const offset = opts[section]?.offset || 0,
@@ -147,7 +148,7 @@ function session(s, pool, id, value) {
   const o = H.detailOptions(value);
   return s.transaction(() => {
     const revision = C.revision(s);
-    H.checkRevision(o.revision, revision);
+    if (o.revision !== undefined && !C.unchangedSince(s, ['sessions', 'laps'], o.revision)) throw Order.stale(); // (2.4.0 review)
     if (!s.statement('SELECT 1 FROM history_sessions WHERE id=? AND token=?').get(id, pool === 'tokens' ? 1 : 0)) return null;
     if (o.summaryOnly)
       return {

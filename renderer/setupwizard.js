@@ -161,7 +161,13 @@
         <div class="wz-names">${Array.from({ length: chosen.length ? Math.max(0, n - chosen.length) || 1 : n }, (_, i) => `<label class="wz-lanerow">${laneTile(chosen.length + i)}<input type="text" maxlength="40" data-wzname aria-label="Driver ${chosen.length + i + 1}" placeholder="Driver ${chosen.length + i + 1}"></label>`).join('')}</div>
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav(chosen.length ? 'Next' : 'Add the drivers')}`;
     } else if (step === 'cars') {
-      const drivers = p.driverIds.map(id => (o.drivers || []).find(d => d.id === id)).filter(Boolean);
+      // (2.4.0 review) _k: the place of the driver in the guide's list, where its car is kept (a driver deleted meanwhile leaves a gap, not a shift)
+      const drivers = p.driverIds
+        .map((id, k) => {
+          const d = (o.drivers || []).find(x => x.id === id);
+          return d ? { ...d, _k: k } : null;
+        })
+        .filter(Boolean);
       const library = api.libraryStatus ? await api.libraryStatus().catch(() => null) : null;
       if (library && library.available) {
         // (2.4.0) the cars of the shared library, chosen here for every driver
@@ -180,13 +186,13 @@
         <div class="wz-src"><i aria-hidden="true"></i>Shared library on this computer · <b>${all.length} ${all.length === 1 ? 'car' : 'cars'}</b><span>New cars are added in Paddock or Database › Slotcars</span></div>
         ${
           drivers.length
-            ? `<div class="wz-carlist">${drivers.map((d, i) => `<label class="wz-carpick">${laneTile(i)}<b>${esc(d.name)}</b><select data-wzcarpick="${i}" aria-label="Car for ${esc(d.name)}">${opts(p.carIds[i] || '')}</select></label>`).join('')}</div>`
+            ? `<div class="wz-carlist">${drivers.map((d, i) => `<label class="wz-carpick">${laneTile(i)}<b>${esc(d.name)}</b><select data-wzcarpick="${d._k}" aria-label="Car for ${esc(d.name)}">${opts(p.carIds[d._k] || '')}</select></label>`).join('')}</div>`
             : '<p class="muted">Add drivers first (step 2), then choose their cars here.</p>'
         }
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
       } else
         body = `<h2>Cars</h2><p class="muted">Optional: give each driver a car, so the results and the statistics know which car drove. A name is enough, such as “Scalextric Porsche 911”. Pictures, motors and tyres can follow in Database, Slotcars.</p>
-        ${drivers.length ? `<div class="wz-names">${drivers.map((d, i) => `<label class="wz-carrow">${laneTile(i)}<span>${esc(d.name)}</span><input type="text" maxlength="60" data-wzcar="${i}" placeholder="No car" value="${esc(((o.cars || []).find(c => c.id === p.carIds[i]) || {}).model || '')}"${p.carIds[i] ? ' disabled' : ''} aria-label="Car for ${esc(d.name)}"></label>`).join('')}</div>` : '<p class="muted">Add drivers first (step 2), then give them cars here.</p>'}
+        ${drivers.length ? `<div class="wz-names">${drivers.map((d, i) => `<label class="wz-carrow">${laneTile(i)}<span>${esc(d.name)}</span><input type="text" maxlength="60" data-wzcar="${d._k}" placeholder="No car" value="${esc(((o.cars || []).find(c => c.id === p.carIds[d._k]) || {}).model || '')}"${p.carIds[d._k] ? ' disabled' : ''} aria-label="Car for ${esc(d.name)}"></label>`).join('')}</div>` : '<p class="muted">Add drivers first (step 2), then give them cars here.</p>'}
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
     } else if (step === 'hardware') {
       const chosen = Hardware.timingChosen(S.settings),

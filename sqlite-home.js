@@ -207,6 +207,12 @@ function summary(s, o, { last, cars, tracks, now }) {
         }
       }
     };
+    // (2.4.0 review) tracks in the order of their first lap of any kind, as JSON storage orders them (not only valid laps)
+    if (needed.has('glance') || periods.has('all'))
+      for (const { trackId } of s
+        .statement('SELECT trackId,MIN(ordinal) first FROM history_laps WHERE token=0 GROUP BY trackId ORDER BY first')
+        .all())
+        if (!trackOrder.has(trackId)) trackOrder.set(trackId, trackOrder.size);
     // All-time totals grow with track/car/lane combinations, not with lap count.
     // Current track metadata still determines distance; year cutoffs stay dynamic.
     if (needed.has('glance') || periods.has('all'))

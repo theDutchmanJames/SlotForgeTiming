@@ -72,12 +72,22 @@ function deskSensors(id, n) {
   const map = Trackmate.laneMap(state.settings[key]);
   return Array.from({ length: n }, (_, lane) => map.indexOf(lane));
 }
+// (2.4.0 review) a Connect press connects: the port chosen on the page, else the remembered one, also when "connect when the app starts" is off
 const DESK_CONNECT = {
-  trackmate: () => typeof tmAutoConnect === 'function' && tmAutoConnect(),
-  arduino: () => typeof abAutoConnect === 'function' && abAutoConnect(),
-  parallel: () => typeof ppAutoConnect === 'function' && ppAutoConnect(),
-  ds: () => typeof dscAutoConnect === 'function' && dscAutoConnect(),
-  plugin: () => null
+  trackmate: () =>
+    typeof hw !== 'undefined' && hw.dev && !hw.open && typeof tmOpen === 'function'
+      ? tmOpen(hw.kind === 'serial')
+      : typeof tmAutoConnect === 'function' && tmAutoConnect(true),
+  arduino: () =>
+    typeof ab !== 'undefined' && ab.dev && !ab.open && typeof abOpen === 'function'
+      ? abOpen()
+      : typeof abAutoConnect === 'function' && abAutoConnect(true),
+  parallel: () => typeof ppAutoConnect === 'function' && ppAutoConnect(true),
+  ds: () =>
+    typeof dsc !== 'undefined' && dsc.dev && !dsc.open && typeof dscOpen === 'function'
+      ? dscOpen()
+      : typeof dscAutoConnect === 'function' && dscAutoConnect(),
+  plugin: () => typeof ptConnect === 'function' && ptConnect()
 };
 const DESK_CLOSE = {
   trackmate: () => typeof tmClose === 'function' && tmClose(),

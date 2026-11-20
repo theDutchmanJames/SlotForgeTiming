@@ -622,6 +622,7 @@ async function renderGeneralSettings(box, only) {
     pos = Banner.pos(S),
     lpos = Banner.logoPos(S);
   const storage = api.storageStatus ? await api.storageStatus() : { backend: 'json' };
+  if (box.isConnected === false) return; // (2.4.0 review: another page of App Settings was opened meanwhile; its controls are not ours)
   const us = UiScale.levelOf(S.uiScale),
     dp = Depth.levelOf(S.depth),
     su = Speed.unitOf(S),

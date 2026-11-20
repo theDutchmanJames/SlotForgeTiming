@@ -248,7 +248,10 @@
     return {
       ...Object.fromEntries(STYLE_KEYS.filter(k => k !== 'appearance' && w[k] !== undefined).map(k => [k, clone(w[k])])),
       appearance: frame().cleanAppearance(a),
-      typography: frame().typography(w),
+      // (2.4.0 review) only the sizes the widget set itself: a full computed set pinned iconSize 44 and manual sizes on every widget it was applied to
+      typography: Object.fromEntries(
+        Object.entries(frame().typography(w)).filter(([k]) => k !== 'iconSize' && Object.hasOwn(w.typography || {}, k))
+      ),
       fonts:
         (root.WidgetFonts || (typeof require === 'function' ? require('./widgetfonts.js') : null))?.clean({
           ...l?.widgetFonts,
@@ -288,10 +291,15 @@
     });
   }
   function applyStyle(w, s, linked = false) {
+    const own = w.typography;
     for (const key of STYLE_KEYS) {
       if (Object.hasOwn(s.style, key)) w[key] = clone(s.style[key]);
       else delete w[key];
     }
+    // (2.4.0 review) the picture size belongs to the widget, not to a style (a style saved before kept a computed one)
+    if (w.typography) delete w.typography.iconSize;
+    if (Object.hasOwn(own || {}, 'iconSize')) w.typography = { ...(w.typography || {}), iconSize: own.iconSize };
+    if (w.typography && !Object.keys(w.typography).length) delete w.typography;
     if (linked) w.appearanceStyle = s.id;
     else delete w.appearanceStyle;
   }

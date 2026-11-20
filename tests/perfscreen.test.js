@@ -1212,7 +1212,7 @@ const Wx_ = () => vm.runInContext('Wx', ctx),
     );
     say(
       'race.js lets the performance figures start with the race (startCountdown) and times the parts of an update',
-      /function startCountdown\(\) \{\n    if \(!timingReady\(\)\) return;\n    if \(typeof PerfUI !== 'undefined'\) PerfUI\.raceStarted\(\);/.test(
+      /function startCountdown\(\) \{\n(?:    if \(!\['ready', 'between'\]\.includes\(live\.phase\)\) return;[^\n]*\n)?    if \(!timingReady\(\)\) return;\n    if \(typeof PerfUI !== 'undefined'\) PerfUI\.raceStarted\(\);/.test(
         race
       ) &&
         race.includes('PerfUI.phases()') &&

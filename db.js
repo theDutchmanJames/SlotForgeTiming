@@ -45,6 +45,28 @@ async function renameAsyncWithRetry(from, to) {
   }
 }
 
+// (2.4.0 review) the same retry for a save in the program's own time (an import, a restore, saving with the background switched off); a rename that
+// still fails removes its temporary file
+function renameSyncWithRetry(from, to) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (x) {
+      // (the core waits here, so at most five short tries: under a second in all)
+      if (!x || !['EPERM', 'EACCES', 'EBUSY'].includes(x.code) || attempt === 5) {
+        try {
+          fs.unlinkSync(from);
+        } catch {
+          /* nothing to clean up */
+        }
+        throw x;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, RENAME_RETRY_DELAYS[attempt]);
+    }
+  }
+}
+
 // Written whole to a file of its own, flushed to the disk, then renamed over the real file: a crash or a power cut leaves the earlier version, never half of a new one.
 function writeAtomic(file, text) {
   const tmp = file + '.tmp',
@@ -59,7 +81,7 @@ function writeAtomic(file, text) {
   } finally {
     fs.closeSync(fd);
   }
-  fs.renameSync(tmp, file);
+  renameSyncWithRetry(tmp, file);
 }
 
 // The same, without making the program wait for the disk (1.60.0): the writing and the flushing are done by the system's helper threads. The race save is written like this every
@@ -109,7 +131,7 @@ function writeChunksSync(file, chunks) {
   } finally {
     fs.closeSync(fd);
   }
-  fs.renameSync(tmp, file);
+  renameSyncWithRetry(tmp, file);
 }
 
 // The pieces written in the background, by the system's helper threads. The file gets a name of its own while it is written ('.bg.tmp'), so a save in the program's own time can never
@@ -1135,6 +1157,7 @@ class Database {
 }
 
 Database.writeAtomic = writeAtomic;
+Database.renameSyncWithRetry = renameSyncWithRetry; // (2.4.0 review)
 Database.LatestWriter = LatestWriter;
 Database.approxSize = approxSize;
 Database.settingsFileOf = settingsFileOf;

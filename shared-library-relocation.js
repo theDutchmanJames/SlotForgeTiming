@@ -22,17 +22,27 @@ function relocatable(first, reopen, o = {}) {
     if (current !== stale) return; // (another call has opened it again already)
     if (!reopening)
       reopening = (async () => {
-        try {
-          await stale.close();
-        } catch {
-          /* the old handle may already be gone */
-        }
-        const next = await reopen();
+        // (2.4.0 review) the new handle is opened first (waiting while the move is still busy) and the old one closed after: an open
+        // that failed left the closed old handle in use, and every call failed until Timing was restarted
+        let next;
+        for (let busy = 0; ; busy++)
+          try {
+            next = await reopen();
+            break;
+          } catch (e) {
+            if (e?.code !== BUSY || busy >= busyTries || closed) throw e;
+            await wait(busyWaitMs);
+          }
         if (closed) {
           await next.close().catch(() => {});
           throw Object.assign(Error('Library handle is closed.'), { code: 'LIBRARY_CLOSED' });
         }
         current = next;
+        try {
+          await stale.close();
+        } catch {
+          /* the old handle may already be gone */
+        }
         if (o.onMoved) o.onMoved({ movedTo: error?.details?.movedTo || null });
       })().finally(() => {
         reopening = null;

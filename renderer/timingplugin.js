@@ -49,8 +49,9 @@
     return {
       id: v.id || '',
       lanes: v.lanes ?? 2,
-      lapMap: v.lapMap || Array.from({ length: 8 }, (_, i) => i),
-      pitMap: v.pitMap || Array.from({ length: 8 }, (_, i) => i),
+      // (2.4.0 review) copies: an edit on the page must not change the saved settings
+      lapMap: Array.isArray(v.lapMap) ? v.lapMap.slice() : v.lapMap || Array.from({ length: 8 }, (_, i) => i),
+      pitMap: Array.isArray(v.pitMap) ? v.pitMap.slice() : v.pitMap || Array.from({ length: 8 }, (_, i) => i),
       pitMode: v.pitMode || 'shared',
       pitAsLap: v.pitAsLap ?? false,
       trackcall: v.trackcall ?? false,

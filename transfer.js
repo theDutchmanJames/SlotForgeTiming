@@ -124,6 +124,19 @@ function refsOf(entity, row) {
     }
   }
   if (entity === 'virtualrivalsystems') field('trackId', 'tracks');
+  // (2.4.0 review) the track links of a fuel rule, a safety car system and a push and save system go along too; a fuel rule whose pace track
+  // did not come along uses a constant amount, as when its track is removed
+  if (entity === 'fuelrules' && row.paceTrack)
+    out.push({
+      entity: 'tracks',
+      get: () => row.paceTrack,
+      set: v => {
+        row.paceTrack = v;
+        if (!v) row.paceSource = 'constant';
+      }
+    });
+  if (entity === 'safetycarsystems') field('safetyTrack', 'tracks');
+  if (entity === 'pushsavesystems') field('previewTrack', 'tracks');
   if (entity === 'drivers') field('virtualRivalSystem', 'virtualrivalsystems');
   if (entity === 'racesetups') {
     field('track', 'tracks');
@@ -511,6 +524,13 @@ function plan(bundle, list, choices, newId = () => crypto.randomUUID()) {
     delete row.paddockDelivery;
     delete row.custom;
     refsOf(r.e, row).forEach(ref => ref.set((keep[ref.entity] && keep[ref.entity][ref.get()]) || ''));
+    // (2.4.0 review) as for a copy: a driver that did not come along leaves the team and the roster, an older race setup is brought up to date
+    if (r.e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
+    if (r.e === 'championships') row.roster = (Array.isArray(row.roster) ? row.roster : []).filter(x => x && x.driver);
+    if (r.e === 'racesetups') {
+      RaceLimit.upgrade(row);
+      RaceLimit.upgradeScoring(row);
+    }
     // (a setting the file does not have is empty there: mine is emptied too, so it ends up the same as the file's)
     ((schema[r.e] && schema[r.e].fields) || []).forEach(f => {
       if (!Object.hasOwn(row, f.key)) row[f.key] = f.type === 'members' ? [] : '';

@@ -220,7 +220,7 @@
     const award = o.awarded
       ? `<div class="ro-aw" role="status"><span>✓ The points of this race are in the standings</span>${btn('champ-undo', 'Undo')}<button type="button" class="btn ro-quietdanger" data-ro="champ-off">Do not count this race</button></div>`
       : `<div class="ro-aw wait" role="status"><span>These points are not in the standings yet</span>${btn('champ-award', 'Award these points', true)}<button type="button" class="btn ro-quietdanger" data-ro="champ-off">Do not count this race</button></div>`;
-    const notes = (view.notes || []).length ? `<div class="ro-notes">${view.notes.map(n => `<p>${n}</p>`).join('')}</div>` : '';
+    const notes = (view.notes || []).length ? `<div class="ro-notes">${view.notes.map(n => `<p>${esc(n)}</p>`).join('')}</div>` : '';
     return card(
       'Title fight',
       `${esc(view.name)} · after ${esc(view.roundLabel || 'round ' + view.round)} of ${esc(rounds)}`,

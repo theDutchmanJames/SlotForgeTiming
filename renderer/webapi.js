@@ -142,7 +142,8 @@
         if (e.code === 'login') {
           token = null;
           store('slt-token', null);
-        }
+        } else if (typeof Dialog !== 'undefined')
+          Dialog.alert('This did not reach the timing computer: ' + (e.message || 'no answer') + '. Try again.'); // (2.4.0 review: a command that failed is said, not lost without a word)
       }
     },
     onCommand: () => () => {},

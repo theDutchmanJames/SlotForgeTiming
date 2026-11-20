@@ -1175,17 +1175,23 @@ class Paddock {
     this.connected = false;
   }
 }
+// (2.4.0 review) as paddock-value-hash.js: undefined keys are left out, undefined in a list is null, a date is its ISO text
 function canonical(v) {
   return Array.isArray(v)
-    ? '[' + v.map(canonical).join(',') + ']'
-    : v && typeof v === 'object'
-      ? '{' +
-        Object.keys(v)
-          .sort()
-          .map(k => JSON.stringify(k) + ':' + canonical(v[k]))
-          .join(',') +
-        '}'
-      : JSON.stringify(v);
+    ? '[' + v.map(x => (x === undefined ? 'null' : canonical(x))).join(',') + ']'
+    : v instanceof Date
+      ? JSON.stringify(v)
+      : v && typeof v === 'object'
+        ? '{' +
+          Object.keys(v)
+            .sort()
+            .flatMap(k => {
+              const x = v[k]; // (read once: a value can be a getter)
+              return x === undefined ? [] : [JSON.stringify(k) + ':' + canonical(x)];
+            })
+            .join(',') +
+          '}'
+        : JSON.stringify(v);
 }
 const hash = v => crypto.createHash('sha256').update(canonical(v)).digest('hex');
 module.exports = {

@@ -126,6 +126,12 @@ async function renderHome() {
     'championships'
   ];
   const readEntities = entities.filter(e => e !== 'sessions' || !api.homeSessions);
+  // (2.4.0 review, speed) the other lists are asked for at the same time as the main ones, not one after another
+  const extraLists = Promise.all(['multiclasssystems', 'raceclasses', 'virtualrivalsystems'].map(e => api.list(e)));
+  const sharedRead = api.paddockCatalogue ? api.paddockCatalogue(false).catch(() => null) : Promise.resolve(null);
+  const resumeRead =
+    api.getResume && !(typeof raceActive === 'function' && raceActive()) ? api.getResume().catch(() => null) : Promise.resolve(null);
+  extraLists.catch(() => {});
   const referenceGroups =
     typeof readReferenceGroups === 'function'
       ? await readReferenceGroups(readEntities)
@@ -137,12 +143,12 @@ async function renderHome() {
   const referenceRevision = entity => referenceGroups[entities.indexOf(entity)]?.revision;
   const drivers = allDrivers.filter(d => d.driverType !== 'virtual' && !d.retired); // (2.4.0: a retired driver keeps their results but is not offered for a race)
   const isRival = row => VirtualRival.isDriver(row, allDrivers);
-  const [multiProfiles, classDefs] = await Promise.all(['multiclasssystems', 'raceclasses'].map(e => api.list(e)));
+  const [multiProfiles, classDefs, rivalProfiles] = await extraLists;
   // Shared choices remain metadata only until selected; cache a signed racing profile before saving a local car ID.
   if (api.paddockCatalogue) {
     try {
-      const shared = await api.paddockCatalogue(false);
-      if (shared.connection?.mode === 'local') {
+      const shared = await sharedRead;
+      if (shared && shared.connection?.mode === 'local') {
         for (const c of cars) if (c.paddock?.databaseId === shared.connection.databaseId) c._sameComputerLibrary = true;
         for (const c of shared.cars) {
           if (c.archived || cars.some(x => x.paddock?.databaseId === shared.connection.databaseId && x.paddock.carId === c.id)) continue;
@@ -153,7 +159,13 @@ async function renderHome() {
             brand: c.maker || '',
             _sharedCar: c.id,
             _sameComputerLibrary: true,
-            raceClass: classDefs.find(x => x.name.trim().toLocaleLowerCase() === (c.raceClass || '').trim().toLocaleLowerCase())?.id || '',
+            raceClass:
+              classDefs.find(
+                x =>
+                  String(x.name || '')
+                    .trim()
+                    .toLocaleLowerCase() === (c.raceClass || '').trim().toLocaleLowerCase()
+              )?.id || '', // (2.4.0 review: a class without a name does not drop the shared cars)
             paddock: { name: c.name, databaseId: shared.connection.databaseId, carId: c.id }
           });
         }
@@ -162,7 +174,6 @@ async function renderHome() {
       /* Local cars and captured configurations remain usable. */
     }
   }
-  const rivalProfiles = await api.list('virtualrivalsystems');
   const champs = (Array.isArray(champRaw) ? champRaw : []).map(c => Champ.clean(c, true)); // (1.55.0: the championships; 1.56.1: one of them is chosen in the Start a race card, and only then its card shows, inside Start a race)
   const imageSets = Array.isArray(imagesets) ? imagesets : []; // (1.26.0: the picture sets of Customization > Picture sets, for the Weather and Tyres Available cards)
   const saved = state.settings;
@@ -170,7 +181,7 @@ async function renderHome() {
     hc = (state.homeCustom = state.homeCustom || { open: false, sel: 0 }); // (1.25.0: the cards are a grid; hc is the Customize panel: open or not, and the card whose settings show)
   hc.sel = Math.min(Math.max(Math.floor(Number(hc.sel)) || 0, 0), grid.boards.length - 1);
   if (draw !== homeDraw || state.tab !== 'home') return; // (another tab, or another drawing of Home, was asked for while the lists came in)
-  const resume = api.getResume && !(typeof raceActive === 'function' && raceActive()) ? await api.getResume().catch(() => null) : null; // (1.9.0: a race that was interrupted by a crash or a power cut, kept in a file)
+  const resume = !(typeof raceActive === 'function' && raceActive()) ? await resumeRead : null; // (1.9.0: a race that was interrupted by a crash or a power cut, kept in a file)
   if (draw !== homeDraw || state.tab !== 'home') return;
   // 2.3.0: a fresh install (no race setup yet) gets the setup guide instead, until it is finished or skipped
   if (
@@ -198,7 +209,10 @@ async function renderHome() {
   // saved assignments for this setup, cleaned of anything that has since been deleted
   let rows = ((saved.assignments || {})[setupId] || []).map(r => ({
     raceClass: known(classDefs, r.raceClass),
-    driverId: known(allDrivers, r.driverId),
+    driverId: known(
+      allDrivers.filter(d => !d.retired),
+      r.driverId
+    ), // (2.4.0 review: a driver who was retired since is taken off the lane)
     carId: VirtualRival.isDriver(r, allDrivers) ? '' : known(cars, r.carId),
     rivalProfileId: typeof r.rivalProfileId === 'string' ? r.rivalProfileId : '',
     ...(known(teams, r.teamId) ? { teamId: r.teamId } : {}),
@@ -211,7 +225,7 @@ async function renderHome() {
   const byTeam = heats && (rot ? Rot.isTeams(rot) : setup.participants === 'teams');
   const withTeam = byTeam || enduSingle; // (the team is the participant: it has to be chosen)
   const allowRival = !tokens && !withTeam && !endu;
-  const laneDrivers = allowRival ? allDrivers : drivers;
+  const laneDrivers = allowRival ? allDrivers.filter(d => !d.retired) : drivers; // (2.4.0 review: the virtual rivals, but no retired driver)
   if (!withTeam)
     rows.forEach(r => {
       delete r.teamId;
@@ -946,13 +960,14 @@ async function renderHome() {
         .then(d => {
           const pic = d && typeof d.avatar === 'string' ? d.avatar : ''; // (the same picture the race screen shows)
           homeAvatarCache.set(id, pic);
-          if (pic && draw === homeDraw)
+          // (2.4.0 review) painted into the Home that is on screen now, also when it was drawn again while the picture was read
+          if (pic)
             document.querySelectorAll(`[data-avatar-driver="${CSS.escape ? CSS.escape(id) : id}"] img`).forEach(img => {
               img.src = pic;
               img.classList.add('own');
             });
         })
-        .catch(() => {});
+        .catch(() => homeAvatarCache.delete(id)); // (2.4.0 review: read again the next time)
     });
   if (typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
   {
@@ -1276,7 +1291,15 @@ async function renderHome() {
                 const raceClass =
                   source === 'local'
                     ? car.raceClass
-                    : classDefs.find(c => c.name.trim().toLocaleLowerCase() === car.raceClass.trim().toLocaleLowerCase())?.id;
+                    : classDefs.find(
+                        c =>
+                          String(c.name || '')
+                            .trim()
+                            .toLocaleLowerCase() ===
+                          String(car.raceClass || '')
+                            .trim()
+                            .toLocaleLowerCase()
+                      )?.id; // (2.4.0 review)
                 return MultiClass.carsFor(rows[i], mc, { cars: [{ ...car, raceClass }], drivers, teams }).length > 0;
               }
             }

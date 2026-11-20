@@ -177,7 +177,8 @@ const wbLaneColour = i => (typeof Frame !== 'undefined' && Frame.laneColour({ la
 let wbVarCat = 'all',
   wbPrevLane = 0,
   wbPlay = 0, // (2.4.0: when Play a race started; 0 = the fixed samples)
-  wbPlayTimer = 0;
+  wbPlayTimer = 0,
+  wbPrevRO = null; // (2.4.0 review: the ResizeObserver of the preview)
 const WB_STAGE = { w: 1000, h: 562.5 };
 function renderWidgetBuilderEditor(box) {
   box.onclick = box.onchange = box.oninput = null;
@@ -305,8 +306,11 @@ function renderWidgetBuilderEditor(box) {
       fitStage();
     };
   fitStage();
+  // (2.4.0 review) one observer for the editor: the one of the screen drawn before is let go (it held the old page)
+  wbPrevRO?.disconnect();
+  wbPrevRO = null;
   if (typeof ResizeObserver !== 'undefined' && $('wb-prev')?.parentElement) {
-    const ro = new ResizeObserver(() => ($('wb-prev') ? fitStage() : ro.disconnect()));
+    const ro = (wbPrevRO = new ResizeObserver(() => ($('wb-prev') ? fitStage() : ro.disconnect())));
     ro.observe($('wb-prev').parentElement);
   }
   // the lane of the sample, and the subjects and the search of the variables (they only show and hide; nothing in the widget changes)
@@ -356,7 +360,7 @@ function renderWidgetBuilderEditor(box) {
     $('wb-msg').textContent = t;
   };
   // Undo and redo (typing is one step after a quiet moment; every other change is a step of its own)
-  const U = draftUndo(wbEd, 'wb', () => renderWidgetBuilderEditor(box)),
+  const U = draftUndo(wbEd, 'wb', () => (wbEd.draft.composition ? renderWidgetBuilder(box) : renderWidgetBuilderEditor(box))), // (2.4.0 review: Undo of a Simple / Canvas switch draws the canvas editor)
     mark = U.mark,
     step = U.step;
   const set = (k, v, typing) => {

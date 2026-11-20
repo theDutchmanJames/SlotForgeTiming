@@ -448,7 +448,13 @@ const MainBar = (() => {
       const F = FI();
       if (!F) return;
       index = F.build(base(), ctxOf({}));
-      const read = e => (api.list ? Promise.resolve(api.list(e)).catch(() => []) : Promise.resolve([]));
+      // (2.4.0 review, speed) drivers, cars, tracks, teams, layouts and sets are read as Home reads them: without their pictures (Find only needs names)
+      const read = e =>
+        typeof referenceList === 'function' && typeof REFERENCE_ENTITIES !== 'undefined' && REFERENCE_ENTITIES.has(e)
+          ? Promise.resolve(referenceList(e)).catch(() => [])
+          : api.list
+            ? Promise.resolve(api.list(e)).catch(() => [])
+            : Promise.resolve([]);
       const names = [
         'drivers',
         'slotcars',

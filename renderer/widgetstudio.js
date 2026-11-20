@@ -429,7 +429,7 @@ const WidgetStudio = (() => {
       if (openFolders.has(key)) x.open = openFolders.get(key);
     });
     const $ = id => document.getElementById(id),
-      U = draftUndo(ed, 'wc', () => edit(box));
+      U = draftUndo(ed, 'wc', () => (ed.draft.composition ? edit(box) : renderWidgetBuilder(box))); // (2.4.0 review: Undo of a Simple / Canvas switch draws the simple editor)
     const message = s => {
       $('wc-status').textContent = s;
     };

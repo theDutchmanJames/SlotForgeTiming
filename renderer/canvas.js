@@ -33,6 +33,7 @@ const LiveCanvas = (() => {
     if (n.disposed || n.raf != null || typeof requestAnimationFrame === 'undefined') return;
     n.raf = requestAnimationFrame(() => {
       n.raf = null;
+      n.chartSize = null; // (2.4.0 review, speed: the race chart measures its box again after a resize, not on every frame)
       if (!n.disposed && n.el.isConnected)
         protect(n, () => {
           fitValue(n);
@@ -88,7 +89,9 @@ const LiveCanvas = (() => {
       inputKey != null && inputKey === n.inputKey && n.out
         ? n.out
         : Timing.content(
-            n.w.type === 'racechart' ? { ...n.w, chartSize: { width: n.val.clientWidth, height: n.val.clientHeight } } : n.w,
+            n.w.type === 'racechart'
+              ? { ...n.w, chartSize: n.chartSize || (n.chartSize = { width: n.val.clientWidth, height: n.val.clientHeight }) }
+              : n.w,
             S
           );
     const themeKey = Frame.themeKey?.() || '';
@@ -119,7 +122,22 @@ const LiveCanvas = (() => {
     }
     const t2 = tm ? tm.now() : 0;
     // Colours/control state do not rebuild SVG, images or compound child nodes.
-    if (contentChanged || appearanceChanged || n.error) fitValue(n, out, tm);
+    // (2.4.0 review, speed) a running lap timer: only digits changed in plain text whose font has equal-width digits, so the last fit still holds
+    // and the forced layouts of a new fit are skipped. A resize or a font that loaded still fits again.
+    const digitsOnly =
+      contentChanged &&
+      !appearanceChanged &&
+      !n.error &&
+      L &&
+      n.val._sfDigitsFit != null &&
+      n.val._sfDigitsFit === Frame.fontEpoch?.() &&
+      view().kind(n.w) === 'text' &&
+      !/[<&]/.test(out.html) &&
+      !/[<&]/.test(L[0]) &&
+      out.html.length === L[0].length &&
+      out.html.replace(/\d/g, '0') === L[0].replace(/\d/g, '0');
+    if ((contentChanged || appearanceChanged || n.error) && !digitsOnly) fitValue(n, out, tm);
+    else if (digitsOnly) view().updateComponents?.(n, out);
     // Only a fully successful update becomes the unchanged-output baseline.
     lap().update(n, S);
     n.last = [out.html, out.color, out.bg, out.disabled, JSON.stringify(out.designRule)];

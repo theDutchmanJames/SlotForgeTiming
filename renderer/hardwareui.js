@@ -280,7 +280,7 @@ async function tmOpenNow(setup) {
             for (;;) {
               const { value, done } = await hw.reader.read();
               if (done) break;
-              if (value && value.length) tmReceive(value);
+              if (hw.open && value && value.length) tmReceive(value); // (2.4.0 review: bytes read after Disconnect are not race events)
             }
           } catch (x) {
             hw.lines.push(`${((performance.now() - hw.t0) / 1000).toFixed(3).padStart(9)}  ERROR  ${x.message}`);
@@ -347,11 +347,12 @@ async function tmClose() {
   tmNote('-- disconnected --');
 }
 // at startup: reconnect to the remembered device if it is plugged in. Never shows a window; quietly does nothing if anything is missing.
-async function tmAutoConnect() {
+// force: a Connect press (2.4.0 review: the "connect when the app starts" choice is for the start only)
+async function tmAutoConnect(force = false) {
   try {
     const t = tmSettings();
     if (
-      !t.auto ||
+      (!t.auto && !force) ||
       !t.device ||
       typeof navigator === 'undefined' ||
       !navigator.serial ||
@@ -403,6 +404,27 @@ async function tmUseVirtual() {
   return tmOpen(true);
 }
 
+// (2.4.0 review) the device list the main process asked about (hw.pick), drawn into the page that is on screen
+function tmDrawPick() {
+  const el = typeof document !== 'undefined' && document.getElementById('hw-pick');
+  if (!el) return;
+  const p = hw.pick;
+  if (!p) {
+    el.innerHTML = '';
+    el.onclick = null;
+    return;
+  }
+  el.innerHTML = `<div class="card"><strong>Choose a device</strong>${p.list.length ? p.list.map((d, i) => `<div class="row"><button class="btn" data-pick="${i}">${esc(d.displayName || d.name || d.deviceName || d.portName || d.productName || 'Device')} <span class="muted">${esc(d.portName || '')} ${d.vendorId !== undefined ? '(' + Hardware.hex4(d.vendorId) + ':' + Hardware.hex4(d.productId) + ')' : ''}</span></button></div>`).join('') : '<p class="muted">No devices found. Check the cable.</p>'}<button class="btn" data-pick="-1">Cancel</button></div>`;
+  el.onclick = ev => {
+    const b = ev.target.closest('[data-pick]');
+    if (!b) return;
+    const i = Number(b.dataset.pick),
+      q = hw.pick;
+    hw.pick = null;
+    tmDrawPick();
+    if (q) q.res(i >= 0 && q.list[i] ? q.list[i].portId || q.list[i].deviceId : '');
+  };
+}
 function renderHardwareSettings(box) {
   const laneMap = Trackmate.laneMap(state.settings.tmLaneMap),
     H = Hardware,
@@ -473,22 +495,22 @@ function renderHardwareSettings(box) {
     });
 
   // the main process lists the devices it found; the user picks one here
+  // (2.4.0 review) the open question is kept in hw.pick, so a redraw of the page shows it again instead of leaving it unanswered
   const choose = list =>
     new Promise(res => {
-      const el = $('hw-pick');
-      if (!el) return res('');
-      el.innerHTML = `<div class="card"><strong>Choose a device</strong>${list.length ? list.map((d, i) => `<div class="row"><button class="btn" data-pick="${i}">${esc(d.displayName || d.name || d.deviceName || d.portName || d.productName || 'Device')} <span class="muted">${esc(d.portName || '')} ${d.vendorId !== undefined ? '(' + H.hex4(d.vendorId) + ':' + H.hex4(d.productId) + ')' : ''}</span></button></div>`).join('') : '<p class="muted">No devices found. Check the cable.</p>'}<button class="btn" data-pick="-1">Cancel</button></div>`;
-      el.onclick = ev => {
-        const b = ev.target.closest('[data-pick]');
-        if (!b) return;
-        const i = Number(b.dataset.pick);
-        el.innerHTML = '';
-        res(i >= 0 && list[i] ? list[i].portId || list[i].deviceId : '');
-      };
+      if (hw.pick) hw.pick.res(null);
+      if (!$('hw-pick')) {
+        hw.pick = null;
+        return res('');
+      }
+      hw.pick = { list, res };
+      tmDrawPick();
     });
+  tmDrawPick();
   if (api.onHwChoose)
     api.onHwChoose(async (_kind, list) => {
-      api.hwChosen(await choose(list));
+      const id = await choose(list);
+      if (id !== null) api.hwChosen(id); // (null: an older question the main process already dropped)
     });
 
   const find = async kind => {

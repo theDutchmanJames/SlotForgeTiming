@@ -287,7 +287,7 @@ class JsonPaddockStorage {
       link: (p, id) => {
         const row = db.slotcars.find(c => c.id === id);
         if (!row || row.paddock || db.slotcars.some(c => c.paddock?.databaseId === p.databaseId && c.paddock.carId === p.car.id))
-          throw Error('This physical car already has a link.');
+          throw Object.assign(Error('This physical car already has a link.'), { code: 'LINK_CONFLICT' }); // (2.4.0 review)
         Object.assign(row, profilePatch(p, db.raceclasses));
         this.db.touch(row);
       }

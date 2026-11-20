@@ -131,7 +131,10 @@ test('native backup restore retains complete token and team history and full exp
  const {store,dir}=fixture(t,db=>{db.data.sessions[26].standings[0].asTeam=true;db.data.sessions[26].standings[0].teamId='team';db.data.laps.forEach(l=>{l.teamId='team';});});
  const expected=store.historySession('racing','s26',{exportAll:true}),tokens=store.historySession('tokens','s0');
  const backup=path.join(dir,'backup'),restored=path.join(dir,'restored');store.backupSnapshot(backup);require('../sqlite-bulk').restore(backup,restored);
- const reopened=new WorkingStore(restored);try{assert.deepEqual(reopened.historySession('racing','s26',{exportAll:true}),expected);assert.deepEqual(reopened.historySession('tokens','s0'),tokens);assert.equal(reopened.historySession('racing','s25',{offset:500}).laps.length,0);}finally{reopened.close();}
+ const reopened=new WorkingStore(restored);try{
+  // (2.4.0 review) the content is the same; the revision has the restore's new epoch, so no earlier cursor is taken for it
+  const same=(a,b)=>{assert.notEqual(a.revision,b.revision);assert.deepEqual({...a,revision:null},{...b,revision:null});};
+  same(reopened.historySession('racing','s26',{exportAll:true}),expected);same(reopened.historySession('tokens','s0'),tokens);assert.equal(reopened.historySession('racing','s25',{offset:500}).laps.length,0);}finally{reopened.close();}
 });
 
 const roundedCar=value=>JSON.parse(JSON.stringify(value,(_k,v)=>typeof v==='number'?Math.round(v*1e7)/1e7:v));

@@ -5,6 +5,8 @@
 //   is not "pace"); consistency: 100% minus the spread of those laps (their standard deviation as a share of the average), so steadier = higher.
 // A clean lap: a real time, not invalid, not too slow, not after the paid time (tokens), not with a pit stop, not a Time Token lap.
 const PACE = 1.3;
+// (2.4.0 review) the smallest of a list without spreading it: Math.min(...list) stops above about 120 000 laps
+const least = list => list.reduce((m, t) => (t < m ? t : m), Infinity);
 const monthOf = iso => {
   const t = Date.parse(iso || '');
   if (!Number.isFinite(t)) return '';
@@ -12,7 +14,7 @@ const monthOf = iso => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 function figures(times) {
-  const best = Math.min(...times),
+  const best = least(times),
     pace = times.filter(t => t <= best * PACE).sort((a, b) => a - b),
     n = pace.length,
     avg = pace.reduce((s, t) => s + t, 0) / n,
@@ -50,14 +52,14 @@ function progress(laps, o = {}) {
   }
   const out = [...tracks.entries()].map(([trackId, months]) => {
     const rows = [...months.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([month, times]) => ({ month, ...figures(times) }));
-    const all = [].concat(...months.values());
+    const all = [...months.values()].flat();
     const a = rows[0],
       z = rows[rows.length - 1];
     return {
       trackId,
       name: (o.trackName && o.trackName(trackId)) || '',
       laps: all.length,
-      best: Math.min(...all),
+      best: least(all),
       months: rows,
       // from the first month to the last: how much faster the best and the average lap got (positive = faster), and the steadiness
       change:

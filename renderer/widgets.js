@@ -1732,7 +1732,17 @@
     T('pluginlane', 'Plugin lane widget', 'Plugins', { perLane: true, layoutOnly: true, w: 240, h: 160, textSize: 28, noTitle: true }),
     T('pluginrace', 'Plugin race widget', 'Plugins', { layoutOnly: true, w: 400, h: 220, textSize: 28, noTitle: true })
   );
-  const def = type => REGISTRY.find(d => d.type === type);
+  // (2.4.0 review, speed) looked up in a map, built again whenever the list grows; the live page asks this for every widget on every frame
+  const DEF_MAP = new Map();
+  let defLen = -1;
+  const def = type => {
+    if (defLen !== REGISTRY.length) {
+      DEF_MAP.clear();
+      for (const d of REGISTRY) if (!DEF_MAP.has(d.type)) DEF_MAP.set(d.type, d);
+      defLen = REGISTRY.length;
+    }
+    return DEF_MAP.get(type);
+  };
   // All content previews use the same formatter as the live race. Controls keep
   // their static labels; they have no simulated hardware action.
   const sampleOf = (d, lane, widget) => {
@@ -1924,18 +1934,19 @@
   function scaleGroup(from, box0, nb, snap, W, H) {
     const sx = box0.w > 0 ? nb.w / box0.w : 1,
       sy = box0.h > 0 ? nb.h / box0.h : 1;
-    const edge = (v, lo, newLo, scale) => {
+    // (2.4.0 review) the axis is named: with the same scale across and down, the bottom edge was taken for a right edge
+    const edge = (v, lo, newLo, scale, across) => {
       if (v === lo) return newLo;
-      if (v === lo + (scale === sx ? box0.w : box0.h)) return newLo + (scale === sx ? nb.w : nb.h);
+      if (v === lo + (across ? box0.w : box0.h)) return newLo + (across ? nb.w : nb.h);
       if (scale === 1) return newLo + (v - lo); // (this way is not resized: the widgets are not moved to the grid)
       const at = newLo + (v - lo) * scale;
       return snap ? Math.round(at / GRID) * GRID : Math.round(at);
     };
     return from.map(g => {
-      let l = edge(g.x, box0.x, nb.x, sx),
-        r = edge(g.x + g.w, box0.x, nb.x, sx),
-        t = edge(g.y, box0.y, nb.y, sy),
-        b = edge(g.y + g.h, box0.y, nb.y, sy);
+      let l = edge(g.x, box0.x, nb.x, sx, true),
+        r = edge(g.x + g.w, box0.x, nb.x, sx, true),
+        t = edge(g.y, box0.y, nb.y, sy, false),
+        b = edge(g.y + g.h, box0.y, nb.y, sy, false);
       l = clamp(l, 0, W);
       r = clamp(r, 0, W);
       t = clamp(t, 0, H);
@@ -2067,8 +2078,15 @@
   function duplicateWidgets(sel, step, W, H) {
     const box = bbox(sel),
       s = step || { x: 0, y: box.h + 2 * GRID };
-    const dx = clamp(s.x, -box.x, W - box.x - box.w),
+    let dx = clamp(s.x, -box.x, W - box.x - box.w),
       dy = clamp(s.y, -box.y, H - box.y - box.h);
+    // (2.4.0 review) no room below (the bottom of the page, a row design): beside it, so the copies do not lie exactly on the originals
+    if (!step && Math.abs(dy) < box.h && Math.abs(dx) < box.w) {
+      const right = clamp(box.w + 2 * GRID, -box.x, W - box.x - box.w),
+        left = clamp(-(box.w + 2 * GRID), -box.x, W - box.x - box.w),
+        side = Math.abs(right) >= box.w ? right : Math.abs(left) >= box.w ? left : null;
+      if (side !== null) dx = side; // (dy stays what fits: a copy never leaves the page)
+    }
     return sel.map(g => ({
       ...JSON.parse(JSON.stringify(g)),
       id: uid(),

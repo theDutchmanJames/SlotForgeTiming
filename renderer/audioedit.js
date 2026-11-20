@@ -465,6 +465,8 @@ function drawAudioSetEditor(box) {
       U.hist.markSaved(token);
       audEd.dirty = !U.hist.isClean();
       msg('Saved.'); // (a change made while it was being written is not saved yet)
+    } catch (x) {
+      msg('Could not save: ' + (x && x.message ? x.message : x)); // (2.4.0 review)
     } finally {
       saving = false;
     }
@@ -480,6 +482,7 @@ function drawAudioSetEditor(box) {
     )
       return;
     if (!audEd || audEd.draft !== d) return; // (the editor was left while the question was open)
+    if (typeof audSample !== 'undefined' && audSample) audSample.stop(); // (2.4.0 review) the sample race stops with the editor
     Sound.stop();
     draftUndoEnd(audEd);
     audEd = null;
@@ -794,11 +797,15 @@ function drawAudioSetEditor(box) {
       const f = t.files[0];
       if (f.size > Sound.MAX_FILE)
         return msg(`That file is too big (${(f.size / 1e6).toFixed(1)} MB). The limit is ${Sound.MAX_FILE / 1e6} MB.`);
-      const rd = new FileReader();
+      // (2.4.0 review) the sentence is taken now: a sentence deleted, added or undone while the file is read does not move the file to another one
+      const id = t.dataset.file.split(':')[0],
+        line = ref(t.dataset.file),
+        rd = new FileReader();
       rd.onload = () => {
-        ref(t.dataset.file).file = String(rd.result);
-        ref(t.dataset.file).fileName = f.name;
-        ref(t.dataset.file).mode = ref(t.dataset.file).mode || 'file';
+        if (!audEd || audEd.draft !== d || !line || !(d.calls[id] && d.calls[id].lines.includes(line))) return;
+        line.file = String(rd.result);
+        line.fileName = f.name;
+        line.mode = line.mode || 'file';
         step();
         renderAudioSetEditor(box);
       };

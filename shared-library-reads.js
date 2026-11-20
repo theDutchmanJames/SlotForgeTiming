@@ -171,11 +171,33 @@ async function historyPage(base, client, pool, options = {}) {
     });
     token = page.token;
     sections[section] = { items: page.rows.map(r => mappedRecord(r, client)), nextOffset: page.nextOffset };
-    if (!(o[section]?.offset > 0)) {
-      // (the first page: the records of races that did not reach the library yet)
+    {
+      // (the records of races that did not reach the library yet). (2.4.0 review) on every page, not only the first: a faster local lap
+      // whose key the library holds on a later page was shown nowhere
       const first = !pendingOnce;
       const pending = (pendingOnce ||= await undeliveredRecords(base, client, pool, token)); // (once for both sections)
-      sections[section].items = mergeRecords(section, sections[section].items, pending[section], page.nextOffset === null);
+      // (a key the library holds on an earlier page is not added again on the last page)
+      let local = pending[section];
+      if (page.nextOffset === null && o[section]?.offset > 0) {
+        const kept = [];
+        for (const l of local) {
+          if (sections[section].items.some(r => recordKey(section, r) === recordKey(section, l))) kept.push(l);
+          else {
+            const held = await read(client, {
+              kind: 'records',
+              scope: section === 'tracks' ? 'track' : 'personal',
+              sourceId: client.installationId,
+              trackId: l.trackId,
+              ...(section === 'personal' ? { driverId: l.driverId } : {}),
+              limit: 1,
+              token
+            });
+            if (!held.rows.length) kept.push(l);
+          }
+        }
+        local = kept;
+      }
+      sections[section].items = mergeRecords(section, sections[section].items, local, page.nextOffset === null);
       if (first) for (const k of Object.keys(refs)) refs[k].push(...(pending.refs[k] || []));
     }
     for (const r of page.rows) {

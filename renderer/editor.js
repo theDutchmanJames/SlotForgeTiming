@@ -63,6 +63,8 @@ function fitPanels() {
 }
 const clone = x => JSON.parse(JSON.stringify(x));
 const knownWidgets = list => (Array.isArray(list) ? list : []).filter(w => w && Widgets.def(w.type)); // a widget type this version does not know (from a file of another version) is left out instead of breaking the editor
+// (2.4.0 review) ...but it is kept aside and written back on save, so saving never deletes it
+const unknownWidgets = list => (Array.isArray(list) ? list : []).filter(w => w && !Widgets.def(w.type));
 const editorDirty = () => !!(state.editing && state.editing.dirty);
 // Every editor that holds a draft in memory, with changes that are not saved (asked before the window closes, see main.js closeGuard)
 function unsavedDrafts() {
@@ -706,11 +708,15 @@ function rvPreview(box, o, designs) {
     screen.style.height = Math.ceil(stage.scrollHeight * k) + 'px';
   };
   fit();
+  // (2.4.0 review) one observer for the preview: the one of the page drawn before is let go (it held the old page)
+  rvObserver?.disconnect();
+  rvObserver = null;
   if (typeof ResizeObserver !== 'undefined') {
-    const ro = new ResizeObserver(() => (stage.isConnected ? fit() : ro.disconnect()));
+    const ro = (rvObserver = new ResizeObserver(() => (stage.isConnected ? fit() : ro.disconnect())));
     ro.observe(screen);
   }
 }
+let rvObserver = null;
 async function renderResultsSettings(box) {
   const R = ResultsView,
     o = R.clean(state.settings.resultsView),
@@ -1243,6 +1249,7 @@ async function renderRowList(box) {
       id,
       kind: 'row',
       draft: { guides: { v: [], h: [] }, laneColors: [], note: '', ...draft, widgets: knownWidgets(draft.widgets), kind: 'row' },
+      unknown: unknownWidgets(draft.widgets),
       sel: [],
       snap: true,
       dirty: id === null,
@@ -1356,6 +1363,7 @@ async function renderLayoutList(box) {
     state.editing = {
       id,
       draft: { guides: { v: [], h: [] }, laneColors: [], note: '', ...draft, widgets: knownWidgets(draft.widgets) },
+      unknown: unknownWidgets(draft.widgets),
       sel: [],
       snap: true,
       dirty: id === null,
@@ -1946,7 +1954,8 @@ function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
       g.title = 'Fuel Strip';
       g.showTitle = false; // (the strip says FUEL itself)
       g.h = Math.min(g.h, 56);
-      g.w = Math.max(g.w, 300);
+      g.w = Math.min(U, Math.max(g.w, 300));
+      g.x = Math.max(0, Math.min(g.x, U - g.w)); // (2.4.0 review: the wider strip stays on the page)
       redraw();
     }
     hist.commit();
@@ -1971,6 +1980,9 @@ function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
           g.y = y;
           break outer;
         }
+    // (2.4.0 review) no free spot (a low row, a full page): the widget still stays on the page or in the row
+    g.x = Math.max(0, Math.min(g.x, U - g.w));
+    g.y = Math.max(0, Math.min(g.y, H - g.h));
     d.widgets.push(g);
     ed.sel = [g];
     mark();
@@ -1998,7 +2010,7 @@ function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
     }
     const token = hist.commit(); // what is saved is this state, whatever is changed while the save runs
     if (row) {
-      const data = clone({ ...d, name: d.name, note: (d.note || '').trim(), kind: 'row' });
+      const data = clone({ ...d, name: d.name, note: (d.note || '').trim(), kind: 'row', widgets: [...d.widgets, ...(ed.unknown || [])] }); // (2.4.0 review: the unknown widgets back)
       if (ed.id) await api.update('rowdesigns', ed.id, data);
       else {
         const r = await api.add('rowdesigns', data);
@@ -2014,7 +2026,7 @@ function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
       note: (d.note || '').trim(),
       ratioW: d.ratioW,
       ratioH: d.ratioH,
-      widgets: d.widgets,
+      widgets: [...d.widgets, ...(ed.unknown || [])], // (2.4.0 review: the widgets this version does not know, back)
       guides: d.guides,
       laneColors: d.laneColors,
       ...Frame.pickLayout(d),
@@ -2059,12 +2071,13 @@ function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
     if (!ed.sel.length) return;
     const src = [...ed.sel],
       copies = Widgets.duplicateWidgets(src, ed.dupStep, U, Hh());
+    if (row) copies.forEach((g, i) => (g.lane = src[i].lane)); // (2.4.0 review: a cell of a row design has no lane of its own to move on to)
     d.widgets.push(...copies);
     ed.lastDup = { srcBox: Widgets.bbox(src), copies };
     ed.sel = copies;
     step();
     redraw();
-    $('e-msg').textContent = src.some(w => w.lane === Widgets.LANES - 1) ? `Lane ${Widgets.LANES} is the last lane.` : '';
+    $('e-msg').textContent = !row && src.some(w => w.lane === Widgets.LANES - 1) ? `Lane ${Widgets.LANES} is the last lane.` : '';
   };
   return { duplicateSel, removeSel };
 }
@@ -3041,9 +3054,12 @@ function edSideChange({ $, d, drawCanvas, ed, redraw, refreshAssets, side, step 
       step();
       drawCanvas(sel);
     }
-    if (t.dataset.theme && t.checked) {
+    if (t.dataset.theme) {
+      // (2.4.0 review) unticked: the colour beside it is used (before, nothing happened and the box lied)
+      const pick = side.querySelector(`[data-color="${t.dataset.theme}"]`),
+        v = t.checked ? '' : (pick && pick.value) || '';
       sel.forEach(w => {
-        w[t.dataset.theme] = '';
+        w[t.dataset.theme] = v;
       });
       step();
       drawCanvas(sel);
@@ -3228,6 +3244,8 @@ function edKeys({ d, ed, redraw, removeSel }) {
       return;
     }
     if (e.target && e.target.matches && e.target.matches('input,select,textarea')) return;
+    // (2.4.0 review) a dialog is open (lane colours, guidelines, a question): its keys are not for the widgets behind it
+    if (dlg.open === true || (e.target && e.target.closest && e.target.closest('dialog'))) return;
     if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'a') {
       e.preventDefault();
       ed.sel = [...d.widgets];

@@ -113,7 +113,9 @@ class Scalable {
       next = v.cursor;
       if (!v.more) return { entries, cursor: next };
     }
-    throw Error('Paddock is changing too quickly. Refresh again shortly.');
+    // (2.4.0 review) a backlog longer than 16 pages is read as one complete listing: refusing it kept the cursor where it was, so the
+    // backlog only grew and every refresh failed
+    return { reset: true };
   }
   async profile(carId) {
     check(id(carId));

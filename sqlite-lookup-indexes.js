@@ -8,7 +8,9 @@ const definitions = {
   lap_track: 'ON lap_index(trackId,valid,pit,time)',
   delivery_ready: 'ON delivery_outbox(databaseId,current,status,nextAttemptAt,leaseUntil,sequence)',
   delivery_owner: 'ON delivery_outbox(owner,current)',
-  asset_digest: 'ON asset_refs(digest)'
+  asset_digest: 'ON asset_refs(digest)',
+  // (2.4.0 review) lookups of one field over a collection (a Paddock link, a session's track); without json, so lap records are not copied
+  field_path: 'ON fields(entity,path)'
 };
 function ensure(s) {
   s.transaction(() => {

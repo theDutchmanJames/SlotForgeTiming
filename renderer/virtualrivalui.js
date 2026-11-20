@@ -323,7 +323,8 @@ async function renderVirtualRivals(box) {
   box.oninput = e => {
     const k = e.target.dataset.vr;
     if (!k && e.target.id !== 'vr-speed-slider') return;
-    const key = k || 'speed';
+    const key = k || 'speed',
+      before = d[key];
     d[key] =
       e.target.type === 'checkbox'
         ? e.target.checked
@@ -332,13 +333,25 @@ async function renderVirtualRivals(box) {
           : e.target.value;
     ed.dirty = true;
     if (key === 'speed') {
-      d.speed = Math.min(120, Math.max(80, d.speed || 100));
-      q('[data-vr=speed]').value = d.speed;
+      // (2.4.0 review) a number being typed is not clamped at every key (9 → 80): it is kept when it is in range, and clamped when the box is left
+      if (e.target.type === 'number' && !(d.speed >= 80 && d.speed <= 120)) d.speed = before;
+      else {
+        d.speed = Math.min(120, Math.max(80, d.speed || 100));
+        if (e.target.type !== 'number') q('[data-vr=speed]').value = d.speed;
+      }
     }
     refresh();
   };
   let sourceRun = 0;
   box.onchange = async e => {
+    if (e.target.dataset && e.target.dataset.vr === 'speed') {
+      // (2.4.0 review) the speed box is left: what was typed is clamped to 80–120 %
+      d.speed = Math.min(120, Math.max(80, Number(e.target.value) || 100));
+      e.target.value = d.speed;
+      ed.dirty = true;
+      refresh();
+      return;
+    }
     if (e.target.id === 'vr-source') {
       const control = e.target,
         id = control.value,
@@ -368,6 +381,8 @@ async function renderVirtualRivals(box) {
       sourceOptions();
       refresh();
       q('#vr-error').textContent = 'Choose a recorded driver to copy its laps.';
+      // (2.4.0 review) the driver of the saved copy also drove this one and is chosen already: no change comes, so the laps are copied now
+      if (q('#vr-person').value) loadSource();
     }
     if (e.target.id === 'vr-person') {
       heatOptions();

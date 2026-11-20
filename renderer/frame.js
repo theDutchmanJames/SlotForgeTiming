@@ -658,6 +658,7 @@
   function fit(el, w = {}) {
     if (!el?.querySelector || !root.getComputedStyle || !el.getBoundingClientRect) return false;
     const v = el.querySelector(':scope > .lw-val');
+    if (v) v._sfDigitsFit = null; // (set again below when this fit holds while only digits change)
     if (!v || !el.clientWidth || !el.clientHeight) return false;
     const t = typography(w),
       scale = el.getBoundingClientRect().width / (w.w || el.clientWidth);
@@ -790,6 +791,8 @@
             : valueMin;
       const computed = root.getComputedStyle(v),
         tabular = /^(?:"?SF (?:Inter|Roboto Mono|Barlow Condensed)|"?Segoe UI)/.test(computed.fontFamily);
+      // (2.4.0 review, speed) plain text in a font with equal-width digits: the same fit holds while only digits change (read by LiveCanvas)
+      v._sfDigitsFit = simple && tabular ? fontEpoch : null;
       const key = JSON.stringify([
         v.clientWidth,
         v.clientHeight,
@@ -988,6 +991,7 @@
     typography,
     present,
     fit,
+    fontEpoch: () => fontEpoch,
     fitSize,
     fitText,
     textFits,

@@ -212,7 +212,7 @@ async function detail(base, client, pool, id, options, revision, read) {
         total: a?.elapsedMs ?? null,
         points: a?.points ?? null,
         dq: a?.status === 'disqualified',
-        retired: a?.status === 'retired'
+        retired: a?.status === 'dnf' || a?.status === 'retired' // (2.4.0 review) the shared classification calls a retired car 'dnf'
       });
       if (a?.scoreUnit === 'points' || a?.points != null) session.resultBy = 'points';
       drivers.push(...(p.drivers || []));

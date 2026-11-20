@@ -11,9 +11,12 @@
     return s < 60 ? s.toFixed(3) : `${Math.floor(s / 60)}:${(s % 60).toFixed(3).padStart(6, '0')}`;
   };
   const DAY = 864e5;
+  // (2.4.0 review, speed) one date formatter per pattern: a new one on every row made long lists slow to draw
+  const FMT = {},
+    fmt = (k, o) => FMT[k] || (FMT[k] = new Intl.DateTimeFormat('en-GB', o));
   const day = iso => {
     const t = Date.parse(iso);
-    return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+    return Number.isFinite(t) ? fmt('day', { day: 'numeric', month: 'short' }).format(t) : '';
   };
   const daysBetween = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / DAY));
   const RACING = ['race', 'timed', 'endurance', 'heats'];
@@ -132,7 +135,7 @@
       if (!g || g.key !== key) {
         g = {
           key,
-          label: Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'No date',
+          label: Number.isFinite(t) ? fmt('month', { month: 'long', year: 'numeric' }).format(t) : 'No date',
           sessions: []
         };
         out.push(g);
@@ -165,7 +168,7 @@
     const round = inChamp(s)
       ? `<span class="rb-tag ch">${esc(o.champName ? o.champName(s.champ) : 'Championship')}${s.champ.round ? ' · R' + esc(s.champ.round) : ''}</span>`
       : '';
-    return `<button type="button" class="rb-row" data-open-race="${esc(s.id)}"><span class="rb-date"><b>${d ? d.getDate() : '–'}</b><small>${d ? esc(d.toLocaleDateString('en-GB', { month: 'short' })) : ''}</small></span><span class="rb-what"><b>${esc(s.setupName || 'Race')}</b><small><span class="rb-tag">${esc(KIND[s.sessionType] || s.sessionType || 'Session')}</span>${esc(s.trackName || '')}${round}${s.correction && s.correction.length ? '<span class="rb-tag adj">Corrected</span>' : ''}</small></span><span class="rb-pod">${who}</span><span class="rb-best">${fast ? esc(lap(fast.best)) : '—'}<small>best lap</small></span><span class="rb-chev" aria-hidden="true">›</span></button>`;
+    return `<button type="button" class="rb-row" data-open-race="${esc(s.id)}"><span class="rb-date"><b>${d ? d.getDate() : '–'}</b><small>${d ? esc(fmt('mon', { month: 'short' }).format(d)) : ''}</small></span><span class="rb-what"><b>${esc(s.setupName || 'Race')}</b><small><span class="rb-tag">${esc(KIND[s.sessionType] || s.sessionType || 'Session')}</span>${esc(s.trackName || '')}${round}${s.correction && s.correction.length ? '<span class="rb-tag adj">Corrected</span>' : ''}</small></span><span class="rb-pod">${who}</span><span class="rb-best">${fast ? esc(lap(fast.best)) : '—'}<small>best lap</small></span><span class="rb-chev" aria-hidden="true">›</span></button>`;
   }
 
   // ---- a driver ----
@@ -230,7 +233,7 @@
       .map((x, i) => ({ x, i }))
       .sort((a, b) => {
         if (out(a.x) !== out(b.x)) return out(a.x) ? 1 : -1;
-        if (!!a.x.retired !== !!b.x.retired && (Number(a.x.laps) || 0) === (Number(b.x.laps) || 0)) return a.x.retired ? 1 : -1;
+        if (!!a.x.retired !== !!b.x.retired) return a.x.retired ? 1 : -1; // (as the race ranks them: a retired car behind every car still running, whatever its laps)
         return (
           (Number(b.x.laps) || 0) - (Number(a.x.laps) || 0) || timeOf(a.x) - timeOf(b.x) || (Number(a.x.pos) || 0) - (Number(b.x.pos) || 0)
         );

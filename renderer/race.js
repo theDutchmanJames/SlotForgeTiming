@@ -378,6 +378,15 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
     tmSetup(lanes).then(() => power(setup.startPower !== 'off'));
   return { abLinkNow, hwUse, power, trackCall };
 }
+// (2.4.0 review) a dialog of the app is open (or has the key): the race keys wait
+const dialogOpen = ev => {
+  if (typeof HTMLDialogElement !== 'function') return false; // (no real page: no dialog)
+  const isDlg = el => el instanceof HTMLDialogElement;
+  return !!(
+    (ev && ev.target && ev.target.closest && isDlg(ev.target.closest('dialog'))) ||
+    (typeof document !== 'undefined' && document.querySelector && isDlg(document.querySelector('dialog[open]')))
+  );
+};
 // the buttons and the keys of the race screen
 function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update }) {
   ui('stopbtn').onclick = ev => {
@@ -396,6 +405,7 @@ function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, 
   live.key = ev => {
     if (state.tab !== 'race') return; // (the race goes on while another tab is shown, but the keys are for that tab then: Space and the letters would be typed into its fields)
     if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
+    if (dialogOpen(ev)) return; // (2.4.0 review: the keys of an open dialog are its own: Space presses its button, it does not pause the race)
     if (ev.key === ' ') {
       ev.preventDefault();
       if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
@@ -458,6 +468,7 @@ function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, 
   live.fsKey = ev => {
     if (state.tab !== 'race') return;
     if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
+    if (dialogOpen(ev)) return; // (2.4.0 review)
     if (String(ev.key).toLowerCase() === 'f' && !ev.ctrlKey && !ev.altKey && !ev.metaKey) toggleFull();
   };
   document.addEventListener('keydown', live.fsKey);
@@ -2797,6 +2808,7 @@ async function renderRace() {
     Review.reset();
     live.phase = 'between';
     eng = mk(heat.entries());
+    recomputeBests(); // (2.4.0 review: the laps of the run that was set aside are no bests or records any more)
     live.ann = mkAnn();
     live.flash = new Map();
     live.cpAt = undefined;
@@ -2814,6 +2826,7 @@ async function renderRace() {
     if (live.phase !== 'review') return;
     closeReview();
     live.laps = [];
+    endCall(); // (2.4.0 review)
     live.phase = 'finished';
     clearInterval(live.timers);
     stopBreak();
@@ -2995,6 +3008,7 @@ async function renderRace() {
   };
   function roShow(which) {
     live.roShown = which || '';
+    if (which !== 'break') roPark(); // (2.4.0 review: the lane picks of a final and who drives go back to the race page, where they can be seen)
     if (ui('raceover')) ui('raceover').hidden = which !== 'over';
     if (ui('racebreak')) ui('racebreak').hidden = which !== 'break';
     if (!live.reviewShown) ui('raceactive').hidden = !!which;
@@ -3416,8 +3430,16 @@ async function renderRace() {
   });
   if (ui('robackbreak')) ui('robackbreak').onclick = () => roShow('break');
 
+  // (2.4.0 review) a pre-race call that is still being said never starts the lights of a race that is over
+  function endCall() {
+    live.callRun = -1;
+    live.calling = false;
+    clearTimeout(live.callTimer);
+  }
   async function finishAll() {
     if (mc && heats) live.classResultRows = MultiClass.eventRows(heat, people, live.laps, heat.spentBy(), live.extraBy);
+    if (live.calling || live.phase === 'between') Sound.stop(); // (2.4.0 review: the event ends in a break: the pre-race call and the paddock loop stop, no lights go out to stop them)
+    endCall();
     live.phase = 'finished';
     clearInterval(live.timers);
     stopBreak();
@@ -3838,6 +3860,7 @@ async function renderRace() {
     );
   };
   function startCountdown() {
+    if (!['ready', 'between'].includes(live.phase)) return; // (2.4.0 review: the race was stopped while the pre-race call was said)
     if (!timingReady()) return;
     if (typeof PerfUI !== 'undefined') PerfUI.raceStarted(); // (the worst figures and the rows of the Performance report start again, 1.60.1)
     live.phase = 'countdown';
@@ -3992,6 +4015,7 @@ async function renderRace() {
       }
     },
     start() {
+      if (live.restoring) return; // (2.4.0 review: the question about the earlier session is still open)
       if (!timingReady()) return;
       if (!((live.phase === 'ready' || live.phase === 'between') && !live.calling)) return;
       if (tokens) {
@@ -4433,7 +4457,7 @@ async function renderRace() {
     }); // the app lost track of the messages: send everything again
   if (api.onCommand)
     live.offCmd = api.onCommand(cmd => {
-      if (!live || live.actions !== actions || !cmd) return;
+      if (!live || live.actions !== actions || !cmd || live.restoring) return; // (2.4.0 review: not while the earlier session is being brought back)
       if (cmd.type === 'start') actions.start();
       else if (cmd.type === 'pause') actions.pause();
       else if (cmd.type === 'stop') actions.stop(true);
@@ -4759,6 +4783,7 @@ async function renderRace() {
     endTokens('The session was deleted. Nothing was saved.');
   }
   function endTokens(msg) {
+    endCall(); // (2.4.0 review)
     live.phase = 'finished';
     clearInterval(live.timers);
     live.sim.forEach(clearTimeout);
@@ -4808,10 +4833,12 @@ async function renderRace() {
           persistTokens(true);
         });
     } else if (kept && kept.data && tokens.restore(kept.data, 0)) {
+      live.restoring = true; // (2.4.0 review: nothing starts the session while the question is open)
       const carryOn = await Dialog.confirm(
         'A Time Token Session of this race setup was not ended (the app was closed).\n\nCarry on: the time that was left on each lane carries on.\nNew session: what it recorded is saved, and a new session starts.',
         { title: 'Session not ended', ok: 'Carry on', cancel: 'New session' }
       );
+      live.restoring = false;
       if (carryOn) {
         eng.cars.forEach((c, i) => {
           const who = tokens.whoOf(c.lane),

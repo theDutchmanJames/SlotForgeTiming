@@ -462,6 +462,8 @@ function renderRotationEditor(box) {
       U.hist.markSaved(token);
       rotEd.dirty = !U.hist.isClean();
       say('Saved.');
+    } catch (x) {
+      say('Could not save: ' + (x && x.message ? x.message : x)); // (2.4.0 review)
     } finally {
       saving = false;
     }
@@ -691,6 +693,11 @@ function renderRotationEditor(box) {
       return apply(res, true);
     }
     if (b.id === 'ro-gen') {
+      // (2.4.0 review) a number of heats that is not a whole number in range is said, not turned into another plan (-3 became 1 heat, abc 3)
+      const whole = (v, hi) => Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= hi && String(v).trim() !== '';
+      if (gen.plan === 'manual' && !whole(gen.heats, Rot.LIMITS.maxHeats))
+        return say(`Heats: use a whole number from 1 to ${Rot.LIMITS.maxHeats}.`);
+      if (gen.plan === 'perdriver' && !whole(gen.each, 50)) return say('Heats for everybody: use a whole number from 1 to 50.');
       if (
         d.heats.some(h => h.places.length) &&
         !(await Dialog.confirm('Replace all the heats with a new plan?\n\nLocked heats are replaced too. Undo brings the old heats back.', {

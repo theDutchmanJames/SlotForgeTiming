@@ -212,12 +212,16 @@ function createController(options = {}) {
   async function exclusive(fn) {
     if (busy) throw Error('A parallel-port connection operation is already in progress.');
     busy = true;
+    const operation = cancellation;
     try {
       return await fn();
     } catch (x) {
       await stop();
-      error = x.message;
-      announce();
+      // (2.4.0 review) a Disconnect during the connect is no fault of the port: no error is shown for it
+      if (operation === cancellation) {
+        error = x.message;
+        announce();
+      }
       throw x;
     } finally {
       busy = false;

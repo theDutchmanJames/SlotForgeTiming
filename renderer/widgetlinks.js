@@ -33,7 +33,8 @@
   // the widgets of a layout with its copies of r brought up to date (place, size, lane and look stay) and linked; { widgets, changed }
   // before: the widget as it was saved until now (an unlinked copy is found by that content)
   function updateCopies(widgets, r, toWidget, before) {
-    const c = contentOf(r, toWidget);
+    const c = contentOf(r, toWidget),
+      oldTitle = before ? contentOf(before, toWidget).title || '' : null;
     let changed = 0;
     const next = (Array.isArray(widgets) ? widgets : []).map(w => {
       if (!(w && (w.src ? w.src === r.id : isCopy(w, { ...(before || r), id: r.id }, toWidget)))) return w;
@@ -43,7 +44,8 @@
         textSize: c.textSize,
         valueBold: c.valueBold,
         valueItalic: c.valueItalic,
-        title: c.title,
+        // (2.4.0 review) a title the layout gave its copy stays; one that was the widget's old name follows the new name
+        title: oldTitle !== null && (w.title || '') !== oldTitle ? w.title : c.title,
         src: r.id
       };
       if (!same(n, w)) changed++;

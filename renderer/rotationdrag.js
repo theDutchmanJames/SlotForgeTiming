@@ -229,12 +229,16 @@ const RotDrag = (() => {
     };
     box.onpointerup = ev => finish(ev, true);
     box.onpointercancel = ev => finish(ev, false);
-    return {
+    // (2.4.0 review) the editor drawn again (Ctrl+Z during a drag) attaches again: the drag of the drawing before lets go, so its scroll timer and Esc key go
+    if (box._rotDrag && box._rotDrag.cancel) box._rotDrag.cancel();
+    const handle = {
       suppressed: () => quiet,
       cancel: () => {
         stop();
       }
     };
+    box._rotDrag = handle;
+    return handle;
   }
   return { plan, attach, sourceOf, targetOf, THRESHOLD };
 })();

@@ -30,7 +30,8 @@ function read(profile) {
   const expected = path.join(fs.realpathSync(profile), 'shared-library-restores', value.request.operationId, 'source.sfpbackup');
   if (
     value.request.source !== expected ||
-    (value.phase !== 'complete' && fs.realpathSync(path.dirname(expected)) !== path.dirname(expected))
+    // (2.4.0 review) a held restore is never run, so its removed staging folder no longer blocks every later restore
+    (!['complete', 'held'].includes(value.phase) && fs.realpathSync(path.dirname(expected)) !== path.dirname(expected))
   )
     throw Error('Restore input was redirected. Nothing was restored.');
   return value;

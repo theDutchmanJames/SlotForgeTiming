@@ -48,7 +48,9 @@ const LiveView = (() => {
     lapsHtml = '',
     lapsSig = '',
     dirLogHtml = '',
-    resultsFollowed = '';
+    resultsFollowed = '',
+    followedFrom = null, // (2.4.0 review: the page the second screen showed before it followed the results)
+    mountN = 0; // (2.4.0 review: counts mount and unmount, so a mount that waits knows it is still the one)
 
   const $ = id => document.getElementById(id);
   const live = () => !!V && V.hasRace();
@@ -152,6 +154,7 @@ const LiveView = (() => {
     boardHighlights.forEach(n => LapHighlights.dispose(n));
     boardHighlights = [];
     page = p;
+    followedFrom = null; // (2.4.0 review: a page that is picked is kept; followResults sets it again after its own go)
     dgOpen = false;
     dgSel = '';
     LiveCanvas.dispose(nodes);
@@ -235,9 +238,18 @@ const LiveView = (() => {
     if (!second || !live()) return false;
     const d = V.dyn(),
       key = V.stat().raceId;
+    // (2.4.0 review) the next heat starts: back to the page that was shown before the results were followed
+    if (followedFrom !== null && page === 'results' && ['countdown', 'running'].includes(d.phase)) {
+      const back = followedFrom;
+      followedFrom = null;
+      go(back);
+      return true;
+    }
     if (!(['review', 'finished'].includes(d.phase) || (d.phase === 'between' && afterOn(d))) || resultsFollowed === key) return false; // (2.4.0: and the break between two heats, on the broadcast screen)
     resultsFollowed = key;
+    const from = followedFrom !== null ? followedFrom : page;
     go('results');
+    followedFrom = from === 'results' ? null : from;
     return true;
   }
 
@@ -286,7 +298,7 @@ const LiveView = (() => {
     }
     const shared = V.shared(performance.now());
     const components = [];
-    body.innerHTML = ResultsView.html(V.engine(), state.settings.resultsView, {
+    const html = ResultsView.html(V.engine(), state.settings.resultsView, {
       components,
       phase: d.phase,
       title: V.stat().title,
@@ -297,7 +309,13 @@ const LiveView = (() => {
       shared,
       rowDesigns: V.stat().rowDesigns
     });
-    if (body.querySelector('.rrows') && typeof Rows !== 'undefined') Rows.fitText(body);
+    // (2.4.0 review, speed) the table is built again and fitted only when it changed, not on every message and clock tick
+    if (body._rvHtml !== html || !body.firstChild || body._rvNode !== body.firstChild) {
+      body.innerHTML = html;
+      body._rvHtml = html;
+      body._rvNode = body.firstChild; // (another page drawn in the same box in between: built again)
+      if (body.querySelector('.rrows') && typeof Rows !== 'undefined') Rows.fitText(body);
+    }
     WidgetView.updateComponents({ val: body }, { components });
   }
 
@@ -1161,17 +1179,21 @@ const LiveView = (() => {
   }
 
   // ---- keeping up with the race ----
+  let lastPaint = 0;
   function repaint() {
+    lastPaint = performance.now();
     status();
     if (page !== 'tiles' && page !== 'rules' && page !== 'database') draw(false);
   }
   async function mount(el, opts = {}) {
     unmount();
+    const my = mountN; // (2.4.0 review: an unmount or another mount while this one waits ends this one)
     host = el;
     second = !!opts.second;
     V = LiveShare.viewer();
     page = 'tiles';
     resultsFollowed = '';
+    followedFrom = null;
     LiveCanvas.dispose(nodes);
     nodes = null;
     tkPanel = null;
@@ -1193,8 +1215,10 @@ const LiveView = (() => {
     } catch {
       /* keep what we have */
     }
+    if (my !== mountN) return;
     if (api.web && api.startPage && api.startPage()) {
       await api.pairing(); // (a scanned pairing QR code: logged in first, then straight to the page)
+      if (my !== mountN) return;
       page = api.startPage();
     }
     let got = null;
@@ -1203,6 +1227,7 @@ const LiveView = (() => {
     } catch {
       /* no race data yet: the pages open empty and fill in from the live messages */
     }
+    if (my !== mountN) return;
     if (got && got.stat) {
       V.feedStatic(got.stat);
       if (got.dyn) V.feedDynamic(got.dyn, performance.now());
@@ -1222,10 +1247,10 @@ const LiveView = (() => {
     const resync = async () => {
       if (syncing) return;
       syncing = true;
+      const mine = V; // (2.4.0 review: the viewer from before the wait, so an unmount or a new mount is seen)
       try {
-        const g = await api.liveGet(),
-          mine = V;
-        if (V === mine && g && g.stat) {
+        const g = await api.liveGet();
+        if (V && V === mine && g && g.stat) {
           if (!V.stat() || V.stat().raceId !== g.stat.raceId) {
             V.feedStatic(g.stat);
             LiveCanvas.dispose(nodes);
@@ -1254,7 +1279,8 @@ const LiveView = (() => {
       })
     );
     ticker = setInterval(() => {
-      if (live() && ['running', 'countdown'].includes(V.dyn().phase)) repaint();
+      // (2.4.0 review, speed) no second paint when a live message has just painted
+      if (live() && ['running', 'countdown'].includes(V.dyn().phase) && performance.now() - lastPaint >= 90) repaint();
     }, 100); // clocks keep running between messages
     if (second && !keyOff) {
       keyOff = ev => {
@@ -1271,6 +1297,7 @@ const LiveView = (() => {
     if (!followResults()) draw(true); // A second display can open after the race has already ended: use the state we just fetched, not only a later live message.
   }
   function unmount() {
+    mountN++; // (2.4.0 review)
     boardHighlights.forEach(n => LapHighlights.dispose(n));
     boardHighlights = [];
     if (host) {

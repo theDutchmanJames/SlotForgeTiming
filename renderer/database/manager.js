@@ -490,6 +490,24 @@ async function mountManagerPage(box, e) {
       await remount();
     }
   };
+  // (2.4.0 review) the delete question names what still uses the record: the race setups that choose it, the championships that drive a race setup
+  const usedText = list => {
+    const ids = new Set(list.map(i => i.id)),
+      names =
+        e === 'racesetups'
+          ? (state.refs.championships || [])
+              .filter(c => (c.rounds || []).some(r => (r.sessions || []).some(x => ids.has(x.setup))))
+              .map(c => String(c.name || '').trim() || '(unnamed)')
+          : s.used
+            ? (state.refs[s.used.entity] || [])
+                .filter(r => r && ids.has(r[s.used.key]))
+                .map(r => String(r.name || '').trim() || '(unnamed)')
+            : [];
+    if (!names.length) return '';
+    const what =
+      e === 'racesetups' ? (names.length === 1 ? 'championship' : 'championships') : names.length === 1 ? 'race setup' : 'race setups';
+    return `\n\nStill used by ${names.length} ${what}: ${names.slice(0, 6).join(', ')}${names.length > 6 ? ` and ${names.length - 6} more` : ''}. ${names.length === 1 ? 'It keeps' : 'They keep'} a link to it that no longer works; choose another one there.`;
+  };
   const gxDelete = async list => {
     // (2.4.0, SlotForgeRestyle.md "Driver Sheet") one driver: what goes, Retire or Merge first, and the name typed for a driver with results
     if (e === 'drivers' && list.length === 1 && typeof DbSheet !== 'undefined' && typeof document !== 'undefined') {
@@ -510,22 +528,27 @@ async function mountManagerPage(box, e) {
         ? ''
         : `\n\nThis also deletes ${laps} saved ${laps === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
     const retire = e === 'drivers' ? '\n\nTo keep their results, choose Retire instead.' : '';
-    if (!(await Dialog.confirm(`Delete ${name}?${extra}${retire}\n\nThis can't be undone.`, { ok: 'Delete', danger: true }))) return false;
+    if (
+      !(await Dialog.confirm(`Delete ${name}?${extra}${usedText(list)}${retire}\n\nThis can't be undone.`, { ok: 'Delete', danger: true }))
+    )
+      return false;
     for (const i of list) await api.remove(e, i.id);
   };
-  const gxAct = async (act, it) => {
+  // (2.4.0 review) given: the whole record when the caller has it already (a sheet's More menu): the list may be drawn again meanwhile, and
+  // fullItem then answers null
+  const gxAct = async (act, it, given = null) => {
     if (act === 'edit') {
       if (direct && e === 'slotcars') return PaddockShared.open(libraryEditorApi(), it.id, remount);
-      const full = await fullItem(it.id);
+      const full = given || (await fullItem(it.id));
       return full && openForm(e, full);
     }
     if (act === 'design') {
-      const track = await fullItem(it.id);
+      const track = given || (await fullItem(it.id));
       return track && TrackDesignUI.open(api, track, remount);
     }
     if (act === 'duplicate') {
       if (direct) return PaddockShared.open(libraryEditorApi(), null, remount, { copyOf: it.id });
-      const full = await fullItem(it.id);
+      const full = given || (await fullItem(it.id));
       return full && openForm(e, null, carCopy(full));
     }
     if (act === 'service')
@@ -536,7 +559,7 @@ async function mountManagerPage(box, e) {
           }))
         )
           return false;
-        await garageServiced(e, direct ? it : await fullItem(it.id), direct);
+        await garageServiced(e, direct ? it : given || (await fullItem(it.id)), direct);
       }, 'mark the car serviced');
     if (act === 'archive')
       return gxTry(async () => {
@@ -767,7 +790,13 @@ async function mountManagerPage(box, e) {
         s.linked === false
           ? ''
           : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
-      if (!(await Dialog.confirm(`Delete "${titleOf(e, it)}"?${extra}\n\nThis can't be undone.`, { ok: 'Delete', danger: true }))) return;
+      if (
+        !(await Dialog.confirm(`Delete "${titleOf(e, it)}"?${extra}${usedText([it])}\n\nThis can't be undone.`, {
+          ok: 'Delete',
+          danger: true
+        }))
+      )
+        return;
       await api.remove(e, it.id);
       if (manager?.box === box && manager.e === e && box.isConnected !== false) mountManager(box, e); // (the list may have been left while the question was open)
     }

@@ -20,7 +20,15 @@ function read(file) {
 }
 function write(file, index) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(index));
+  // (2.4.0 review) written whole to a file of its own, then renamed over the index: a cut leaves the earlier index, never half of one
+  const tmp = file + '.' + crypto.randomUUID() + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(index));
+  try {
+    fs.renameSync(tmp, file);
+  } catch (error) {
+    fs.rmSync(tmp, { force: true });
+    throw error;
+  }
 }
 // a backup that was made: its kind, note, counts and date; outside: a backup saved outside the backup folder (it is listed by its path)
 function record(index, p, { kind = 'hand', note = '', counts = null, date = new Date().toISOString(), outside = false } = {}) {

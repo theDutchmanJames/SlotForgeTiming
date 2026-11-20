@@ -234,6 +234,7 @@ async function renderMultiClass(box) {
         .toLowerCase()
     );
     if (new Set(names).size !== names.length) errors.push('Use distinct class names.');
+    ed.badPoints = !!box.querySelector('#mc-points [data-invalid="yes"]'); // (2.4.0 review) from the fields there are now: a field drawn again or gone no longer blocks Save
     if (ed.badPoints) errors.push('Points must be comma-separated numbers from 0 to 1000.');
     q('#mc-error').textContent = errors.join(' ');
     q('#mc-save').disabled = !!errors.length || !!ed.saving;
@@ -382,6 +383,9 @@ async function renderMultiClass(box) {
           c.fresh = false;
           d.classes.forEach(k => {
             if (k.id === old) k.id = c.id;
+          });
+          d.driverClasses.forEach(a => {
+            if (a.classId === old) a.classId = c.id; // (2.4.0 review) the driver defaults follow the class to its saved id
           });
         } else await api.update('raceclasses', c.id, record);
         c.changed = false;

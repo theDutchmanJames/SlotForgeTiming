@@ -138,9 +138,11 @@ async function ppClose() {
     pp.closing = null;
   }
 }
-async function ppAutoConnect() {
+// force: a Connect press (2.4.0 review: autoConnect is for the start only)
+async function ppAutoConnect(force = false) {
   ppInit();
-  if (!ppSettings().autoConnect || Hardware.timingChosen(state.settings) !== 'parallel' || ParallelPort.link.connected) return false;
+  if ((!ppSettings().autoConnect && !force) || Hardware.timingChosen(state.settings) !== 'parallel' || ParallelPort.link.connected)
+    return false;
   try {
     return await ppConnect();
   } catch {

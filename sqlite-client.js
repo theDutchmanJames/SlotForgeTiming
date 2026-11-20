@@ -15,6 +15,10 @@ class SqliteClient {
     this.worker.on('message', message => {
       const job = this.pending.get(message.id);
       if (!job) return;
+      if (message.started) {
+        if (!job.timer) this.arm(job);
+        return;
+      }
       if (message.progress) {
         try {
           this.onProgress(message.progress);
@@ -33,6 +37,16 @@ class SqliteClient {
       this.fail(Error(`SQLite worker exited (${code}); reopen and check the command receipt or migration manifest before retrying.`))
     );
   }
+  arm(job) {
+    job.timer = setTimeout(() => {
+      this.fail(
+        Error(
+          'SQLite operation timed out; its outcome is uncertain. Reopen and check the command receipt or migration manifest before retrying.'
+        )
+      );
+      void this.worker.terminate();
+    }, this.timeoutMs);
+  }
   fail(error) {
     this.failure ||= error;
     for (const job of this.pending.values()) {
@@ -45,20 +59,15 @@ class SqliteClient {
     if (this.failure || this.closing) return Promise.reject(this.failure || Error('SQLite worker is closing.'));
     if (operation !== 'close' && this.pending.size >= 32) return Promise.reject(Error('SQLite request queue is full.'));
     return new Promise((resolve, reject) => {
-      const id = ++this.sequence;
-      const timer = setTimeout(() => {
-        this.fail(
-          Error(
-            'SQLite operation timed out; its outcome is uncertain. Reopen and check the command receipt or migration manifest before retrying.'
-          )
-        );
-        void this.worker.terminate();
-      }, this.timeoutMs);
-      this.pending.set(id, { resolve, reject, timer });
+      const id = ++this.sequence,
+        job = { resolve, reject, timer: null };
+      // (2.4.0 review) a request behind others is timed from when the worker begins it; one sent to an idle worker at once
+      if (!this.pending.size) this.arm(job);
+      this.pending.set(id, job);
       try {
         this.worker.postMessage({ id, operation, args });
       } catch (error) {
-        clearTimeout(timer);
+        clearTimeout(job.timer);
         this.pending.delete(id);
         reject(error);
       }

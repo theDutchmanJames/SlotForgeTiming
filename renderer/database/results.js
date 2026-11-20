@@ -1,7 +1,10 @@
 // database: Results and Records: sessions, records, history pools and PDF choices
 // (part of renderer/database.js: loaded just before it by index.html; the parts share the page's global scope)
 // ---- Results and Records ----
-const dateText = iso => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+// (2.4.0 review, speed) the date formatters are made once, not for every row of the results list
+const RS_FMT = {};
+const rsFmt = (k, o) => RS_FMT[k] || (RS_FMT[k] = new Intl.DateTimeFormat([], o));
+const dateText = iso => (iso ? rsFmt('full', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : '');
 const SESSION_LABEL = {
   practice: 'Free practice',
   qualifying: 'Qualifying',
@@ -346,7 +349,7 @@ async function renderResultsPool(box, pool, supplied = null) {
   const sumHead = (s, extra) => {
     const d = s.date ? new Date(s.date) : null,
       ok = d && Number.isFinite(d.getTime());
-    return `<span class="rr-date"${ok ? ` title="${esc(dateText(s.date))}"` : ''}><b>${ok ? d.getDate() : '–'}</b><small>${ok ? esc(d.toLocaleString([], { month: 'short' })) : ''}</small></span><span class="rr-what"><b>${esc(extra ? extra.name : s.setupName || 'Time token stint')}</b><small>${ok ? esc(d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' : ''}${esc(extra ? extra.line : [SESSION_LABEL[s.sessionType] || '', s.trackName || ''].filter(Boolean).join(' · '))}</small></span>`;
+    return `<span class="rr-date"${ok ? ` title="${esc(dateText(s.date))}"` : ''}><b>${ok ? d.getDate() : '–'}</b><small>${ok ? esc(rsFmt('mon', { month: 'short' }).format(d)) : ''}</small></span><span class="rr-what"><b>${esc(extra ? extra.name : s.setupName || 'Time token stint')}</b><small>${ok ? esc(rsFmt('when', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(d)) + ' · ' : ''}${esc(extra ? extra.line : [SESSION_LABEL[s.sessionType] || '', s.trackName || ''].filter(Boolean).join(' · '))}</small></span>`;
   };
   const sessionCards = [...sessions]
     .reverse()

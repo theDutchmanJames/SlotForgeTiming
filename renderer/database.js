@@ -51,9 +51,11 @@ function openForm(e, item, preset) {
           none: ['none', 'on', 'on']
         }[item.trackcall || 'yellowred'] || ['yellowred', 'on', 'on']
       : null;
+  // (2.4.0 review) a copy (Duplicate) brings its own extra fields: preset.custom when there is no item
+  const customStart = (item ? item.custom : preset && preset.custom) || {};
   const val = f =>
     f.custom
-      ? (item?.custom || {})[f.id]
+      ? customStart[f.id]
       : item
         ? e === 'pushsavesystems' && f.key === 'mode' && item.mode === undefined
           ? 'legacy'
@@ -85,7 +87,7 @@ function openForm(e, item, preset) {
   const imgs = {},
     frames = {},
     mainKey = s.image;
-  let pieces = ((item && item.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
+  let pieces = ((item && item.lengthPieces) || (!item && preset && preset.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
   let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : item ? [] : PT_DEFAULTS.map(t => ({ ...t }));
   // A record from before the ladder keeps its old rule until the user deliberately adds a level.
@@ -757,6 +759,9 @@ function openForm(e, item, preset) {
         )
         .join('') + (galSel !== null && gal[galSel] ? `<img class="galbig" src="${esc(gal[galSel])}" alt="Selected picture">` : '');
   };
+  // (2.4.0 review) what the sheet holds, to tell whether something was changed since it opened
+  let sheetStart = null;
+  const sheetNow = () => JSON.stringify([formValues(), members, imgs, gal]);
   // (2.4.0) the controls of a sheet over its fields, and the lane boxes of a race setup
   if (sheet)
     sheetUpdate = DbSheet.wire(dlg, e, {
@@ -766,8 +771,20 @@ function openForm(e, item, preset) {
       sessions: () => api.list('sessions'),
       act: async act => {
         if (!item) return;
+        // (2.4.0 review) the More menu closes the form: what was typed and not saved is asked about first
+        if (
+          sheetStart !== null &&
+          sheetNow() !== sheetStart &&
+          !(await Dialog.confirm('This form has changes that are not saved. Close it without saving them?', {
+            ok: 'Discard changes',
+            cancel: 'Keep editing',
+            danger: true
+          }))
+        )
+          return;
         dlg.close();
-        if (manager && manager.e === e && typeof manager.act === 'function') return manager.act(act, item);
+        // (2.4.0 review) the whole record goes with it: the list is drawn again when the form closes, and could not look it up then
+        if (manager && manager.e === e && typeof manager.act === 'function') return manager.act(act, item, item);
         if (act === 'design' && typeof TrackDesignUI !== 'undefined') return TrackDesignUI.open(api, item, () => render());
       }
     });
@@ -789,6 +806,7 @@ function openForm(e, item, preset) {
   }
   drawGallery();
   refreshShown();
+  if (sheet) sheetStart = sheetNow(); // (2.4.0 review)
   // the statistics of a slotcar (1.30.0): what the form says about the service interval, the button that starts the count again, and the mileage
   let serviceReset = false;
   const syncService = () => {
@@ -1195,7 +1213,12 @@ function openForm(e, item, preset) {
       button.disabled = true;
       try {
         const list = await api.list('raceclasses');
-        let cls = list.find(c => c.name.trim().toLocaleLowerCase() === label.toLocaleLowerCase());
+        let cls = list.find(
+          c =>
+            String(c.name || '')
+              .trim()
+              .toLocaleLowerCase() === label.toLocaleLowerCase()
+        ); // (2.4.0 review: a class without a name)
         if (!cls) {
           cls = await api.add('raceclasses', { name: label, color: '#63b9db', icon: 'car' });
           list.push(cls);
@@ -1437,6 +1460,13 @@ function openForm(e, item, preset) {
     }
     if (t.tagName === 'SELECT' && byId(t.id + '-flag')) byId(t.id + '-flag').innerHTML = flagHtml(t.value);
   };
+  // (2.4.0 review) a copy keeps what is not a field of the form (the design of a track, for example); the form's own values go over it
+  const presetExtra = () =>
+    Object.fromEntries(
+      Object.entries((!item && preset) || {}).filter(
+        ([k]) => !['id', 'custom', 'lengthPieces'].includes(k) && !k.startsWith('_') && !fields.some(f => f.key === k)
+      )
+    );
   let saving = false;
   byId('frm').onsubmit = async ev => {
     ev.preventDefault();
@@ -1450,7 +1480,7 @@ function openForm(e, item, preset) {
       return;
     }
     const built = {},
-      custom = { ...(item?.custom || {}) };
+      custom = { ...customStart };
     for (const f of fields) {
       if (f.automatic) {
         if (!item) built[f.key] = f.type === 'datetime' ? '' : 0;
@@ -1654,9 +1684,10 @@ function openForm(e, item, preset) {
     }
     saving = true; // (a second click while the first is being written would add the row twice)
     try {
-      await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...built, custom }));
+      await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...presetExtra(), ...built, custom }));
       if (e === 'slotcars' && item && serviceReset && typeof GarageLooks !== 'undefined')
         await GarageLooks.log(item.id, { laps: CarStats.sinceOf(item) }).catch(() => {}); // (2.4.0: a line in the service log of the car)
+      if (e === 'drivers' && item && typeof homeAvatarCache !== 'undefined') homeAvatarCache.delete(item.id); // (2.4.0 review: Home reads the avatar again)
       dlg.close();
     } catch (x) {
       byId('err').textContent = 'It could not be saved: ' + (x && x.message ? x.message : x);
@@ -1683,7 +1714,9 @@ function openForm(e, item, preset) {
     holder.dataset.pcsEditor = '';
     holder.style.gridColumn = '1 / -1';
     holder.innerHTML = '<summary>Paddock specifications · read only</summary>' + PaddockSpecs.html(item);
-    byId('frm').querySelector('.formgrid').prepend(holder);
+    // (2.4.0 review) the car's form has a rail now: no .formgrid, the sections are in .rsmain
+    const into = byId('frm').querySelector('.rsmain') || byId('frm').querySelector('.formgrid');
+    if (into) into.prepend(holder);
     PaddockSpecs.mount(holder.querySelector('.paddock-specs'), item);
   }
   if (groups) {

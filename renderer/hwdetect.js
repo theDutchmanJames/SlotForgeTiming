@@ -34,7 +34,9 @@
   function decide(settings, info, ctx = {}) {
     if (!info || info.usbVendorId === undefined || info.virtual) return { action: 'none' };
     const known = rememberedFor(settings, info, ctx.chosen);
-    if (known && known === ctx.chosen) return ctx.open || ctx.racing ? { action: 'none' } : { action: 'connect', hw: known };
+    // (2.4.0 review) "connect automatically" switched off on its page: the device is left alone
+    const auto = { trackmate: settings.tmAuto, arduino: settings.abAuto }[known] !== false;
+    if (known && known === ctx.chosen) return ctx.open || ctx.racing || !auto ? { action: 'none' } : { action: 'connect', hw: known };
     if (known) return ctx.open || ctx.racing ? { action: 'none' } : { action: 'switch', hw: known }; // (the hardware in use works: two devices plugged in is no question)
     if ((settings.hwIgnored || []).includes(idOf(info))) return { action: 'none' };
     return { action: 'ask', hw: describe(info).likely };

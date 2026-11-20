@@ -1,6 +1,7 @@
 // Separate saved chart designs; Layout Editor only places and links widgets.
 let chartEd = null,
-  chartPreviewTracks = [];
+  chartPreviewTracks = [],
+  chartListObserver = null; // (2.4.0 review: the ResizeObserver of the cards of the list)
 async function refreshRaceCharts() {
   if (typeof live !== 'undefined' && live && live.alive && live.reloadCharts) await live.reloadCharts();
 }
@@ -27,6 +28,12 @@ async function renderChartEditor(box) {
       : '<div class="lempty"><p class="muted">No chart designs yet. Create your first chart above.</p></div>'
   }<p id="chart-list-message" role="status"></p>`;
   if (typeof LayoutTry !== 'undefined') LayoutTry.uses(box).catch(() => {}); // (2.4.0: the layouts that use each design)
+  // (2.4.0 review) one observer for all the cards of the list; the one of the list drawn before is let go (it held the old cards)
+  chartListObserver?.disconnect();
+  chartListObserver = null;
+  const fits = new Map();
+  if (typeof ResizeObserver !== 'undefined')
+    chartListObserver = new ResizeObserver(entries => entries.forEach(e => fits.get(e.target)?.()));
   if (typeof document !== 'undefined' && box.querySelector)
     designs.forEach(r => {
       const el = box.querySelector(`[data-chart-preview="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(r.id) : r.id}"]`);
@@ -41,7 +48,10 @@ async function renderChartEditor(box) {
         const stage = el.firstChild,
           fit = () => stage.isConnected && (stage.style.transform = `scale(${(el.clientWidth || 640) / 640})`);
         fit();
-        if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(el);
+        if (chartListObserver) {
+          fits.set(el, fit);
+          chartListObserver.observe(el);
+        }
       } catch {
         el.innerHTML = '<span class="muted">No preview</span>';
       }

@@ -393,6 +393,7 @@ async function applyNetNow() {
     net.server = server;
     if (appWork.closing) server.quiesce();
   } catch (e) {
+    server.close().catch(() => {}); // (2.4.0 review) a server that could not start lets go of its timer
     net.error = e.code === 'EADDRINUSE' ? `Port ${port} is already in use. Choose another port.` : `Could not start: ${e.message}`;
   }
 }
@@ -974,7 +975,7 @@ function registerExportHandlers() {
   });
   // Turns a report (HTML) into a PDF: print it in a hidden window, then ask where to save it.
   ipcMain.handle('pdf:export', async (event, html, name) => {
-    const tmp = path.join(app.getPath('temp'), `slotforge-timing-${Date.now()}.html`);
+    const tmp = path.join(app.getPath('temp'), `slotforge-timing-${require('node:crypto').randomUUID()}.html`); // (2.4.0 review: two exports at once each have their own)
     fs.writeFileSync(tmp, pdfAssets(String(html)));
     // The report is static HTML: no script, no node, its own memory-only session that may load nothing but this file and inline data, and no navigation or new windows
     const printWin = new BrowserWindow({
@@ -1091,10 +1092,14 @@ function registerBackupHandlers() {
     // (2.4.0) added as copies, or replacing the item that is already here, or skipped
     const p = transfer.plan(pendingImport, pendingImportList || transfer.matches(pendingImport, {}), choices || {});
     const has = Object.values(p.bundle.items || {}).some(l => Array.isArray(l) && l.length);
+    // (2.4.0 review) an item to replace that is gone since the file was opened stops the import before anything is added
+    for (const r of p.replace)
+      if (!(await records.get(r.e, r.id))) throw Error('An item to replace is no longer here. Open the file again. Nothing was imported.');
     const counts = has ? await bulkStorage.importItems(p.bundle) : {};
-    for (const r of p.replace) await records.update(r.e, r.id, r.row);
+    // (2.4.0 review) once the copies are in, the file is applied: Import again would add them a second time
     pendingImport = null;
     pendingImportList = null;
+    for (const r of p.replace) await records.update(r.e, r.id, r.row);
     return { ...counts, ...(p.replace.length ? { _replaced: p.replace.length } : {}), ...(p.skipped ? { _skipped: p.skipped } : {}) };
   }); // (1.61.2: nothing is being written to the database file while the import is saved)
   bulkAccess.handle('transfer:cancel', () => {
@@ -1159,6 +1164,8 @@ function registerBackupHandlers() {
     net.server?.quiesce();
     paddock.quiesce();
     try {
+      backupRunner?.stop();
+      await backupRunner?.idle(); // (2.4.0 review) a backup that is being made finishes before the library is paused
       await client.pause();
       await net.server?.close();
       await paddock.idle();
@@ -1286,8 +1293,10 @@ function registerBackupHandlers() {
     return out;
   };
   const noteBackup = async (target, o) => {
+    // (2.4.0 review) the counts first, then read and write the index in one go: a note written meanwhile is not lost
+    const counts = await holdsNow().catch(() => null);
     const ix = BackupIndex.read(backupIndexFile);
-    BackupIndex.record(ix, target, { ...o, counts: await holdsNow().catch(() => null) });
+    BackupIndex.record(ix, target, { ...o, counts });
     BackupIndex.write(backupIndexFile, ix);
   };
   // ---- automatic backups (2.3.0, auto-backup.js): the same backup as Back up, by itself, every day or week the app is used ----
@@ -1326,6 +1335,7 @@ function registerBackupHandlers() {
       if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('autobackup:status', st);
     }
   });
+  backupRunner = autoBackup;
   bulkAccess.handle('autobackup:status', () => autoBackup.status());
   bulkAccess.handle('autobackup:now', () => autoBackup.run('by hand'));
   // (2.4.0) every backup in a list, newest first, with what it holds; a backup by hand or for safety; one picked to restore
@@ -1912,6 +1922,8 @@ const shutdown = new Shutdown({
     net.server?.quiesce();
     await pluginSafety;
     await appWork.idle();
+    backupRunner?.stop();
+    await backupRunner?.idle(); // (2.4.0 review) a backup that is being made finishes before the storage closes
     await netChain;
     await net.server?.close();
     parallel?.shutdown();
@@ -1929,6 +1941,7 @@ const shutdown = new Shutdown({
 });
 let quitWaiting = false,
   pluginSafety = Promise.resolve();
+let backupRunner = null; // (2.4.0 review) the automatic backups: closing and a shared-library restore wait for a backup that is being made
 app.on('before-quit', e => {
   if (shutdown.ready || !gotLock) return;
   e.preventDefault();
