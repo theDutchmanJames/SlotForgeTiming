@@ -1245,6 +1245,7 @@ const Help = (() => {
           note: 'What counts the laps, Connect & use, the lane order',
           body: `<ul>
           <li><b>App Settings › Timing Hardware › Overview</b> shows what counts the laps in a big card: connected or not, the lanes (from the track of the next race), and <b>Test the sensors</b>. Under it a card per lane lights up when a car crosses its sensor, with the last lap and the number of crossings.</li>
+          <li><b>Test the sensors</b> (also on Home) asks for the lanes one at a time: when lane 3 lights lane 4, <b>Swap 3 and 4</b> fixes the order. It also checks the pit lane, the Track call button and the track power, and has <b>Connect</b> when the hardware is not connected.</li>
           <li>Every interface is a card. <b>Connect &amp; use</b> makes it the one that counts the laps and connects it (a remembered or plugged-in device connects by itself; else its Connection opens). Only one counts the laps at a time.</li>
           <li>An interface page has the same big card on top and its parts as tabs (Connection, Lane sensors, …). <b>Diagnostics</b> at the bottom shows the developer tools: raw data, the HID finder, sending bytes, DS captures.</li>
           <li><b>Find the lane order</b> (Trackmate and Arduino, when connected): drive one car over the sensor of lane 1, then lane 2, and so on. Timing says which lanes were swapped and fixes the order when you press Use this order.</li>

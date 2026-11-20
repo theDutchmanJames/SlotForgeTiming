@@ -43,7 +43,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket | The setup guide on Home |
-| [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green | Test sensors (Home, setup guide) |
+| [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
 | [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
@@ -1339,6 +1339,21 @@ that turns green when its sensor sees a car (and flashes bright on every crossin
 sit in the same balanced rows as Home's Grid Slot (up to 4 in a row; 5 and 6 lanes in rows of three). The summary is a line with a dot, Start again
 beside it.
 
+**2.4.0 rework.** The window head: *Lane Check · hardware* in Roboto Mono caps, *Test the sensors* in Barlow italic and the pill on the right
+(`.lc-pill`, green *Connected · 4 lanes* or amber *Not connected*). Not connected: a dashed amber box (`.lc-offbox`) *Connect the … first* with
+**Connect** and *Open Timing Hardware*. Connected: a row of checks (`.lc-steps`: *Lanes 2 of 4*, *Pit lane*, *Track call*, *Track power*; a green ✓ when
+done, the current one with the accent ring). The lanes are asked for one at a time: the lane to drive has the accent ring and a red *Go*; a lane that lit
+another lane's sensor turns amber (*!* · *lit lane 4*) and an amber bar (`.lc-swap`) says *Lane 3 lit lane 4* with **Swap 3 and 4** (Trackmate and
+Arduino box) and *Not now*. Each lane has a *Pit lane* line (✓ seen in green). Under the lanes two boxes (`.lc-box`): *Track call button* (✓ Works) and
+*Track power* with an Off / On switch (green when on). The summary says what to do next; *Done* closes.
+
+```css
+html .lc-step.lc-done em{background:var(--st-ok);color:#08130d}
+html .st-lane.lc-wrong .st-light{background:radial-gradient(circle at 40% 35%,#ffe7a3,#f2b705 55%,#a07400)}
+html .lc-swap{border:1px solid color-mix(in srgb,var(--st-warn) 55%,var(--line));background:color-mix(in srgb,var(--st-warn) 9%,var(--panel))}
+html .lc-seg button.on{background:var(--st-ok);color:#08130d}
+```
+
 ```css
 html .st-lanes{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));max-width:calc(var(--n,4) * 210px);margin:0 auto 14px;gap:10px}
 html .st-lane .st-num{background:color-mix(in srgb,var(--c) 14%,var(--panel));text-transform:uppercase}
@@ -2326,3 +2341,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Widget Workshop | New: the Widget Builder list as cards on a race screen with Used in and Add to a layout; saving updates the layouts that use it; Simple / Canvas switch; eight lanes and Play a race; "and" conditions; the Fuel Strip |
 | 2026-11 | Paddock Pit Lane | New: Dealership Mode and Shared Library as one Paddock page: a headline with Fix it, three equal cards, the results in plain words, Dealerships found as cards, the connection check step by step, the password remembered; the Dealership Sheet folded under Older connections and repair |
 | 2026-11 | Engineer's Bench | New: Calculations as Try it beside Your rules with one save bar and Undo; each topic as a question; laps of a real race as bars with a slider; compare with another system; the formulas with your numbers; find a calculation; the formula sheet |
+| 2026-11 | Lane Check (rework) | The sensor test asks for the lanes one at a time and offers to swap a lane that lit another's sensor; pit lane, Track call and track power as checks; Connect in the window |

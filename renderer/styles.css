@@ -7042,3 +7042,54 @@ html .calc-content.cb-on .cb-fm .calc-worked b{display:block;margin-bottom:2px;f
 html .calc-content.cb-on .cb-fm .calc-worked span:empty::before{content:'Change Try it to see your numbers here.';color:var(--muted)}
 html .calc-content.cb-on .cb-flash{box-shadow:0 0 0 3px var(--cb)}
 @media (max-width:1100px){html .calc-content.cb-on .cb-bench{grid-template-columns:1fr}html .calc-content.cb-on .cb-rules{position:static;max-height:none}html .calc-content.cb-on>header.cb-hd{grid-template-columns:1fr}html .calc-content.cb-on .cb-find input{width:100%}}
+/* Lane Check rework (2.4.0, SlotForgeRestyle.md "Lane Check"): the lanes one at a time, a swapped lane found, the pit lane, the Track call button, track power, Connect */
+html dialog.st-dialog{width:min(880px,94vw)}
+html .lc-head{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+html .lc-head .lc-k{font:600 11px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .lc-head h3{margin:2px 0 0;font:800 italic 28px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .lc-pill{display:inline-flex;align-items:center;gap:7px;height:28px;margin-left:auto;padding:0 12px;border-radius:999px;font:600 12px 'SF Roboto Mono',Consolas,monospace;text-transform:uppercase;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+html .lc-pill[hidden]{display:none}
+html .lc-pill i{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+html .lc-pill.lc-pon{--c:var(--st-ok)}
+html .lc-pill.lc-poff{--c:var(--st-warn)}
+html .lc-offbox{display:grid;gap:8px;justify-items:start;margin:0 0 14px;padding:14px 16px;border:1px dashed color-mix(in srgb,var(--st-warn) 55%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--st-warn) 7%,var(--panel))}
+html .lc-offbox b{font:800 italic 20px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .lc-offbox p{margin:0;color:var(--muted);font-size:13px}
+html .lc-offbox .row{display:flex;gap:8px;margin:0}
+html .lc-note{margin:0 0 10px;font-size:13px}
+html .lc-onote{margin:0 0 10px}
+html .lc-steps{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:8px;margin:0 0 12px}
+html .lc-step{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--bg) 50%,var(--panel));font-size:13px;font-weight:600}
+html .lc-step em{display:grid;place-items:center;flex:none;width:20px;height:20px;border-radius:50%;font:700 11px 'SF Roboto Mono',Consolas,monospace;font-style:normal;background:color-mix(in srgb,var(--muted) 25%,transparent);color:var(--muted)}
+html .lc-step.lc-done em{background:var(--st-ok);color:#08130d}
+html .lc-step.lc-now{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+html .lc-step small{margin-left:auto;font:500 11px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .st-lane .st-count small{display:block;margin-top:4px;font-size:11.5px;color:var(--muted)}
+html .st-lane .st-count b.lc-go{color:var(--accent-text)}
+html .st-lane .st-count b.lc-q{color:var(--st-warn)}
+html .st-lane.lc-want{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+html .st-lane.lc-wrong{border-color:color-mix(in srgb,var(--st-warn) 60%,var(--line))}
+html .st-lane.lc-wrong .st-light{background:radial-gradient(circle at 40% 35%,#ffe7a3,#f2b705 55%,#a07400);box-shadow:0 0 16px rgba(242,183,5,.55),0 0 0 4px color-mix(in srgb,var(--panel) 70%,#000)}
+html .st-lane .lc-pit{display:flex;justify-content:space-between;align-self:stretch;margin:6px -10px -14px;padding:7px 10px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--muted)}
+html .st-lane .lc-pit b{font:600 11px 'SF Roboto Mono',Consolas,monospace}
+html .st-lane .lc-pit b.lc-yes{color:var(--st-ok)}
+html .lc-swap{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--st-warn) 55%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--st-warn) 9%,var(--panel))}
+html .lc-swap>div{flex:1;min-width:0}
+html .lc-swap b{font:800 italic 18px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;color:var(--st-warn)}
+html .lc-swap p{margin:3px 0 0;font-size:13px}
+html .lc-extra{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:0 0 12px}
+html .lc-box{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
+html .lc-box .lc-ic{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:10px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c);font-size:17px}
+html .lc-box b{display:block;font-size:14px}
+html .lc-box small{color:var(--muted);font-size:12px}
+html .lc-box .lc-r{margin-left:auto;display:flex;align-items:center}
+html .lc-yes{font:600 12px 'SF Roboto Mono',Consolas,monospace;text-transform:uppercase;color:var(--st-ok)}
+html .lc-wait{font:600 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .lc-seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+html .lc-seg button{height:26px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
+html .lc-seg button.on{background:var(--st-ok);color:#08130d;font-weight:700}
+html .lc-seg button:disabled{opacity:.5;cursor:default}
+html .lc-foot{display:flex;align-items:center;gap:10px;margin:4px 0 0;padding:12px 0 0;border-top:1px solid var(--line)}
+html .lc-foot .st-sum{flex:1;min-width:0}
+html dialog .st-body>.row.lc-foot{padding-top:12px;border-top:1px solid var(--line)}
+@media (max-width:700px){html .lc-steps{grid-template-columns:1fr 1fr}html .lc-swap{flex-wrap:wrap}}

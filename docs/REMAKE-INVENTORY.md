@@ -100,7 +100,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 
 | Screen | What to rework | Ideas |
 |---|---|---|
-| Lane Check (sensor test) | Not connected? It says where to go but has no Connect button. A sensor on the wrong lane is only described. | Fix "lane 2 lit lane 3: swap?" in the dialog; test pit sensors, track call and track power |
+| Lane Check (sensor test) · **Done (2.4.0)** | Not connected? It says where to go but has no Connect button. A sensor on the wrong lane is only described. | Fix "lane 2 lit lane 3: swap?" in the dialog; test pit sensors, track call and track power |
 | Setup guide on Home | The hardware step sends you to App Settings with no way back. No lane-mapping step. Cars step skipped with the shared library. | Connect inside the guide, a lane-mapping step, an audio step |
 | Detected hardware card | "Not timing hardware" can never be undone (`hwIgnored`, app.js:436). Errors send you to App Settings. | A "Forgotten devices" list; the reason shown on the card |
 | Balance of Power, Time Tokens | One global setting each, unlike every other system (named, per setup). No "discard changes?" when leaving. | Named profiles chosen in the setup |
