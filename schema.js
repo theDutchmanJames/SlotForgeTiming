@@ -83,6 +83,36 @@ module.exports = {
       { id: 'laps', title: 'Lap timing', note: 'A fuel reference lap time, faulty triggers and very slow laps' },
       { id: 'extras', title: 'Picture and notes', note: 'A picture for the lists and cards, and your own notes' }
     ],
+    // (2.4.0, SlotForgeRestyle.md "Track Sheet") the form as a sheet with a rail: the track, every lane's length, the sectors, lap timing
+    rail: [
+      { id: 'basics', title: 'The track', open: true, ask: 'How many lanes, and what it is built from.', icon: 'pin', groups: ['basics'] },
+      {
+        id: 'length',
+        title: 'Lane lengths',
+        open: true,
+        ask: "How long is each lane? The speed and the distance use the length of the car's own lane.",
+        icon: 'gauge',
+        groups: ['length']
+      },
+      {
+        id: 'sectors',
+        title: 'Sectors',
+        open: true,
+        ask: 'Where was a car last seen when the race ended? Name the parts of the track in driving order.',
+        icon: 'flag',
+        groups: ['sectors']
+      },
+      { id: 'laps', title: 'Lap timing', open: true, ask: 'What counts as a lap on this track.', icon: 'timing', groups: ['laps'] },
+      {
+        id: 'extras',
+        title: 'Picture and notes',
+        optional: true,
+        ask: 'A picture for the lists and cards, and your own notes.',
+        icon: 'layers',
+        groups: ['extras']
+      }
+    ],
+    used: { entity: 'racesetups', key: 'track' },
     fields: [
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
       { key: 'lanes', group: 'basics', label: 'Number of lanes', type: 'number', min: 1, step: 1 },
@@ -410,6 +440,42 @@ module.exports = {
       { id: 'personal', title: 'Personal details', note: 'Date of birth and country flag', open: true },
       { id: 'avatar', title: 'Avatar', note: 'The picture on driver cards and timing screens' }
     ],
+    // (2.4.0, SlotForgeRestyle.md "Driver Sheet") the form as a sheet with a rail; its record from the saved results goes on top
+    rail: [
+      {
+        id: 'basics',
+        title: 'The driver',
+        open: true,
+        ask: 'How the name shows on the grid and the timing screens.',
+        icon: 'driver',
+        groups: ['basics']
+      },
+      {
+        id: 'personal',
+        title: 'Personal',
+        open: true,
+        ask: 'For the flag on the screens and the birthday on Home.',
+        icon: 'flag',
+        groups: ['personal']
+      },
+      {
+        id: 'avatar',
+        title: 'Helmet and picture',
+        open: true,
+        ask: 'The picture on driver cards and timing screens.',
+        icon: 'layers',
+        groups: ['avatar']
+      },
+      {
+        id: 'virtualrival',
+        title: 'Virtual Rival',
+        optional: true,
+        open: true,
+        ask: 'The recorded sequence loaded when this virtual driver is selected.',
+        icon: 'bolt',
+        groups: ['virtualrival']
+      }
+    ],
     fields: [
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
       { key: 'nickname', group: 'basics', label: 'Nickname', type: 'text' },
@@ -486,6 +552,25 @@ module.exports = {
     groups: [
       { id: 'basics', title: 'Basics', note: 'The name and the drivers of the team', open: true },
       { id: 'picture', title: 'Picture', note: 'The team picture on the timing screens' }
+    ],
+    // (2.4.0, SlotForgeRestyle.md "Team Sheet") the form as a sheet with a rail
+    rail: [
+      {
+        id: 'basics',
+        title: 'The team',
+        open: true,
+        ask: 'The name, the drivers and the class of the team.',
+        icon: 'users',
+        groups: ['basics']
+      },
+      {
+        id: 'picture',
+        title: 'Team picture',
+        open: true,
+        ask: 'The team picture on the timing screens.',
+        icon: 'layers',
+        groups: ['picture']
+      }
     ],
     fields: [
       {

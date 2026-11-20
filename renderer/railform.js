@@ -60,7 +60,7 @@
       (extra.length ? `<p class="rsrl rsrl2" id="rs-optional">Only if you need it</p>${extra.map(s => item(s, o)).join('')}` : '') +
       `${o.usedHtml !== undefined ? o.usedHtml : used(o.used, o)}</nav>` +
       `<div class="rsmain"><div class="rssay" id="rssay" aria-live="polite">${o.say || ''}</div>${o.sections.map(s => section(s, o)).join('')}</div></div>` +
-      `<footer class="rsfoot">${o.foot !== undefined ? o.foot : `<p class="error" id="err" role="alert"></p><span class="muted rsdef">Everything else keeps its default.</span><button class="btn" type="button" id="cancel">Cancel</button><button class="btn primary" type="submit">${esc(o.save || 'Save race setup')}</button>`}</footer></${tag}>`
+      `<footer class="rsfoot">${o.foot !== undefined ? o.foot : `<p class="error" id="err" role="alert"></p><span class="muted rsdef">Everything else keeps its default.</span>${o.more || ''}<button class="btn" type="button" id="cancel">Cancel</button><button class="btn primary" type="submit">${esc(o.save || 'Save race setup')}</button>`}</footer></${tag}>`
     );
   }
 

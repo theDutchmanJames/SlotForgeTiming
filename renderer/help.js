@@ -219,6 +219,8 @@ const Help = (() => {
           <li>In the <b>List</b>, tick rows to set the class of cars, mark them serviced, archive them, or retire drivers.</li>
           <li><b>Import a club list</b> (Drivers) reads a CSV file: Name, Nickname, Callsign, Country. Names already there are skipped.</li>
           <li>The <b>car editor</b>: The car (livery colours, Can it race?), Motor and gearing (ratio, one motor turn and top speed worked out), In the race, Service (a meter and a log). Archive, Reload and Save history are under <b>More</b>.</li>
+          <li>The <b>track editor</b>: lanes as tiles, <b>Every lane</b> with its length and difference (a box per lane when Measured), a box per sector name. Driver and team editors show <b>On the record</b>.</li>
+          <li><b>Delete</b> a driver with results offers <b>Retire</b> or <b>Merge</b> first; type the name to delete anyway.</li>
         </ul>`
         },
         {

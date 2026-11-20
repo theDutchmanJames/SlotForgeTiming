@@ -48,6 +48,9 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Entry Classes](#entry-classes) | The class of an entry picked in its lane on Home, the class counts, a virtual rival added in a lane | Home (Start a race) |
 | [Rotation Board](#rotation-board) | The rotation editor's lanes from a track, participants from an entry list, and Lane fairness | Race Setup › Rotation Setups |
 | [Finalize Review](#finalize-review) | The director's final check: the heat named, Your changes with Undo, Run this heat again, Delete the whole race; the changes kept with the result | Race › after a race or heat, Race Over, Results and Records |
+| [Track Sheet](#track-sheet) | The track editor: lanes as tiles, Every lane as a lane strip, a box per sector name, Raced on under the rail | Database › Tracks › Edit |
+| [Driver Sheet](#driver-sheet) | The driver editor: On the record tiles, the callsign in three letter boxes, Racing or Retired; the Delete question with Retire and Merge first | Database › Drivers › Edit, Delete |
+| [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1323,6 +1326,52 @@ html .rohow td.num.ro-zero{color:#f2b705}
 html .rohow td.num.ro-over{color:#ff8a8d}
 ```
 
+## Track Sheet
+
+The track editor (`renderer/database/sheets.js` over the rail form of `database.js` and `railform.js`; `schema.js` tracks `rail`; styles under `.ts-`). It keeps the
+frame of a Tech Sheet (header, rail, In plain words, sections, foot) but **not** the System Sheet rows (`systemsheet.js` skips `.ts-sheet`), like the car's
+Build Sheet. Every control writes the field it covers, which stays in the form hidden (`.ts-hidden`), so nothing stored changes.
+
+- **The header**: the track drawn as rings in the lane colours (the outside lane the biggest, the line dashed) in a 150 × 82 tile (`.ts-tile`), pills
+  (*4 lanes · 1:32 · 22.62 m – 24.50 m · 3 sectors*), *Ready to race* or amber *Length not set*.
+- **The rail**: The track · Lane lengths · Sectors · Lap timing, then *Only if you need it* · Picture and notes; Used by (the race setups that race on it) and
+  **Raced on** (`.ts-rec`: races, the record and who holds it) under it.
+- **Lanes as tiles** (`.ts-lanes`): 1 to 8, the ones in use tinted in their lane colour with a stripe. The lane length modifier and the outside lane as
+  Gear Selectors (`.bs-gearsel`).
+- **Every lane** (`.ts-strip`, `.ts-ln`): a row per lane with a 4 px lane-colour edge, *L1* in Barlow italic, the length in Roboto Mono with where it comes from
+  (*worked out*, *the track length*, *measured*) or a box per lane when Measured, a bar in the lane colour, the difference to the longest lane; a sentence
+  under it (`.ts-say`: *Lane 1 is 1.88 m shorter than lane 4: over a 20-lap race…*).
+- **Sectors**: − and + (`.ts-step`), a bar in sector colours (`.ts-secbar`) and a name box per sector (`.ts-sec`).
+- **The foot**: a note (*48 races recorded on this track*), **More** (Track design…, Duplicate track, Delete track…), Cancel, Save track.
+
+```css
+html .ts-ln{grid-template-columns:34px 140px minmax(0,1fr) 96px;border-left:4px solid var(--c);border-radius:10px}
+html .ts-lanes button.on{border-color:color-mix(in srgb,var(--c) 70%,var(--line));background:color-mix(in srgb,var(--c) 16%,var(--panel))}
+html .ts-bar i{background:var(--c)}
+```
+
+## Driver Sheet
+
+The driver editor and the question when a driver is deleted (`sheets.js`, `database/manager.js` gxDelete; styles `.ts-record`, `.ts-tiles`, `.ts-cs`,
+`.ts-tower`, `.ts-deldlg`).
+
+- **The header**: the avatar or the lane helmet, pills (callsign, country, *GT3 by default*), *Racing*, *Virtual rival* or *Retired*.
+- **On the record** (`.ts-record`): four Build Sheet tiles from the saved results: Races (*since Nov 2026*), Wins (*59% of the races*), Best lap in purple with
+  its track, Laps (*2 track records*). The same in short under the rail (*In the results*).
+- **The callsign** as three letter boxes (`.ts-cs`, Roboto Mono 18 px) with how it shows on the timing tower (`.ts-tower`: a colour stripe, the name in
+  Barlow italic, the callsign). *Still racing?* and *Driver type* as Gear Selectors.
+- **More**: Merge into another driver…, Retire driver (or Back to racing), Delete driver….
+- **Delete Anna?** (`.ts-deldlg`): three red-tinted tiles of what goes (Races, Laps, Track records), *Usually one of these is what you want:* **Retire
+  instead** (green outline, focused) and **Merge into another driver…**, *To delete anyway, type the name*; Keep and a red Delete that unlocks with the name.
+
+## Team Sheet
+
+The team editor (`sheets.js`; styles `.ts-teams .memlist`): the team picture or the team icon in the header, *2 drivers* and the class as pills, *Ready to
+race* or *No drivers yet*; **On the record** as for a driver; the drivers of the team as numbered chips (the turn order) with ↑ ↓ and Remove in them.
+
+The race setup's **Distance of every lane** and **swap distances** are boxes too (`.ts-boxes`, `.ts-box`: a box per lane with its lane colour, or a box per
+swap with + and −), instead of a list typed with commas.
+
 ## Finalize Review
 
 The director's final check after a race or heat (`renderer/review.js` finishHtml, `race.js` rerunHeat, `raceover.js` checkedHtml/asideHtml, `stats.js`
@@ -2460,3 +2509,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Entry Classes | New: the Multi-Class class of an entry picked in its lane on Home, class counts, copy to the system; a virtual rival added in a lane with its reason there |
 | 2026-11 | Rotation Board | New: rotation lanes from a track, participants from an entry list or picked drivers, Lane fairness with the words and Even out, a lane warning on the card |
 | 2026-11 | Finalize Review | New: the heat named in the final check, Your changes with the place before and after and Undo, Run this heat again, Delete the whole race with the heats saved; the changes kept with the result on the break, Race Over, the Record Book and the Race Report |
+| 2026-11 | Track Sheet, Driver Sheet, Team Sheet | New: the track, driver and team editors as sheets (lanes as tiles, Every lane, sector boxes, On the record, the callsign boxes, More), the Delete question with Retire and Merge first, lane boxes in a race setup |

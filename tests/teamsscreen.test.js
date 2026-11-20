@@ -78,7 +78,8 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   // ---------- the form ----------
   run("openForm('teams', null)"); await wait(10);
   let f = form();
-  say('a new team: the folders Basics (open) and Picture, the name, the list of drivers and the picture', f.includes('Add team') && f.includes('data-fg="basics" open') && f.includes('data-fg="picture"') && !f.includes('data-fg="picture" open') && f.includes('id="f-name"') && f.includes('id="mem-box"') && f.includes('id="f-picture"') && f.includes('Team name'));
+  // (2.4.0, Team Sheet: a sheet shows every section, one under the other, as the car's Build Sheet)
+  say('a new team: the folders Basics (open) and Picture, the name, the list of drivers and the picture', f.includes('Add team') && f.includes('data-fg="basics" open') && f.includes('data-fg="picture" open') && f.includes('id="f-name"') && f.includes('id="mem-box"') && f.includes('id="f-picture"') && f.includes('Team name'));
   say('...the list starts empty, and every driver can be added', f.includes('No drivers in this team yet.') && ['Alex', 'Sam', 'Kim', 'Lee'].every(n => f.includes(`>${n}</option>`)) && f.includes('Choose a driver'));
   E('mem-pick').value = 'd3'; await click({ memadd: '1' });
   E('mem-pick').value = 'd1'; await click({ memadd: '1' });

@@ -272,6 +272,7 @@ module.exports = [
   ['entryclasses.test.js', 'node-test'],
   ['rotationboard.test.js', 'node-test'],
   ['finalizereview.test.js', 'node-test'],
+  ['dbsheets.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],

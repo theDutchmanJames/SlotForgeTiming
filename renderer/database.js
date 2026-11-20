@@ -215,6 +215,20 @@ function openForm(e, item, preset) {
       : s.used && Array.isArray(state.refs[s.used.entity])
         ? state.refs[s.used.entity].filter(r => item && r[s.used.key] === item.id).map(r => String(r.name || '').trim() || '(unnamed)')
         : null; // (a system: the race setups that choose it)
+  // (2.4.0, SlotForgeRestyle.md "Track Sheet", "Driver Sheet", "Team Sheet") a track, a driver or a team: a sheet with a rail (sheets.js)
+  const sheet = !!sections && typeof DbSheet !== 'undefined' && DbSheet.ENTITIES.includes(e);
+  const sheetCtx = {
+    ft: dUnit() === 'ft',
+    country: code => ((typeof COUNTRIES !== 'undefined' ? COUNTRIES : []).find(c => c[0] === code) || [])[1] || '',
+    className: id => {
+      const c = id && (state.refs.raceclasses || []).find(x => x.id === id);
+      return c ? titleOf('raceclasses', c) : '';
+    },
+    rivalName: id => ((state.refs.virtualrivalsystems || []).find(x => x.id === id) || {}).name || '',
+    members: () => members
+  };
+  let sheetUpdate = null;
+  const rsBoxes = []; // (a race setup: the lane boxes over Distance of every lane and the swap distances)
   const tileName = v =>
     e === 'racesetups'
       ? SETUP_KIND_ICON[v.sessionType] || 'racesetups'
@@ -226,11 +240,13 @@ function openForm(e, item, preset) {
       ? {}
       : {
           navLabel: `The sections of this ${s.label.toLowerCase()}`,
-          caption: e === 'slotcars' ? 'This car' : 'This system',
+          caption: e === 'slotcars' ? 'This car' : sheet ? `This ${s.label.toLowerCase()}` : 'This system',
           save: `Save ${s.label.toLowerCase()}`,
-          usedNone: 'Not used yet. Choose it under Rules and systems in a race setup.',
-          usedIcon: 'racesetups'
+          usedNone: e === 'tracks' ? 'No race setup races on it yet.' : 'Not used yet. Choose it under Rules and systems in a race setup.',
+          usedIcon: 'racesetups',
+          ...(sheet ? { more: DbSheet.moreHtml(e, item) } : {})
         };
+  if (sheet) sections.forEach(x => opened.add(x.id)); // (a sheet shows every section, one under the other, as the car's Build Sheet)
   let railCurrent = sections ? (sections.find(x => opened.has(x.id)) || sections[0]).id : ''; // (the section that the rail points at: the one that was opened last)
   const sectionBody = x =>
     x.groups.length === 1 && x.groups[0].id === x.id
@@ -258,7 +274,7 @@ function openForm(e, item, preset) {
   dlg.innerHTML = sections
     ? RailForm.shell({
         eyebrow: `${item ? 'Edit' : 'Add'} ${s.label.toLowerCase()}`,
-        cls: setupToneClass(e).trim(),
+        cls: (setupToneClass(e) + (sheet ? ` ts-sheet ts-${e}` : '')).trim(),
         icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }),
         used: usedBy,
         ...frameWords,
@@ -551,16 +567,25 @@ function openForm(e, item, preset) {
               return !!f && isShown(f, getValue);
             }
           })
-        : SystemWords.rail(e, v, {
-            ...rctx,
-            defaults: defaultsOf,
-            lists: { types: PT_DEFAULTS, rules: [], levels: dmDef.levels, incidents: dmDef.incidents, failures: dmDef.failures }
-          });
+        : sheet
+          ? DbSheet.rail(e, v, sheetCtx)
+          : SystemWords.rail(e, v, {
+              ...rctx,
+              defaults: defaultsOf,
+              lists: { types: PT_DEFAULTS, rules: [], levels: dmDef.levels, incidents: dmDef.incidents, failures: dmDef.failures }
+            });
     const visible = {};
     sections.forEach(x => {
       visible[x.id] = x.groups.some(g => g.fields.some(f => isShown(f, getValue)));
     });
     RailForm.sync(byId, info, visible, railCurrent);
+    if (sheet && byId('rs-optional')) {
+      // (a sheet: "Only if you need it" only when one of its rows is shown, a human driver has no Virtual Rival)
+      let n = byId('rs-optional').nextElementSibling,
+        any = false;
+      for (; n && n.classList && n.classList.contains('rsri'); n = n.nextElementSibling) if (!n.hidden) any = true;
+      byId('rs-optional').hidden = !any;
+    }
     RailForm.live(byId, info, notes, n => Icons.svg(n, { size: 18, stroke: 1.8 })); // (1.73.0: the note under the settings of a section that has one)
   };
   // the header (the picture of the kind, the pills, Ready to race), the sentence "In plain words" and the rail follow what is typed and chosen
@@ -591,7 +616,14 @@ function openForm(e, item, preset) {
           : e === 'safetycarsystems'
             ? { track: (state.refs.tracks || []).find(t => t.id === v.safetyTrack) || null }
             : {};
-    const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : e === 'slotcars' ? carSheet(v) : SystemWords.describe(e, v, rctx);
+    const d =
+      e === 'racesetups'
+        ? SetupWords.describe(v, rctx)
+        : e === 'slotcars'
+          ? carSheet(v)
+          : sheet
+            ? DbSheet.describe(e, v, sheetCtx)
+            : SystemWords.describe(e, v, rctx);
     const pills = byId('rspills'),
       ready = byId('rsready'),
       tile = byId('rstile');
@@ -611,8 +643,19 @@ function openForm(e, item, preset) {
               Garage.numberOf(v, titleOf(e, v)),
               'form'
             )
-          : Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
+          : sheet
+            ? e === 'tracks'
+              ? DbSheet.trackSvg(v)
+              : v[e === 'drivers' ? 'avatar' : 'picture']
+                ? `<img class="ts-face" src="${esc(v[e === 'drivers' ? 'avatar' : 'picture'])}" alt="">`
+                : e === 'drivers'
+                  ? '<img class="ts-face ts-helmet" src="avatars/Lane1.png" alt="">'
+                  : Icons.svg('users', { size: 30, stroke: 1.6 })
+            : Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
     if (tile) tile.classList.toggle('rscar', e === 'slotcars');
+    if (tile) tile.classList.toggle('ts-tile', sheet);
+    if (sheetUpdate) sheetUpdate(); // (the lanes, the lane strip, the sector boxes, the callsign follow the form)
+    if (rsBoxes.length) rsBoxes.forEach(x => x());
     const bar = byId('rs-strip');
     if (bar) bar.innerHTML = RailForm.strip(d.strip); // (the bar of the levels of a damage system)
     // (2.4.0, SlotForgeRestyle.md "Setup Sheet") a race setup in one line, with chips: ready or not, Track Call, the systems, the screens and the sound
@@ -709,6 +752,36 @@ function openForm(e, item, preset) {
         )
         .join('') + (galSel !== null && gal[galSel] ? `<img class="galbig" src="${esc(gal[galSel])}" alt="Selected picture">` : '');
   };
+  // (2.4.0) the controls of a sheet over its fields, and the lane boxes of a race setup
+  if (sheet)
+    sheetUpdate = DbSheet.wire(dlg, e, {
+      ...sheetCtx,
+      item,
+      values: formValues,
+      sessions: () => api.list('sessions'),
+      act: async act => {
+        if (!item) return;
+        dlg.close();
+        if (manager && manager.e === e && typeof manager.act === 'function') return manager.act(act, item);
+        if (act === 'design' && typeof TrackDesignUI !== 'undefined') return TrackDesignUI.open(api, item, () => render());
+      }
+    });
+  if (e === 'racesetups' && typeof DbSheet !== 'undefined') {
+    const lanesNow = () => {
+      const t = (state.refs.tracks || []).find(x => x.id === getValue('track'));
+      return Math.max(1, Math.min(8, Number(t && t.lanes) || 4));
+    };
+    const u = dUnit() === 'ft' ? 'ft' : 'm';
+    rsBoxes.push(
+      DbSheet.listBoxes(dlg, 'laneDistances', {
+        count: lanesNow,
+        label: i => `Lane ${i + 1}`,
+        color: i => (typeof Garage !== 'undefined' && Garage.LANES && Garage.LANES[i]) || '#888',
+        unit: u
+      }),
+      DbSheet.listBoxes(dlg, 'swapMomentsDist', { grow: true, label: i => `Swap ${i + 1}`, unit: u })
+    );
+  }
   drawGallery();
   refreshShown();
   // the statistics of a slotcar (1.30.0): what the form says about the service interval, the button that starts the count again, and the mileage
@@ -872,6 +945,7 @@ function openForm(e, item, preset) {
         if (j >= 0 && j < members.length && i >= 0 && i < members.length) [members[i], members[j]] = [members[j], members[i]];
       }
       byId('mem-box').innerHTML = memRows(members, state.refs[memF.ref] || []);
+      if (sheet) sayDraw(); // (2.4.0: the Team Sheet counts the drivers in its header and rail)
       return;
     }
     if (d.pspreset) {

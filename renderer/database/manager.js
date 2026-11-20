@@ -27,7 +27,7 @@ function mountManager(box, e) {
 async function mountManagerPage(box, e) {
   const run = ++subRun;
   stopCataloguePictures();
-  manager = { box, e };
+  manager = { box, e, act: null }; // (act: what a button of the list does, also for the More menu of a sheet: 2.4.0)
   box.onclick = null;
   box.onchange = null;
   box.onkeydown = null;
@@ -491,6 +491,17 @@ async function mountManagerPage(box, e) {
     }
   };
   const gxDelete = async list => {
+    // (2.4.0, SlotForgeRestyle.md "Driver Sheet") one driver: what goes, Retire or Merge first, and the name typed for a driver with results
+    if (e === 'drivers' && list.length === 1 && typeof DbSheet !== 'undefined' && typeof document !== 'undefined') {
+      const it = list[0],
+        laps = s.linked !== false ? await api.linkedLaps(e, it.id) : 0,
+        r = DbSheet.recordOf('drivers', it.id, await api.list('sessions').catch(() => []));
+      const pick = await DbSheet.askDeleteDriver(titleOf(e, it), { races: r.races, laps: laps || r.laps, records: r.records });
+      if (pick === 'retire') return garageRetire([it], true);
+      if (pick === 'merge') return garageMerge(it, await referenceList('drivers'));
+      if (pick !== 'delete') return false;
+      return api.remove(e, it.id);
+    }
     let laps = 0;
     if (s.linked !== false) for (const i of list) laps += await api.linkedLaps(e, i.id);
     const name = list.length === 1 ? `"${titleOf(e, list[0])}"` : `${list.length} ${s.plural.toLowerCase()}`;
@@ -543,6 +554,7 @@ async function mountManagerPage(box, e) {
     if (act === 'retire' || act === 'unretire') return gxTry(() => garageRetire([it], act === 'retire'), 'change the driver');
     if (act === 'merge') return gxTry(async () => garageMerge(it, await referenceList('drivers')), 'merge the drivers');
   };
+  manager.act = gxAct;
   const gxPage = async act => {
     if (act === 'extra') return openExtra(e);
     if (act === 'view') {

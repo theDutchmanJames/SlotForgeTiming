@@ -411,7 +411,7 @@ const SystemSheet = (() => {
     let pending = false;
     const scan = () => {
       pending = false;
-      document.querySelectorAll('.rsform:not(.sy)').forEach(enhance);
+      document.querySelectorAll('.rsform:not(.sy):not(.ts-sheet)').forEach(enhance); // (2.4.0: a Track, Driver or Team Sheet keeps the look of the car's Build Sheet)
       // (a page editor that is gone, the page left: its window is not open the next time)
       if (openKind && !document.querySelector('.rsform[data-sy-launch="' + openKind + '"]')) openKind = '';
       // (a card whose editor was drawn again is drawn again with it)
