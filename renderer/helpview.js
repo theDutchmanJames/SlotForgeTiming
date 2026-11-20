@@ -67,7 +67,7 @@
       ]
     ],
     ['widgets', 'Race screens & widgets', []],
-    ['audio', 'Audio & appearance', ['audio', 'ambient', 'audioconditions', 'audiocategories', 'audioevents', 'look']],
+    ['audio', 'Audio & appearance', ['audio', 'audiobooth', 'ambient', 'audioconditions', 'audiocategories', 'audioevents', 'look']],
     [
       'hardware',
       'Timing hardware',

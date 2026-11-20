@@ -6746,3 +6746,73 @@ html:is([data-theme="light"],[data-theme="ocean"]) .hd-state.ok{color:#16803f}
 html:is([data-theme="light"],[data-theme="ocean"]) .hd-state.warn{color:#8a6400}
 @media (max-width:900px){html .hd-hero{grid-template-columns:minmax(0,1fr)}html .hd-dev{display:none}html .hd-acts{flex-direction:row;flex-wrap:wrap}html .hd-lanes{grid-template-columns:repeat(2,minmax(0,1fr))}}
 html #hwhero:has(.btn.primary)~#hwbox .btn.primary{background:color-mix(in srgb,var(--ink) 8%,var(--panel));border-color:var(--line);color:var(--ink)}
+
+/* ---- Commentary Booth (2.4.0, SlotForgeRestyle.md "Commentary Booth"): the audio set editor (renderer/audiobooth.js, audioboothview.js, audiostudio.js) ---- */
+html .audio-mixer{display:flex;flex-direction:column;gap:16px}
+html .ab-booth{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+html .ab-air{position:relative;display:flex;flex-direction:column;gap:12px;padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:radial-gradient(130% 120% at 0% 0%,color-mix(in srgb,#e5484d 10%,var(--panel)),var(--panel) 60%);color:var(--ink)}
+html .ab-onair{display:inline-flex;align-self:flex-start;align-items:center;gap:7px;padding:4px 11px;border-radius:6px;border:1.5px solid #e5484d;color:#ff6b6b;font:700 italic 13px 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:.12em;text-transform:uppercase}
+html .ab-onair i{width:8px;height:8px;border-radius:50%;background:#e5484d;box-shadow:0 0 10px #e5484d}
+html .ab-air h3{margin:0;font:700 italic 30px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .ab-air>p{margin:-6px 0 0;color:var(--muted);font-size:13px}
+html .ab-voice .audio-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin:0}
+html .ab-voice label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted)}
+html .ab-voice label small{font-size:11.5px}
+html .ab-voice select,html .ab-voice input{height:34px;width:100%}
+html .ab-f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted)}
+html .ab-f select{height:34px}html .ab-f small{font-size:11.5px}
+html .ab-try{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+html .ab-try input{height:36px;width:100%;min-width:0}html .ab-try .btn{height:36px}
+html .ab-air .audio-folder{margin:0}
+html .ab-side{display:flex;flex-direction:column;gap:12px}
+html .ab-box{padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink)}
+html .ab-box h4{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .ab-box .audio-balance{margin:0;padding:0;border:0;background:transparent}
+html .ab-sample{display:flex;align-items:center;gap:12px;width:100%;padding:0;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+html .ab-sample .big{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;flex:none;font-size:16px}
+html .ab-sample b{display:block;font-size:14px}html .ab-sample small{display:block;color:var(--muted);font-size:12px;line-height:1.45}
+html .ab-sample:hover .big{filter:brightness(1.1)}
+html .ab-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 10px}
+html .ab-h h3{margin:0;font:700 italic 22px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .ab-h span{color:var(--muted);font-size:12.5px}
+html .ab-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+html .ab-pre{position:relative;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink)}
+html .ab-pre.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+html .ab-pre b{display:block;font:700 italic 20px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .ab-pre .n{position:absolute;top:14px;right:16px;font:700 22px 'SF Roboto Mono',Consolas,monospace}
+html .ab-pre .n small{font:500 11px 'Segoe UI',system-ui,sans-serif;color:var(--muted)}
+html .ab-pre p{margin:4px 0 10px;color:var(--muted);font-size:12.5px;line-height:1.45}
+html .ab-pbar{display:flex;gap:2px;height:6px;margin-bottom:10px}
+html .ab-pbar span{flex:1;border-radius:2px;background:color-mix(in srgb,var(--ink) 12%,var(--panel))}
+html .ab-pbar span.on{background:#3ecf8e}
+html .ab-pre .ft{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px;font-size:12px;color:var(--muted)}
+html .ab-presetbox [data-call-presets]{margin-top:10px}
+html .ab-presetbox [data-call-presets]>p{display:none}
+html .audio-names{display:flex;flex-direction:column}
+html .ab-names{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden;color:var(--ink)}
+html .ab-nr{display:grid;grid-template-columns:34px minmax(0,1fr) 70px minmax(0,1.3fr) 30px 170px;gap:12px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:13px}
+html .ab-nr:first-child{border-top:0}
+html .ab-nr.h{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+html .ab-nr img{width:30px;height:30px;object-fit:contain}
+html .ab-nr .cs{font:700 13px 'SF Roboto Mono',Consolas,monospace}
+html .ab-nr input[type="text"]{height:32px;width:100%}
+html .ab-pl{width:28px;height:28px;padding:0;display:grid;place-items:center;border-radius:7px;border:1px solid var(--line);background:transparent;color:#ff6b6b;font-size:11px;cursor:pointer}
+html .ab-rec{display:flex;align-items:center;gap:6px}
+html .ab-rec .has{color:#3ecf8e;font-size:12.5px;font-weight:600;white-space:nowrap}
+html .ab-rec .btn i{color:#e5484d;font-style:normal;margin-right:4px}
+html .ab-rec .btn.rec-on{border-color:#e5484d;color:#ff6b6b}
+html .ab-samplebox{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid color-mix(in srgb,#e5484d 35%,var(--line));border-radius:14px;background:var(--panel)}
+html .ab-samplebox .ab-h{margin:0}
+html .ab-prog{height:6px;border-radius:999px;background:color-mix(in srgb,var(--ink) 10%,var(--panel));overflow:hidden}
+html .ab-prog i{display:block;height:100%;background:#e5484d;transition:width .3s}
+html .ab-tl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+html .ab-tr{display:grid;grid-template-columns:56px 140px minmax(0,1fr) 90px;gap:12px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);font-size:13px;color:var(--ink)}
+html .ab-tr:first-child{border-top:0}
+html .ab-tr .t{font:500 12.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .ab-tr.done{color:var(--muted)}
+html .ab-tr.now{background:color-mix(in srgb,#e5484d 9%,var(--panel));box-shadow:inset 3px 0 0 #e5484d}
+html .ab-tr .what{font-weight:600}
+html .ab-tr .st{font-size:12px;text-align:right;color:var(--muted)}
+html .ab-tr.now .st{color:#ff6b6b;font-weight:600}
+html .ab-sfoot{display:flex;gap:8px}
+@media (max-width:1000px){html .ab-booth,html .ab-presets{grid-template-columns:minmax(0,1fr)}html .ab-nr{grid-template-columns:30px minmax(0,1fr) minmax(0,1.3fr) 30px}html .ab-nr .cs,html .ab-nr .ab-rec{display:none}}

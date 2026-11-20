@@ -1155,8 +1155,14 @@
       gap: c ? gapMs(c) : null,
       behind: c ? behindMs(c) : null
     });
+    // (2.4.0, "Commentary Booth") a name as the set says it: written as it sounds, or a recording (marked ⟦id⟧, played by sound.js)
+    const saidName = (id, name) => {
+      const n = o.names && id !== undefined && id !== null && id !== '' ? o.names[id] : null;
+      if (n && n.file) return '⟦' + id + '⟧';
+      return (n && String(n.say || '').trim()) || name;
+    };
     const who = c => {
-      const name = c.driverName || '',
+      const name = saidName(c.driverId, c.driverName || ''),
         nick = c.nickname || name,
         call = c.callsign || name;
       return {

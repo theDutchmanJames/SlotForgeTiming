@@ -1090,6 +1090,19 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'audiobooth',
+          title: 'Commentary Booth',
+          note: 'The voice, presets, driver names and a sample race',
+          body: `<ul>
+          <li>An audio set opens on <b>The voice &amp; presets</b>: the voice, its speed and pitch, how drivers are called, and <b>Plays on</b> (which speaker plays the sound files, recorded names and ambient sounds; the voice itself plays on the speaker Windows uses). Type a sentence and press <b>Hear it</b>.</li>
+          <li><b>How much it says</b>: Essential, Club and Broadcast as cards, with how many calls each has on and which one your set is closest to. Choosing one shows the calls that change before you apply it; your own sentences and recordings stay.</li>
+          <li><b>Play a sample race</b> plays your set from the start to the winner in about a minute, and shows what was said.</li>
+          <li><b>Driver names</b>: when the voice says a name wrong, write it as it sounds (Byorn for Bjorn), or record it (up to 4 seconds) or choose a sound file. A recording plays wherever the name is said in a race.</li>
+          <li>The editor keeps its place when you change something.</li>
+          <li>More voices: the app uses the voices Windows offers to programs (SAPI voices). The newer Natural and Neural voices of Windows are not offered to programs by Windows itself.</li>
+        </ul>`
+        },
+        {
           id: 'audio',
           title: 'Audio calls',
           note: 'Choose, preview and tune race commentary',

@@ -68,7 +68,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 - **Ideas:** lane lights with the measured lap times, lane mapping as on Trackmate, the capture tools behind a Diagnostics
   switch.
 
-### 6. Audio set editor · Remake
+### 6. Audio set editor · Remake · **Done (2.4.0, "Commentary Booth")**
 - The old page (131 calls in fieldsets) is built first and then moved into the new shell, and its labels are rewritten text
   node by text node (audiostudio.js:99-190). Almost every edit rebuilds the whole editor, so the scroll position is lost.
 - The presets (Essential, Club, Broadcast), the main choice for most people, are tucked away under "Only if you need them".

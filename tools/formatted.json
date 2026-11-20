@@ -207,6 +207,8 @@
     "renderer/database/recordbookview.js",
     "renderer/hwdesk.js",
     "renderer/hwdeskview.js",
+    "renderer/audiobooth.js",
+    "renderer/audioboothview.js",
     "renderer/report.js",
     "renderer/resources.js",
     "renderer/resourceui.js",

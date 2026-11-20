@@ -58,6 +58,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Build Sheet](#build-sheet) | The car editor: the drawn car on top, a rail of sections, the gearing worked out, a service meter and log, More for the rest | Database › Slotcars › Edit |
 | [Record Book](#record-book) | Results and Records: track records as cards with their history, one filter bar, the races by month, a driver panel, a driver's history, correcting a result | Database › Results and Records › Racing Records |
 | [Timing Desk](#timing-desk) | Timing Hardware: a big card for what counts the laps, live lanes, the interfaces as cards with Connect & use, an interface's parts as tabs, Diagnostics folded away, finding the lane order | App Settings › Timing Hardware |
+| [Commentary Booth](#commentary-booth) | The audio set editor: the voice on air first, the presets as cards, driver names said or recorded, a sample race | Customization › Audio Settings › Edit |
 | [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
@@ -1871,6 +1872,33 @@ html .sr-sectab.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));col
 
 ---
 
+## Commentary Booth
+
+The audio set editor (`renderer/audiobooth.js` makes the cards, rows and words, `renderer/audioboothview.js` does what its buttons do, `audiostudio.js` lays it out;
+styles under `.ab-`). Nothing changed in how a set is stored, apart from two new parts: `names` (how each driver is said: `say`, or a recording `file`) and `sink`
+(the speaker).
+
+- **The rail** starts *On air*: **The voice & presets** (where a set opens) and **Driver names**; then the race calls by subject and the ambient sounds, as before.
+- **On air** (`.ab-air`): a red *On air* plate, *The voice* in big Barlow, the voice, speed, pitch and how drivers are called, *Plays on* (the speaker), and a
+  sentence with *Hear it*. A red glow in its corner. Beside it the balance of the calls and the ambient sounds as two bars, and *Play a sample race* with a
+  round red play button.
+- **How much it says** (`.ab-presets`): Essential, Club and Broadcast as cards of equal weight: the name in Barlow, the number of calls in Roboto Mono, what it
+  is for, a bar of 20 blocks (green: the share of calls on), what it would change, and its button. The preset closest to the set has the accent edge.
+- **Driver names** (`.ab-names`): a row per driver: helmet, name, callsign, *Said as* (empty: as written), ▶, *Record* (a red dot; *■ Stop* while it records)
+  or *File…*, and *✓ Recorded* in green with *Remove*.
+- **The sample race** (`.ab-samplebox`): a red progress bar and a row per call: the time, the call, what was said; the row being said is tinted red with
+  *● speaking*.
+
+```css
+html .ab-air{padding:18px 20px;border-radius:18px;background:radial-gradient(130% 120% at 0% 0%,color-mix(in srgb,#e5484d 10%,var(--panel)),var(--panel) 60%)}
+html .ab-onair{border:1.5px solid #e5484d;color:#ff6b6b;font:700 italic 13px 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:.12em}
+html .ab-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+html .ab-pbar span.on{background:#3ecf8e}
+html .ab-tr.now{background:color-mix(in srgb,#e5484d 9%,var(--panel));box-shadow:inset 3px 0 0 #e5484d}
+```
+
+---
+
 ## Race Control
 
 The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
@@ -2199,3 +2227,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Build Sheet | New: the car editor with the drawn car, a rail, the gearing worked out, livery colours, Can it race?, a service meter and log, More for Archive, Reload and Save history |
 | 2026-11 | Record Book | New: Racing Records as a record book (record cards, filter bar, race log by month, driver panel, record history, driver history, Correct the result, CSV) |
 | 2026-11 | Timing Desk | New: Timing Hardware as a desk (big card, live lanes, interface cards, Connect & use, parts as tabs, Diagnostics, Find the lane order, Forgotten devices); the dropdown, the banner, Other and the oXigen page are gone |
+| 2026-11 | Commentary Booth | New: the audio set editor opens on the voice (On air, Plays on, Hear it) and the presets as cards; Driver names; Play a sample race; the editor keeps its place |

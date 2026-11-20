@@ -1,5 +1,5 @@
 // Presentation only. audioedit owns draft, undo, validation and save.
-let audioView = { tab: 'calls', category: '', call: 'prerace', search: '', filter: 'all', profile: '', variations: {}, folders: {} };
+let audioView = { tab: 'mix', category: '', call: 'prerace', search: '', filter: 'all', profile: '', variations: {}, folders: {} };
 const audioDefaults = () => Sound.defaultSet();
 const audioSample = c => Object.fromEntries(AudioCalls.variablesFor(c).map(k => [k, Announcer.SAMPLE[k] ?? '']));
 const audioAmbientTitle = c =>
@@ -120,7 +120,7 @@ function audioStudio(box, d) {
     redoId: 'au-redo',
     saveId: 'au-save',
     save: 'Save audio set'
-  })}<div class="audio-layout"><nav class="audio-tabs audio-rail" aria-label="Audio set sections"><p class="audio-rl">Race calls</p>${cats
+  })}<div class="audio-layout"><nav class="audio-tabs audio-rail" aria-label="Audio set sections"><p class="audio-rl">On air</p>${railItem('data-audio-tab="mix"', 'say', 'The voice & presets', '')}${railItem('data-audio-tab="names"', 'driver', 'Driver names', String((typeof audDrivers !== 'undefined' ? audDrivers : []).length || ''))}<p class="audio-rl">Race calls</p>${cats
     .map(g => {
       const list = C.filter(c => AudioCalls.category(c) === g);
       return railItem(
@@ -132,7 +132,7 @@ function audioStudio(box, d) {
     })
     .join(
       ''
-    )}<p class="audio-rl">Sound</p>${railItem('data-audio-tab="ambient"', 'wind', 'Ambient sounds', String(A.filter(c => ((d.calls[c.id] || {}).lines || []).some(l => l && l.file)).length))}${railItem('data-audio-tab="mix"', 'sliders', 'Voice & playback', '')}<aside><strong>Use this audio set</strong><p>Choose it in Race Setup → Race UI and Audio. Sound plays on the computer running the race.</p></aside></nav><main class="audio-workspace"><div class="audio-plain"><small>IN PLAIN WORDS</small><p data-audio-explanation></p></div><div class="audio-columns"><div class="audio-finder"></div><div class="audio-main"><div class="audio-call-body"></div></div><div class="audio-tools"></div></div><section class="audio-mixer" hidden></section></main></div><footer class="audio-footer"></footer></section>`;
+    )}<p class="audio-rl">Sound</p>${railItem('data-audio-tab="ambient"', 'wind', 'Ambient sounds', String(A.filter(c => ((d.calls[c.id] || {}).lines || []).some(l => l && l.file)).length))}<aside><strong>Use this audio set</strong><p>Choose it in Race Setup → Race UI and Audio. Sound plays on the computer running the race.</p></aside></nav><main class="audio-workspace"><div class="audio-plain"><small>IN PLAIN WORDS</small><p data-audio-explanation></p></div><div class="audio-columns"><div class="audio-finder"></div><div class="audio-main"><div class="audio-call-body"></div></div><div class="audio-tools"></div></div><section class="audio-mixer" hidden></section><section class="audio-names" hidden></section></main></div><footer class="audio-footer"></footer></section>`;
   box.appendChild(shell);
   const $ = s => shell.querySelector(s),
     mixer = $('.audio-mixer'),
@@ -160,13 +160,35 @@ function audioStudio(box, d) {
   const voiceFolder = audioFolder('voice', 'Commentator voice', 'How spoken messages sound'),
     balance = audioFolder('balance', 'Volume balance', 'Keep announcements clear'),
     timing = audioFolder('timing', 'Announcement timing', 'Keep commentary relevant', false);
-  mixer.append(voiceFolder, balance, timing);
+  // (2.4.0, SlotForgeRestyle.md "Commentary Booth") the voice on air, the balance and the sample race beside it, then how much it says (the presets)
+  const boothEl = document.createElement('div');
+  boothEl.className = 'ab-booth';
+  boothEl.innerHTML = `<section class="ab-air" aria-label="The voice"><span class="ab-onair"><i aria-hidden="true"></i>On air</span><h3>The voice</h3><p>How every call sounds. Type anything and hear it.</p><div class="ab-voice"></div><label class="ab-f ab-sink">Plays on<select id="au-sink" data-ab-sink><option value="">The speaker Windows uses</option></select><small>Sound files, recorded names and ambient sounds. The voice itself plays on the speaker Windows uses.</small></label><div class="ab-try"><input type="text" id="au-try" maxlength="200" value="${esc(audioView.tryText || 'Anna takes the lead on lap 12!')}" aria-label="A sentence to hear"><button type="button" class="btn" data-ab-hear>▶ Hear it</button></div></section><div class="ab-side"><div class="ab-box ab-balance-box"></div><div class="ab-box"><h4>Hear the whole set</h4><button type="button" class="ab-sample" data-ab-sample><span class="big" aria-hidden="true">▶</span><span><b>Play a sample race</b><small>One minute: the start, a new leader, a fastest lap, a yellow flag, the finish. With your voice, names and sounds.</small></span></button></div></div>`;
+  const presetsEl = document.createElement('div');
+  presetsEl.className = 'ab-presetbox';
+  presetsEl.innerHTML = `<div class="ab-h"><h3>How much it says</h3><span>Start from a preset; your own sentences and recordings stay.</span></div><div data-ab-presets></div>`;
+  mixer.append(boothEl, presetsEl, balance, timing);
+  const sampleEl = document.createElement('section');
+  sampleEl.className = 'ab-samplebox';
+  sampleEl.hidden = true;
+  sampleEl.dataset.abSamplebox = '';
+  mixer.prepend(sampleEl);
+  // the preset choice under the cards (the cards choose; Review and Apply stay as they were)
+  const presetTools = tools.querySelector('[data-call-presets]');
+  if (presetTools) {
+    presetTools.querySelector('label').hidden = true;
+    const review = presetTools.querySelector('[data-audio-profile="preview"]');
+    if (review) review.hidden = true;
+    presetsEl.appendChild(presetTools);
+  }
+  const toolsTitle = tools.querySelector('summary strong');
+  if (toolsTitle) toolsTitle.textContent = 'Group actions & help';
   const volume = voice.querySelector('#au-vol').closest('label');
   volume.firstChild.textContent = 'Calls volume ';
   volume.querySelector('input').type = 'range';
   volume.querySelector('input').step = '0.01';
   volume.insertAdjacentHTML('beforeend', '<output id="au-call-volume-output"></output><small>Spoken messages and call recordings.</small>');
-  audioFolderBody(voiceFolder).appendChild(voice);
+  boothEl.querySelector('.ab-voice').appendChild(voice);
   voice.className = 'audio-fields';
   for (const [id, label, note] of [
     ['au-rate', 'Speech speed', '1.0 = normal speed'],
@@ -178,15 +200,12 @@ function audioStudio(box, d) {
     if (note) el.insertAdjacentHTML('beforeend', `<small>${note}</small>`);
   }
   const voiceHelp = audioFolder('voice-help', 'Voice help & report', 'Missing a voice?', false);
-  audioFolderBody(voiceFolder).appendChild(voiceHelp);
+  boothEl.querySelector('.ab-air').appendChild(voiceHelp);
   ['au-voicehelp', 'au-vreport', 'au-voicenote', 'au-vbox'].forEach(id => {
     const el = old.querySelector('#' + id) || voice.querySelector('#' + id);
     if (el) audioFolderBody(voiceHelp).appendChild(el);
   });
-  audioFolderBody(voiceFolder).insertAdjacentHTML(
-    'beforeend',
-    '<button class="btn" type="button" data-audio-voice-preview>Preview voice</button>'
-  );
+  voiceFolder.remove();
   const ambControls = body.querySelector('.ambintro'),
     ambFields = ambControls.querySelector('.ambset');
   const relabel = (id, text, note = '') => {
@@ -208,7 +227,7 @@ function audioStudio(box, d) {
   ambFields.prepend(volume);
   ambFields.className = 'audio-fields';
   audioFolderBody(balance).appendChild(ambFields);
-  audioFolderBody(balance).insertAdjacentHTML('beforeend', '<div class="audio-balance" data-audio-balance></div>');
+  boothEl.querySelector('.ab-balance-box').insertAdjacentHTML('beforeend', '<div class="audio-balance" data-audio-balance></div>');
   audioFolderBody(balance).appendChild(maxFolder);
   ambControls.remove();
   audioFolderBody(timing).innerHTML =
@@ -444,11 +463,13 @@ function audioSelect(box, d) {
   if (count)
     count.textContent = `${list.length} ${ambient ? 'sound event' : 'call'}${list.length === 1 ? '' : 's'}${v.search ? ' in every subject' : ambient ? '' : ' in ' + v.category}${v.call ? '' : ' · click one to open it'}.`;
   box.querySelector('[data-audio-explanation]').textContent =
-    v.tab === 'mix'
-      ? "Choose the commentator's voice, balance calls against background sounds, and decide how long commentary can wait before it becomes outdated."
-      : ambient
-        ? 'Add your own crowd, engine and pit sounds. They play alongside calls on a separate audio channel. Events without an attached file stay silent.'
-        : 'Switch the calls of this subject on or off, and click a call to change what it says and when.';
+    v.tab === 'names'
+      ? 'Write a name as it sounds when the voice says it wrong (Byorn for Bjorn), or record it. A recording plays wherever the name is said.'
+      : v.tab === 'mix'
+        ? "Choose the commentator's voice and how much it says. Hear a sentence, or the whole set in a sample race."
+        : ambient
+          ? 'Add your own crowd, engine and pit sounds. They play alongside calls on a separate audio channel. Events without an attached file stay silent.'
+          : 'Switch the calls of this subject on or off, and click a call to change what it says and when.';
   box.querySelectorAll('.audgroup').forEach(el => {
     el.open = true;
     el.hidden = ambient ? el.dataset.group !== Announcer.AMBIENT_GROUP : el.dataset.group === Announcer.AMBIENT_GROUP;
@@ -465,8 +486,30 @@ function audioSelect(box, d) {
   box
     .querySelectorAll('[data-audio-filterbtn]')
     .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.audioFilterbtn === v.filter)));
-  box.querySelector('.audio-columns').hidden = v.tab === 'mix';
+  box.querySelector('.audio-columns').hidden = v.tab === 'mix' || v.tab === 'names';
   box.querySelector('.audio-mixer').hidden = v.tab !== 'mix';
+  // (2.4.0, "Commentary Booth") the presets as cards, and the names of the drivers
+  const cards = box.querySelector('[data-ab-presets]');
+  if (cards && typeof AudioBooth !== 'undefined')
+    cards.innerHTML = AudioBooth.presetCardsHtml(
+      AudioBooth.presets(
+        d,
+        Sound.profile,
+        Announcer.CALLS.map(c => c.id)
+      )
+    );
+  const names = box.querySelector('.audio-names');
+  if (names) {
+    names.hidden = v.tab !== 'names';
+    if (v.tab === 'names' && typeof AudioBooth !== 'undefined')
+      names.innerHTML = `<div class="ab-h"><h3>Driver names</h3><span>How the voice says each driver. Write it as it sounds, or record it.</span></div>${AudioBooth.namesHtml(
+        typeof audDrivers !== 'undefined' ? audDrivers : [],
+        d.names || {},
+        {
+          helmet: dr => (typeof Garage !== 'undefined' ? `<img src="avatars/Lane${Garage.helmetOf(dr)}.png" alt="">` : '<span></span>')
+        }
+      )}`;
+  }
   const presets = box.querySelector('[data-call-presets]');
   if (presets) presets.hidden = ambient;
 }

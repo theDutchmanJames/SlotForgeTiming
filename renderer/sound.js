@@ -212,6 +212,30 @@
     later: (fn, ms) => setTimeout(fn, ms),
     unlater: t => clearTimeout(t)
   }; // (gen: counts the times everything was stopped; a call that was cut off must not release the one that came after it)
+  // (2.4.0) the speaker the set plays on (sound files, recorded names and ambient sounds; the voice itself plays on the speaker Windows uses)
+  let sinkId = '';
+  const toSink = a => {
+    if (sinkId && a && typeof a.setSinkId === 'function') a.setSinkId(sinkId).catch(() => {});
+  };
+  const sink = id => {
+    sinkId = typeof id === 'string' ? id : '';
+  };
+  // (2.4.0) a sentence with a recorded driver name (the announcer marks it ⟦driverId⟧): the words, the recording, the words
+  const MARK = /⟦([^⟧]+)⟧/g;
+  function piecesOf(text, names) {
+    const s = String(text || ''),
+      out = [];
+    let last = 0;
+    s.replace(MARK, (m, id, at) => {
+      if (at > last) out.push({ text: s.slice(last, at) });
+      const n = (names && names[id]) || {};
+      out.push(n.file ? { file: n.file } : { text: n.say || n.name || '' });
+      last = at + m.length;
+      return m;
+    });
+    if (last < s.length) out.push({ text: s.slice(last) });
+    return out.filter(p => p.file || String(p.text).trim());
+  }
   // the browser's own voices and sound player (replaced in tests)
   function browser() {
     let cur = null; // what is playing now: held here, so that the browser does not collect it before it has ended, and so that it can be ended
@@ -242,6 +266,7 @@
         try {
           const a = new root.Audio(url);
           a.volume = o.volume;
+          toSink(a);
           const c = { a, done, t: null };
           cur = c;
           a.onended = a.onerror = () => end(c);
@@ -303,14 +328,28 @@
       volume: num(it.set.volume, 1, 0, 1),
       voice: it.set.voice || ''
     };
-    S.log.push(it.what.file ? 'file' : it.what.text);
+    if (it.set.sink !== undefined) sink(it.set.sink);
+    // the words, with a recorded name played where the announcer marked it
+    const speakText = (text, then) => {
+      if (!MARK.test(String(text || ''))) return be().speak(text, o, then);
+      MARK.lastIndex = 0;
+      const parts = piecesOf(text, it.set.names);
+      const go = i => {
+        if (i >= parts.length || gen !== S.gen) return then();
+        const p = parts[i];
+        if (p.file) be().file(p.file, o, () => go(i + 1));
+        else be().speak(p.text, o, () => go(i + 1));
+      };
+      go(0);
+    };
+    S.log.push(it.what.file ? 'file' : String(it.what.text || '').replace(MARK, ''));
     if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
     if (it.what.file)
       be().file(it.what.file, o, () => {
-        if (it.what.text && gen === S.gen) be().speak(it.what.text, o, done);
+        if (it.what.text && gen === S.gen) speakText(it.what.text, done);
         else done();
       });
-    else be().speak(it.what.text, o, done);
+    else speakText(it.what.text, done);
   }
   // "not again within N seconds": a call of the set (call.cooldown, call.coolFor 'driver' = counted for each driver) that was said lately is not said again; a call that is held back does not start a new wait
   function cooling(set, callId, vars, facts) {
@@ -346,6 +385,7 @@
         try {
           const a = new root.Audio(url);
           a.volume = vol;
+          toSink(a);
           a.loop = !!(o && o.loop);
           a.onended = a.onerror = ended;
           const p = a.play();
@@ -658,6 +698,7 @@
   }
 
   const api = {
+    sink,
     MAX_FILE,
     reportText,
     distances,

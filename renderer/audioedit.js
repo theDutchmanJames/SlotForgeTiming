@@ -124,7 +124,11 @@ async function renderAudioSets(box) {
   });
 }
 
+// (2.4.0) the editor keeps its place when it is drawn again (audioboothview.js)
 function renderAudioSetEditor(box) {
+  return typeof audioKeepPlace === 'function' ? audioKeepPlace(() => drawAudioSetEditor(box)) : drawAudioSetEditor(box);
+}
+function drawAudioSetEditor(box) {
   const d = audEd.draft,
     voices = Sound.voices(),
     groups = [];
@@ -290,6 +294,7 @@ function renderAudioSetEditor(box) {
   const U = draftUndo(audEd, 'au', () => renderAudioSetEditor(box)),
     mark = U.mark,
     step = U.step;
+  if (typeof audioBoothWire === 'function') audioBoothWire(box, d, mark, step, () => renderAudioSetEditor(box)); // (2.4.0: the Commentary Booth)
   const $ = id => document.getElementById(id),
     msg = t => {
       $('au-msg').textContent = t;
