@@ -44,6 +44,11 @@ async function rotUsedBy(id) {
 }
 
 async function renderRotations(box) {
+  // (2.4.0) the tracks (lanes), the drivers and the race setups (entry lists) the editor offers
+  state.refs = state.refs || {};
+  await Promise.all(
+    ['tracks', 'drivers', 'racesetups'].map(async e => (state.refs[e] = await api.list(e).catch(() => state.refs[e] || [])))
+  );
   if (rotEd) {
     if (!Array.isArray(rotEd.used)) rotEd.used = await rotUsedBy(rotEd.id);
     return renderRotationEditor(box);
@@ -51,6 +56,15 @@ async function renderRotations(box) {
   manager = null;
   const [list, setups] = await Promise.all([api.list('rotationsetups'), api.list('racesetups')]);
   const usedBy = r => setups.filter(s => s.rotation === r.id).map(s => s.name || '(unnamed)');
+  // (2.4.0) a race setup that uses the rotation on a track with fewer lanes than the rotation uses
+  const mismatch = r => {
+    const used = Math.max(0, ...(r.heats || []).flatMap(h => (h.places || []).map(e => e.lane + 1)));
+    return setups
+      .filter(s => s.rotation === r.id)
+      .map(s => ({ s, t: (state.refs.tracks || []).find(t => t.id === s.track) }))
+      .filter(x => x.t && Number(x.t.lanes) > 0 && used > Number(x.t.lanes))
+      .map(x => `${x.s.name || 'A race setup'} races on ${x.t.name || 'a track'} with ${x.t.lanes} lanes; this rotation uses ${used}.`);
+  };
   box.innerHTML =
     `
     <div class="row"><button class="btn primary" id="newrot">New rotation setup</button></div>
@@ -63,7 +77,11 @@ async function renderRotations(box) {
               pill = parts => `<div class="rspills">${parts.map(p => `<span class="rspill">${esc(p)}</span>`).join('')}</div>`;
             return `<article class="rscard syscard ss-rot"><div class="rsidentity" data-kind="system"><div class="rshead"><span class="rstile">${Icons.svg('rotation', { size: 22 })}</span><div class="rstitle"><div class="rseye">Rotation setup</div><div class="rsname">${esc(r.name || '(unnamed)')}</div></div></div>${pill(String(Rot.describe(Rot.clean(r))).split(/ · |, /))}</div>
       <section class="rslinked" aria-label="Race setups that use ${esc(r.name || '')}"><div class="rslinked-head"><strong>Used by</strong><span>${u.length ? u.length + (u.length === 1 ? ' race setup' : ' race setups') : 'Not used yet'}</span></div>${u.length ? pill(u.slice(0, 3).concat(u.length > 3 ? ['+' + (u.length - 3)] : [])) : '<p class="rslinked-empty">Choose it for a Heat-based race, under Session.</p>'}</section>
-      <div class="row rsactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button><button class="btn" data-dup="${esc(r.id)}">Duplicate</button><button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></article>`;
+      ${mismatch(r)
+        .map(t => `<p class="ro-mismatch" role="note">⚠ ${esc(t)}</p>`)
+        .join(
+          ''
+        )}<div class="row rsactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button><button class="btn" data-dup="${esc(r.id)}">Duplicate</button><button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></article>`;
           })
           .join('')}</div>`
       : '<p class="muted">No rotation setups yet.</p>');
@@ -216,9 +234,40 @@ function renderRotationEditor(box) {
           : '';
 
   // ---- the sections ----
+  // (2.4.0) the lanes from a track, the participants from an entry list (or the numbers, as before)
+  const tracksNow = (state.refs && state.refs.tracks) || [],
+    trackNow = tracksNow.find(t => t.id === d.trackId);
+  const laneHueRo = i => (typeof HomeStats !== 'undefined' && HomeStats.laneColor ? HomeStats.laneColor(null, i) : '') || '#98a0ab';
+  const entryLists = ((state.refs && state.refs.racesetups) || [])
+    .map(s => ({
+      s,
+      ids: ((state.settings.assignments || {})[s.id] || [])
+        .map(r => r && r.driverId)
+        .filter(id => id && ((state.refs.drivers || []).find(x => x.id === id) || {}).driverType !== 'virtual')
+    }))
+    .filter(x => x.ids.length >= Rot.LIMITS.minP);
+  const optCard = (attr, val, title, sub, on, extra = '') =>
+    `<button type="button" class="ro-opt${on ? ' on' : ''}" ${attr}="${esc(val)}" aria-pressed="${on}"><b>${esc(title)}</b><small>${esc(sub)}</small>${extra}</button>`;
   const sizeBody =
-    () => `<div class="fgrid"><div class="field"><label for="ro-n">Participants</label><input type="number" id="ro-n" min="${Rot.LIMITS.minP}" max="${Rot.LIMITS.maxP}" value="${d.participants}"></div>
-      <div class="field"><label for="ro-lanes">Lanes</label><input type="number" id="ro-lanes" min="1" max="${Rot.LIMITS.maxLanes}" value="${d.lanes}"></div>
+    () => `<div class="fgrid"><div class="full ro-from"><span class="ro-fromq">Lanes <small class="muted">From the track you race on</small></span><div class="ro-opts">${tracksNow
+      .filter(t => Number(t.lanes) >= 1)
+      .map(t =>
+        optCard(
+          'data-ro-track',
+          t.id,
+          t.name || 'Track',
+          `${Math.min(Rot.LIMITS.maxLanes, Number(t.lanes))} lanes`,
+          d.trackId === t.id,
+          `<span class="ro-lanebar">${Array.from({ length: Math.min(Rot.LIMITS.maxLanes, Number(t.lanes)) }, (_, i) => `<i style="--c:${esc(laneHueRo(i))}"></i>`).join('')}</span>`
+        )
+      )
+      .join('')}${optCard('data-ro-track', '', 'Another number…', '1 to ' + Rot.LIMITS.maxLanes, !trackNow)}</div></div>
+      <div class="full ro-from"><span class="ro-fromq">Participants <small class="muted">From an entry list, or a number</small></span><div class="ro-opts">${entryLists
+        .slice(0, 6)
+        .map(x => optCard('data-ro-entry', x.s.id, `${x.s.name || 'Race setup'} entry list`, `${x.ids.length} drivers`, false))
+        .join('')}${optCard('data-ro-pickdrivers', '1', 'Pick drivers…', 'from the database', false)}</div></div>
+      <div class="field"><label for="ro-n">Participants</label><input type="number" id="ro-n" min="${Rot.LIMITS.minP}" max="${Rot.LIMITS.maxP}" value="${d.participants}"></div>
+      <div class="field"${trackNow ? ' hidden' : ''}><label for="ro-lanes">Lanes</label><input type="number" id="ro-lanes" min="1" max="${Rot.LIMITS.maxLanes}" value="${d.lanes}"></div>
       <div class="field fu fu-cardfield full"><span class="fu-q" id="ro-kindq">The participants are <small class="muted">Drivers are chosen one by one on Home. Teams are chosen on Home too, and the drivers of a team take turns in the heats.</small></span>
         <div class="fu-cards fu-c2" id="ro-kind" role="group" aria-labelledby="ro-kindq">${card('data-pk', 'drivers', 'Drivers', 'Drivers are chosen one by one on Home.', !Rot.isTeams(d))}${card('data-pk', 'teams', 'Teams', 'Teams are chosen on Home too, and the drivers of a team take turns in the heats.', Rot.isTeams(d))}</div></div>
       <div class="field full"><label for="ro-note">Note <span class="muted">(optional)</span></label><input type="text" id="ro-note" value="${esc(d.note)}" maxlength="${Rot.LIMITS.note}"></div></div>`;
@@ -241,7 +290,14 @@ function renderRotationEditor(box) {
           <button type="button" class="btn" id="ro-even"><strong>Even out the lanes</strong><small>Gives out the lanes again so that everybody drives in every lane about equally often. Who races in which heat stays as it is.</small></button></div></details></div></div>
       <div id="ro-grid">${gridHtml()}</div><div id="ro-remarks" class="ro-remarks">${remarksHtml()}</div></div></div>`;
   const howBody = () =>
-    `<div class="fgrid"><div class="wrap field full"><table class="fields heatplan-table rohow"><thead><tr><th>Participant</th><th>Heats</th>${lanes.map(l => `<th>Lane ${l + 1}</th>`).join('')}</tr></thead><tbody id="ro-how">${howHtml(d)}</tbody></table></div></div>`;
+    `<div class="fgrid"><div class="full ro-fairhead" id="ro-fairhead">${fairHead(d)}</div><div class="wrap field full"><table class="fields heatplan-table rohow"><thead><tr><th>Participant</th><th>Heats</th>${lanes
+      .map(
+        l =>
+          `<th style="box-shadow:inset 0 -3px 0 ${esc((typeof HomeStats !== 'undefined' && HomeStats.laneColor ? HomeStats.laneColor(null, l) : '') || '#98a0ab')}">Lane ${l + 1}</th>`
+      )
+      .join(
+        ''
+      )}</tr></thead><tbody id="ro-how">${howHtml(d)}</tbody></table></div><div class="full ro-fairfoot" id="ro-fairfoot">${fairFoot(d)}</div></div>`;
   const groupsBody =
     () => `<div class="fgrid"><p class="muted hint full">A group is some participants who belong together, such as the juniors. Put a group in a heat with the choice in the row of that heat: it takes the lanes in the order of the numbers.</p>
       <div class="field full" id="ro-groups">${groupsHtml()}</div><div class="field full"><button type="button" class="btn" id="ro-addgrp">${I('plus')} Add a group</button></div></div>`;
@@ -329,6 +385,8 @@ function renderRotationEditor(box) {
       put('ro-groups', groupsHtml());
       put('ro-names', namesHtml());
       put('ro-how', howHtml(d));
+      put('ro-fairhead', fairHead(d));
+      put('ro-fairfoot', fairFoot(d));
       const c = $('ro-count');
       if (c) c.textContent = `${d.participants} in all`;
       frame();
@@ -579,6 +637,59 @@ function renderRotationEditor(box) {
       return;
     }
     if (['ro-shufo', 'ro-rev', 'ro-shufl', 'ro-even'].includes(b.id) && $('ro-tools')) $('ro-tools').open = false;
+    if (b.id === 'ro-even2') {
+      apply(Rot.evenLanes(d));
+      return;
+    }
+    // (2.4.0) the lanes of a track (or a number of your own)
+    if (ds.roTrack !== undefined) {
+      const t = ((state.refs && state.refs.tracks) || []).find(x => x.id === ds.roTrack);
+      if (!t) {
+        delete d.trackId;
+        mark();
+        scrolled(() => renderRotationEditor(box));
+        return $('ro-lanes') && $('ro-lanes').focus();
+      }
+      const res = Rot.resize(d, d.participants, Math.min(Rot.LIMITS.maxLanes, Number(t.lanes)));
+      if (res.error) return say(res.error);
+      if (
+        res.dropped > 0 &&
+        !(await Dialog.confirm(
+          `${t.name} has ${t.lanes} lanes. This takes away ${res.dropped} ${res.dropped === 1 ? 'place' : 'places'} that no longer fit. Undo brings ${res.dropped === 1 ? 'it' : 'them'} back.\n\nContinue?`,
+          { ok: 'Take them away', danger: true }
+        ))
+      )
+        return;
+      if (!rotEd || rotEd.draft !== d) return;
+      res.rec.trackId = t.id;
+      return apply(res, true);
+    }
+    // (2.4.0) the participants and their names from an entry list, or drivers picked from the database
+    if (ds.roEntry !== undefined || ds.roPickdrivers !== undefined) {
+      let ids = [];
+      if (ds.roEntry !== undefined)
+        ids = ((state.settings.assignments || {})[ds.roEntry] || [])
+          .map(r => r && r.driverId)
+          .filter(id => id && ((state.refs.drivers || []).find(x => x.id === id) || {}).driverType !== 'virtual'); // (a virtual rival is not a participant)
+      else ids = await rotPickDrivers();
+      if (!rotEd || rotEd.draft !== d || !ids || !ids.length) return;
+      const people = ((state.refs && state.refs.drivers) || []).filter(x => ids.includes(x.id));
+      const names = ids.map(id => (people.find(x => x.id === id) || {}).name || '').slice(0, Rot.LIMITS.maxP);
+      const n = Math.max(Rot.LIMITS.minP, names.length);
+      const res = Rot.resize(d, n, d.lanes);
+      if (res.error) return say(res.error);
+      if (
+        res.dropped > 0 &&
+        !(await Dialog.confirm(
+          `This takes away ${res.dropped} ${res.dropped === 1 ? 'place' : 'places'} of participants who are no longer there. Undo brings ${res.dropped === 1 ? 'it' : 'them'} back.\n\nContinue?`,
+          { ok: 'Take them away', danger: true }
+        ))
+      )
+        return;
+      if (!rotEd || rotEd.draft !== d) return;
+      res.rec.names = Array.from({ length: n }, (_, i) => names[i] || '');
+      return apply(res, true);
+    }
     if (b.id === 'ro-gen') {
       if (
         d.heats.some(h => h.places.length) &&
@@ -692,10 +803,61 @@ function renderRotationEditor(box) {
 }
 // the numbers per participant: how many heats, and how often in which lane
 function howHtml(d) {
+  const f = Rot.fairness(d).uneven; // (2.4.0: a lane never raced in amber, one raced too often in red)
   return Rot.perParticipant(d)
-    .map(
-      (x, p) =>
-        `<tr><td><i class="rodot" style="--pc:${Rot.colorOf(p)}"></i>${esc(Rot.nameOf(d, p))}</td><td class="num">${x.heats}</td>${x.lanes.map(n => `<td class="num">${n}</td>`).join('')}</tr>`
-    )
+    .map((x, p) => {
+      const u = f.find(e => e.p === p);
+      return `<tr><td><i class="rodot" style="--pc:${Rot.colorOf(p)}"></i>${esc(Rot.nameOf(d, p))}</td><td class="num">${x.heats}</td>${x.lanes
+        .map((n, l) => `<td class="num${u && u.none.includes(l) ? ' ro-zero' : u && u.over.includes(l) ? ' ro-over' : ''}">${n}</td>`)
+        .join('')}</tr>`;
+    })
     .join('');
+}
+// (2.4.0) Lane fairness: how many are uneven, the words, and Even out the lanes beside them
+function fairHead(d) {
+  const f = Rot.fairness(d);
+  return `<span class="ro-fairq"><b>Lane fairness</b><small class="muted">How often every participant races in every lane</small></span><span class="ro-fairpill ${f.uneven.length ? 'warn' : 'ok'}">${f.uneven.length ? f.uneven.length + ' not even' : 'Even'}</span>`;
+}
+function fairFoot(d) {
+  const f = Rot.fairness(d);
+  return `<p>${esc(f.text)}</p>${f.uneven.length ? '<button type="button" class="btn primary sm" id="ro-even2">Even out the lanes</button>' : ''}`;
+}
+// (2.4.0) pick drivers for a rotation: the drivers of the database with a tick each, in the app's own window; their ids in order, or null
+function rotPickDrivers() {
+  return new Promise(resolve => {
+    const list = ((state.refs && state.refs.drivers) || []).filter(x => x.driverType !== 'virtual' && !x.retired);
+    const dlg = document.createElement('dialog');
+    dlg.className = 'appdlg ro-pickdlg';
+    dlg.innerHTML = `<h3>Pick the drivers</h3><p class="muted">In the order you tick them: the first is participant 1.</p><div class="ro-picklist">${list
+      .map(x => `<label><input type="checkbox" value="${esc(x.id)}"> ${esc(x.name || 'Driver')}</label>`)
+      .join(
+        ''
+      )}</div><p class="ro-pickcount muted" role="status">None picked</p><div class="row appdlg-buttons"><button type="button" class="btn" data-no>Cancel</button><button type="button" class="btn primary" data-yes>Use these drivers</button></div>`;
+    document.body.appendChild(dlg);
+    const order = [];
+    dlg.querySelector('.ro-picklist').onchange = ev => {
+      const v = ev.target.value;
+      if (ev.target.checked) order.push(v);
+      else order.splice(order.indexOf(v), 1);
+      dlg.querySelector('.ro-pickcount').textContent = order.length ? `${order.length} picked` : 'None picked';
+    };
+    const done = v => {
+      dlg.close();
+      dlg.remove();
+      resolve(v);
+    };
+    dlg.querySelector('[data-no]').onclick = () => done(null);
+    dlg.querySelector('[data-yes]').onclick = () => {
+      if (order.length < Rot.LIMITS.minP) {
+        dlg.querySelector('.ro-pickcount').textContent = `Pick at least ${Rot.LIMITS.minP} drivers.`;
+        return;
+      }
+      done(order.slice());
+    };
+    dlg.addEventListener('cancel', ev => {
+      ev.preventDefault();
+      done(null);
+    });
+    dlg.showModal();
+  });
 }

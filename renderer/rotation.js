@@ -67,7 +67,8 @@
       names,
       groups,
       heats,
-      ...(s.participantsAre === 'teams' ? { participantsAre: 'teams' } : {})
+      ...(s.participantsAre === 'teams' ? { participantsAre: 'teams' } : {}),
+      ...(typeof s.trackId === 'string' && s.trackId ? { trackId: s.trackId.slice(0, 80) } : {}) // (2.4.0: the track its lanes come from)
     };
   }
   const done = r => ({ rec: clean(r, true) });
@@ -545,6 +546,39 @@
       ? Heats.stats(sched, rec.participants, rec.lanes).per
       : Array.from({ length: rec.participants }, () => ({ heats: 0, lanes: Array(rec.lanes).fill(0), meets: 0 }));
   }
+  // (2.4.0) lane fairness: who races a lane more often than the others, and who never races a lane they could have.
+  // A participant is uneven when the lanes differ by more than one heat, or when they race at least as many heats as there are lanes and miss a lane.
+  // -> { uneven: [{ p, over: [lanes], none: [lanes] }], text }
+  function fairness(rec) {
+    const per = perParticipant(rec),
+      L = rec.lanes;
+    const uneven = [];
+    per.forEach((x, p) => {
+      if (!x.heats) return;
+      const max = Math.max(...x.lanes),
+        min = Math.min(...x.lanes),
+        fair = Math.ceil(x.heats / L);
+      const none = x.heats >= L ? x.lanes.map((n, l) => (n ? -1 : l)).filter(l => l >= 0) : [];
+      const over = max - min > 1 || none.length ? x.lanes.map((n, l) => (n > fair ? l : -1)).filter(l => l >= 0) : [];
+      if (over.length || none.length) uneven.push({ p, over, none });
+    });
+    const times = n => (n === 2 ? 'twice' : n + ' times');
+    const list = ls => {
+      const w = ls.map(l => String(l + 1));
+      return w.length > 1 ? 'lanes ' + w.slice(0, -1).join(', ') + ' and ' + w[w.length - 1] : w.length ? 'lane ' + w[0] : '';
+    };
+    const parts = uneven.slice(0, 3).map(u => {
+      const x = per[u.p],
+        bits = [];
+      if (u.over.length) bits.push(`races ${list(u.over)} ${times(x.lanes[u.over[0]])}`);
+      if (u.none.length) bits.push(`never ${list(u.none)}`);
+      return `${nameOf(rec, u.p)} ${bits.join(' and ')}`;
+    });
+    const text = !uneven.length
+      ? 'Every participant races the lanes about equally often.'
+      : parts.join('; ') + (uneven.length > 3 ? `; and ${uneven.length - 3} more` : '') + '.';
+    return { uneven, text };
+  }
   // A colour for each participant (1.16.0), to see who stands where at a glance. It follows the number, nothing of it is saved: ten colours that are far apart (so P1 to P4 look different),
   // then the same ten lighter for P11 to P20, then darker for P21 to P30, and so on. The name or number is always on the chip as well.
   const PALETTE = ['#4c9aff', '#ff7a3d', '#3ecf8e', '#f2b705', '#a46bff', '#e5484d', '#1fb5ad', '#ff6fb5', '#9bd13e', '#b07a4a'];
@@ -606,6 +640,7 @@
     matchDrivers,
     check,
     perParticipant,
+    fairness,
     describe,
     colorOf,
     PALETTE

@@ -46,6 +46,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Plugged In](#plugged-in) | The Home cards for a USB device that was plugged in: why they ask, a failed connect on the card, the DS model, Undo | Home |
 | [Profile Cards](#profile-cards) | Balance of Power and Time Tokens as named profiles: the Club default and profile cards with Used by; the editor of a profile as its window | Race Setup › Balance of Power, Time Tokens |
 | [Entry Classes](#entry-classes) | The class of an entry picked in its lane on Home, the class counts, a virtual rival added in a lane | Home (Start a race) |
+| [Rotation Board](#rotation-board) | The rotation editor's lanes from a track, participants from an entry list, and Lane fairness | Race Setup › Rotation Setups |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1303,6 +1304,24 @@ html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:c
 .mb-strip{display:flex;align-items:center;gap:18px;height:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%)}
 ```
 
+## Rotation Board
+
+The rotation editor (`renderer/rotationui.js`, `rotation.js` fairness; styles under `.ro-opt`, `.ro-fair*`, `.ro-mismatch`).
+
+- **Size**: *Lanes · From the track you race on* as option tiles (`.ro-opt`: the name, the lanes in Roboto Mono, a bar of lane colours), the chosen one with
+  the accent ring, and *Another number…* for the number box of before; *Participants · From an entry list, or a number*: a tile per race setup entry list
+  (*Check race entry list · 3 drivers*) and *Pick drivers…* (a window with a tick per driver, in the order ticked).
+- **How often** opens with *Lane fairness* and a pill (*2 not even* in amber, *Even* in green); the table has a lane-colour underline per lane, a lane never
+  raced in amber and one raced too often in red; under it the words (*Anna races lane 1 4 times and never lanes 2, 3 and 4*) and *Even out the lanes*.
+- **The card**: an amber note when a race setup that uses the rotation races on a track with fewer lanes.
+
+```css
+html .ro-opt.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+html .ro-lanebar i{width:22px;height:6px;border-radius:3px;background:var(--c)}
+html .rohow td.num.ro-zero{color:#f2b705}
+html .rohow td.num.ro-over{color:#ff8a8d}
+```
+
 ## Entry Classes
 
 Home's lanes with a Multi-Class System (`renderer/landing.js`, `multiclass.js`; styles `.hs-cpick`, `.hs-classnote`, `.hs-classchip`). The class of every
@@ -2411,3 +2430,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Plugged In | New: the detected hardware cards on Home say why they ask, keep a failed connect on the card, take the DS model, and can undo Not timing hardware |
 | 2026-11 | Profile Cards | New: Balance of Power and Time Tokens as named profiles a race setup chooses; the Club default keeps the settings of before |
 | 2026-11 | Entry Classes | New: the Multi-Class class of an entry picked in its lane on Home, class counts, copy to the system; a virtual rival added in a lane with its reason there |
+| 2026-11 | Rotation Board | New: rotation lanes from a track, participants from an entry list or picked drivers, Lane fairness with the words and Even out, a lane warning on the card |

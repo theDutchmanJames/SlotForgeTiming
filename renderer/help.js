@@ -380,6 +380,7 @@ const Help = (() => {
           note: 'How the heats are planned',
           body: `
         <ul>
+          <li>A <b>rotation setup</b> takes its lanes from a track and its participants from a race setup's entry list (or drivers you pick). <b>Lane fairness</b> shows who races a lane too often or never, with Even out the lanes.</li>
           <li><b>How the heats are planned</b> has four choices: you choose the number of heats; <b>every driver races the same number of heats</b> (you say how many); <b>round robin</b>, where every driver meets every other driver (with <i>Give everyone the same number of heats</i> on, a few heats are added so nobody races less than the busiest driver); or <b>lane rotation</b>, where every driver races once in every lane. In every plan the lanes are shared as evenly as possible.</li>
           <li>To make the plan yourself, choose a <b>Rotation setup</b> in the race setup. Then the settings that plan the heats are not used.</li>
           <li><b>Who races together</b> can use the latest qualifying on the track: the fastest drivers together (the best heat last), or every heat with fast and slow drivers mixed.</li>
