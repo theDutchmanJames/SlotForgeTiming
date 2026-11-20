@@ -47,13 +47,13 @@ const Help = (() => {
           id: 'sqlitestorage',
           title: 'SQLite storage and conversion',
           note: 'Choose when to convert an existing database',
-          body: `<ul><li>New installations use SQLite automatically. Existing JSON users can choose <b>Convert and continue</b>, <b>Remind me in a week</b>, or <b>Keep using JSON</b>. Closing the prompt postpones it for a week. Keeping JSON stops reminders.</li><li>You can still convert under <b>App Settings → General → Database storage → Convert to SQLite and restart</b>. Finish races and Paddock operations first.</li><li>Timing verifies a separate copy before switching. Your original JSON database, settings and recovery files are retained. Space is estimated before conversion/restore; keep room for originals and recovery copies. Large collections take longer.</li><li>SQLite shares identical media bodies and uses bounded list previews; full views and exports keep originals. Database storage shows shared media savings and reusable pages; deleting pictures may not shrink the file.</li><li>After conversion, new changes go only to SQLite. Old JSON files no longer represent your current database. See <b>SQLite backups and recovery</b> before restoring or downgrading.</li></ul>`
+          body: `<ul><li>New installations use SQLite automatically. Existing JSON users can choose <b>Convert and continue</b>, <b>Remind me in a week</b>, or <b>Keep using JSON</b>. Closing the prompt postpones it for a week. Keeping JSON stops reminders.</li><li>You can still convert under <b>App Settings → Backups and storage → Database storage → Convert to SQLite and restart</b>. Finish races and Paddock operations first.</li><li>Timing verifies a separate copy before switching. Your original JSON database, settings and recovery files are retained. Space is estimated before conversion/restore; keep room for originals and recovery copies. Large collections take longer.</li><li>SQLite shares identical media bodies and uses bounded list previews; full views and exports keep originals. Database storage shows shared media savings and reusable pages; deleting pictures may not shrink the file.</li><li>After conversion, new changes go only to SQLite. Old JSON files no longer represent your current database. See <b>SQLite backups and recovery</b> before restoring or downgrading.</li></ul>`
         },
         {
           id: 'sqlitebackups',
           title: 'SQLite backups and recovery',
           note: 'Keep recovery copies and restore safely',
-          body: `<ul><li>Under <b>App Settings → Import and Export → Backups</b>, <b>For large collections</b>, choose a <b>native backup folder</b>. Keep the entire folder together. JSON compatibility backups remain available for smaller collections, with a runtime limit of about 512 MiB.</li><li>Restoring restarts Timing, retains the previous SQLite generation and a safety snapshot, and selects a verified copy. Allow disk space for all copies.</li><li>Failed conversion or restore offers to close and retry, or cancel and reopen the previous database. Interrupted first installation retries next launch; it has no previous database. A damaged selected database never silently falls back to older JSON.</li><li>Before downgrading, export a current JSON compatibility backup within its size limit and restore it in a compatible build. Native backup folders require SQLite-capable Timing. Keep the whole profile when investigating recovery; do not delete storage markers or copy an open database file alone.</li></ul>`
+          body: `<ul><li>Under <b>App Settings → Backups and storage → Backups</b>, <b>For large collections</b>, choose a <b>native backup folder</b>. Keep the entire folder together. JSON compatibility backups remain available for smaller collections, with a runtime limit of about 512 MiB.</li><li>Restoring restarts Timing, retains the previous SQLite generation and a safety snapshot, and selects a verified copy. Allow disk space for all copies.</li><li>Failed conversion or restore offers to close and retry, or cancel and reopen the previous database. Interrupted first installation retries next launch; it has no previous database. A damaged selected database never silently falls back to older JSON.</li><li>Before downgrading, export a current JSON compatibility backup within its size limit and restore it in a compatible build. Native backup folders require SQLite-capable Timing. Keep the whole profile when investigating recovery; do not delete storage markers or copy an open database file alone.</li></ul>`
         },
         {
           id: 'sqliteperformance',
@@ -124,7 +124,7 @@ const Help = (() => {
           id: 'paddock',
           title: 'Paddock',
           note: 'The shared library, a Dealership, results after each race, Fix it',
-          body: `<ul><li>Open <b>App Settings → Connections → Paddock</b>. The headline says how things stand; the cards show the <b>Shared library</b> on this computer, the <b>Dealership</b> on the network and the <b>Results</b>.</li>
+          body: `<ul><li>Open <b>App Settings → Paddock</b>. The headline says how things stand; the cards show the <b>Shared library</b> on this computer, the <b>Dealership</b> on the network and the <b>Results</b>.</li>
           <li><b>Fix it</b> connects to the Dealership again, sends what waits, then opens the race that needs a look.</li>
           <li>Each race is <b>Delivered</b>, <b>Waiting</b> (sent by itself later), <b>Needs a look</b> (open it, or <b>Leave out</b> a race never shared) or <b>Stays here</b> (Time Token sessions, older races). Corrections replace earlier results.</li>
           <li><b>Connect</b>: choose a Dealership found on your network (or type its address) and enter its <b>Dealership password</b> (case-sensitive). The check shows each step.</li>
@@ -172,7 +172,7 @@ const Help = (() => {
           id: 'paddocktransfers',
           title: 'Share existing Timing cars',
           note: 'Paddock reviews new cars and links before applying them',
-          body: `<ul><li>For an older local-service connection, open <b>App Settings → Connections → Paddock → Older connections and repair → Share existing Timing cars</b>. Select up to 25 cars. For one selected car, you can choose an existing physical Paddock car to link instead. Matching names do not prove physical identity.</li><li>Paddock's Review screen approves or rejects each car. <b>Awaiting Paddock approval</b> means received, not linked. Links cannot overwrite Paddock's existing fields.</li><li>Timing keeps the exact request before sending and resumes interrupted transfers. Original car IDs, race history and simulation settings stay in Timing.</li><li>If a Timing car changes before approval, choose <b>Review changed car</b> before adopting Paddock's specifications. <b>Cancel pending review</b> cancels only undecided items; approved cars remain intact.</li><li>Transfers include basic specifications, race class and one main picture within the 8 MiB request limit. Extra pictures, custom fields, history and simulation settings are not transferred. Reduce an oversized main picture before making a new request; Timing never silently removes it.</li></ul>`
+          body: `<ul><li>For an older local-service connection, open <b>App Settings → Paddock → Older connections and repair → Share existing Timing cars</b>. Select up to 25 cars. For one selected car, you can choose an existing physical Paddock car to link instead. Matching names do not prove physical identity.</li><li>Paddock's Review screen approves or rejects each car. <b>Awaiting Paddock approval</b> means received, not linked. Links cannot overwrite Paddock's existing fields.</li><li>Timing keeps the exact request before sending and resumes interrupted transfers. Original car IDs, race history and simulation settings stay in Timing.</li><li>If a Timing car changes before approval, choose <b>Review changed car</b> before adopting Paddock's specifications. <b>Cancel pending review</b> cancels only undecided items; approved cars remain intact.</li><li>Transfers include basic specifications, race class and one main picture within the 8 MiB request limit. Extra pictures, custom fields, history and simulation settings are not transferred. Reduce an oversized main picture before making a new request; Timing never silently removes it.</li></ul>`
         },
         {
           id: 'paddockreconcile',
@@ -190,7 +190,7 @@ const Help = (() => {
           id: 'paddockfiles',
           title: 'Import Paddock cars or link them live?',
           note: 'Independent file copies versus shared car records',
-          body: `<ul><li><b>Link live:</b> use <b>Database → Slotcars → Dealership Cars</b> to refresh specifications and return finalized results to the original Paddock car. Choose an existing Timing car when linking to preserve its local race history.</li><li><b>Import copies:</b> in Paddock 0.18.0 or later, export selected cars using <b>SlotForge Timing</b> format. In Timing, open <b>App Settings → Import and Export → Import</b>, choose the JSON file and confirm. No network connection is needed.</li><li>Supported specifications, race classes, the main picture and optional extra pictures come across. Current motor, rear tyres, gearing and weight are included where present. Saved setups, private records and performance history are not transferred.</li><li>Every file import creates new cars and class definitions with new IDs. Reimporting creates additional copies; it does not update existing cars, establish a live link or send results back.</li></ul>`
+          body: `<ul><li><b>Link live:</b> use <b>Database → Slotcars → Dealership Cars</b> to refresh specifications and return finalized results to the original Paddock car. Choose an existing Timing car when linking to preserve its local race history.</li><li><b>Import copies:</b> in Paddock 0.18.0 or later, export selected cars using <b>SlotForge Timing</b> format. In Timing, open <b>App Settings → Backups and storage → Import</b>, choose the JSON file and confirm. No network connection is needed.</li><li>Supported specifications, race classes, the main picture and optional extra pictures come across. Current motor, rear tyres, gearing and weight are included where present. Saved setups, private records and performance history are not transferred.</li><li>Every file import creates new cars and class definitions with new IDs. Reimporting creates additional copies; it does not update existing cars, establish a live link or send results back.</li></ul>`
         },
         {
           id: 'database',
@@ -239,10 +239,10 @@ const Help = (() => {
         {
           id: 'settingsnavigation',
           title: 'Finding your App Settings',
-          note: 'Page rails and section folders',
+          note: 'The Overview, and pages grouped by task',
           body: `<ul>
-          <li>General, App Theme, Race Director, Network, and Import and Export use the same page frame as the timing interfaces. Pick a section in the side rail to open its folder. On narrow screens, those section buttons move above the folders.</li>
-          <li>Folders keep their open state while you work, including when a setting redraws the page. General and Import and Export also offer <b>Open all</b> and <b>Close all</b>.</li>
+          <li>App Settings opens on the <b>Overview</b>: a tile for every page, grouped by task (<b>Look and feel</b>, <b>Race night</b>, <b>Your data</b>, <b>This computer</b>), saying how it stands; an amber dot asks for a look. The Race Director password is under <b>Race Director, Phones and tablets</b>; Database storage under <b>Backups and storage</b>.</li>
+          <li>A page has a side list of its sections; pick one to open it. The settings search, Find and Help links go to where a setting is now.</li>
           <li>Settings save as you change them. Import, export and backup actions still need their own buttons. Import adds copies; restoring a complete backup replaces the database and asks for confirmation.</li>
         </ul>`
         },
@@ -534,7 +534,7 @@ const Help = (() => {
           note: 'Lights, flags and the first lap',
           body: `
         <ul>
-          <li>A fresh install shows the <b>setup guide</b> on Home: track, drivers, cars (from the shared library too), timing hardware (connect it right there), lanes and sensors, commentary, and a 3-lap test race. A page it sends you to has <b>Back to the guide</b>; App Settings, General starts it again.</li>
+          <li>A fresh install shows the <b>setup guide</b> on Home: track, drivers, cars (from the shared library too), timing hardware (connect it right there), lanes and sensors, commentary, and a 3-lap test race. A page it sends you to has <b>Back to the guide</b>; App Settings, Updates and help starts it again.</li>
           <li>Press <b>Space</b> (or Start). The five lights come on one by one, then go out after a random time between the shortest and longest <b>Start Lights Off Timer</b> values. The race starts as the lights go out.</li>
           <li>Lights follow the racing flags: green while racing, yellow under yellow and red under a red flag.</li>
           <li><b>After a red flag</b> is either Start immediately or Countdown Timer. A red-flag interruption marks the affected lap invalid, so it cannot make a fastest lap or record.</li>
@@ -1196,7 +1196,7 @@ const Help = (() => {
           note: 'Is the app slow? Measure it',
           body: `
         <ul>
-          <li>Open <b>App Settings, General, Performance</b>. The report there updates every second while the folder is open: the frames a second the window draws, the slowest frame, how long a screen update takes, the CPU the app uses (window, graphics and the core of the app), how long the core was stuck, how long the race save takes, and whether the window is drawn by the graphics card or by the processor. On a Raspberry Pi it also shows the model, the temperature and the processor speed.</li>
+          <li>Open <b>App Settings, Performance</b>. The report there updates every second while the folder is open: the frames a second the window draws, the slowest frame, how long a screen update takes, the CPU the app uses (window, graphics and the core of the app), how long the core was stuck, how long the race save takes, and whether the window is drawn by the graphics card or by the processor. On a Raspberry Pi it also shows the model, the temperature and the processor speed.</li>
           <li><b>Copy report</b> puts it on the clipboard, to paste in a message. It also names the widgets and the parts of a screen update that take the most time, the worst figures since the race started, a row every 30 seconds (does the app get slower during a race?), when the core was stuck and which windows are open (the Live Race tab is a second window). Switch the line on before the race starts; copy the report during the race or after it.</li>
           <li>Tick <b>Show the Performance line on the race screen</b> for a small line with the same figures under the buttons of the race screen. It is off to begin with, and costs a little itself.</li>
           <li>Nothing is measured while the folder is closed and the line is off. On a slow computer, <b>Depth</b> Flat (Look and feel) is lighter to draw, and so is the tickbox <b>Draw the changing text of each widget on its own layer</b> (on to begin with; the report says which look you have).</li>
@@ -1241,7 +1241,7 @@ const Help = (() => {
           note: 'Watch and control from the wifi',
           body: `
         <ul>
-          <li>In <b>App Settings → Connections → Race Sharing</b>, tick <b>Share on my network</b>. An address and a QR code appear; scan the code with a phone or tablet on the same wifi.</li>
+          <li>In <b>App Settings → Share the race</b>, tick <b>Share on my network</b>. An address and a QR code appear; scan the code with a phone or tablet on the same wifi.</li>
           <li>The browser shows the Live Race pages. It can only watch, apart from the Race Director and Tokens pages.</li>
           <li>Those two need the <b>password</b> you type in the same place. With no password they stay closed to other devices.</li>
           <li>The first time, Windows may ask whether the app may use the network: allow it on private networks. On a Mac the question is whether the app may accept incoming network connections: choose Allow.</li>
@@ -1357,7 +1357,7 @@ const Help = (() => {
           title: 'Content Packs and plugins',
           note: 'Share collections; manage trusted extensions',
           body: `<ul>
-        <li>Open <b>App Settings → Import and Export → Content Packs</b>. Choose a <b>.slotforge-pack</b>, review its author and contents, then install. Packs contain existing layouts, widget compositions, charts, leaderboards, image/audio sets, colour palettes and supported Race System presets. Scripts, CSS, HTML and remote assets are rejected.</li>
+        <li>Open <b>App Settings → Content Packs</b>. Choose a <b>.slotforge-pack</b>, review its author and contents, then install. Packs contain existing layouts, widget compositions, charts, leaderboards, image/audio sets, colour palettes and supported Race System presets. Scripts, CSS, HTML and remote assets are rejected.</li>
         <li><b>Add to my content</b> imports editable copies with their dependencies. Find them in the usual editors. <b>Apply theme</b> changes your Custom palette only when you choose it.</li>
         <li>Disable or remove a pack to stop using its library. Existing copies, edits and applied themes remain. An update refreshes the library only; one previous version is available for rollback.</li>
         <li><b>Create and share</b> exports selected content and dependencies. Personal database links must be removed first. Export installed packs separately when backing them up; database backups contain your copied content, not the library. Pack changes are locked during a race and results review.</li>
@@ -1394,7 +1394,7 @@ const Help = (() => {
           note: 'Share items and keep a safe copy',
           body: `
         <ul>
-          <li>App Settings, <b>Import and Export</b>, <b>Backups</b>: the last backup and the next one, and <b>Your backups</b>: every backup (automatic, by hand, for safety) with what it holds and <b>Restore…</b>. A restore shows what is lost and first saves what you have now as a backup <b>Before a restore</b>.</li>
+          <li>App Settings, <b>Backups and storage</b>, <b>Backups</b>: the last backup and the next one, and <b>Your backups</b>: every backup (automatic, by hand, for safety) with what it holds and <b>Restore…</b>. A restore shows what is lost and first saves what you have now as a backup <b>Before a restore</b>.</li>
           <li><b>Back up now</b> takes a note (Before club night); backups by hand are never removed. Keep the folder on another drive or a USB stick.</li>
           <li><b>Export</b>: find and tick items; <b>Your file</b> lists them with what they use.</li>
           <li><b>Import</b> marks every item <b>New</b> or <b>Already here</b>: <b>Add a copy</b>, <b>Replace mine</b> or <b>Skip</b>. A backup is made first.</li>

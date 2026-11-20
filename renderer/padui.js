@@ -26,8 +26,19 @@ function renderPadSettings(box) {
       <button type="button" class="btn" data-padlayout="v" aria-pressed="${lay === 'v'}">Vertical</button></div>
     <span class="muted hint">Horizontal: a column for every value, with the + buttons on top, the values in the middle and the − buttons below. Vertical: a row for every value, [+] value [−]. This is kept on this device.</span>
     </section><section data-settings-group="preview"><h3>Preview</h3>
-    <div id="pad-preview" inert aria-hidden="true">${AdjustPad.padsHtml(S, {})}</div></section>`;
+    <div id="pad-preview" inert aria-hidden="true">${AdjustPad.padsHtml(S, {})}</div></section>${typeof netAccessHtml === 'function' ? netAccessHtml() : ''}`;
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'director');
+  // (2.4.0, Settings Hub) Phones and tablets: the password and pairing a phone (they were Director access under Connections)
+  if (typeof bindNetAccess === 'function') bindNetAccess();
+  if (box.addEventListener && !box._goBound) {
+    box._goBound = true;
+    box.addEventListener('click', ev => {
+      const g = ev.target.closest && ev.target.closest('[data-settings-go]');
+      if (!g) return;
+      state.settingsSub = g.dataset.settingsGo;
+      renderSettings();
+    });
+  }
   const preview = () => {
     $('pad-preview').innerHTML = AdjustPad.padsHtml(state.settings || {}, {});
   };

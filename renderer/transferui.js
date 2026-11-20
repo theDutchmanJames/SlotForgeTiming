@@ -78,7 +78,7 @@ const ORDER_DEPS = [
 const trLabel = (e, r) => (e === 'sessions' ? [r.setupName, r.date].filter(Boolean).join(' · ') || '(session)' : titleOf(e, r));
 const trKind = (e, n) => ((state.schema[e] && (n === 1 ? state.schema[e].label : state.schema[e].plural)) || e).toLowerCase();
 
-const TR_FOLDERS = ['backups', 'export', 'import'];
+const TR_FOLDERS = ['backups', 'export', 'import', 'storage'];
 // ---- words of the backups (pure, for the tests too) ----
 const abSize = n =>
   n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' kB';
@@ -455,6 +455,8 @@ async function renderTransferSettings(box) {
         : ''
     }<p class="muted tr-msg2" role="status">${pending ? '' : esc(trState.msg)}</p></div>`;
   const bad = abSt && abSt.ok === false;
+  // (2.4.0, Settings Hub) Database storage, from General: the format, where the file is, the room it takes
+  const stor = typeof settingsStorageHtml === 'function' ? await settingsStorageHtml().catch(() => null) : null;
   box.innerHTML =
     folderTools +
     tf(
@@ -471,9 +473,19 @@ async function renderTransferSettings(box) {
       backupsBody
     ) +
     tf('export', 'Export', picked() ? picked() + ' ticked' : 'choose what to save in a file', exportBody) +
-    tf('import', 'Import', pending ? 'a file is waiting' : 'add or replace items from a file', importBody);
+    tf('import', 'Import', pending ? 'a file is waiting' : 'add or replace items from a file', importBody) +
+    (stor
+      ? tf(
+          'storage',
+          'Database storage',
+          stor.backend === 'sqlite' ? 'SQLite' : 'JSON',
+          `<div class="bv-storage" data-storage-body>${stor.html}</div>`
+        )
+      : '');
   if (shared && box.querySelector('#bk-open')) box.querySelector('#bk-open').id = 'bk-library-restore';
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'transfer');
+  if (stor && typeof GeneralPage !== 'undefined') GeneralPage.storageOn(box.querySelector('[data-storage-body]'));
+  if (stor && typeof settingsStorageBind === 'function') settingsStorageBind();
   if (typeof TransferViews !== 'undefined') TransferViews.attach(box, 'items');
   folderWire(box);
   const $ = id => document.getElementById(id),

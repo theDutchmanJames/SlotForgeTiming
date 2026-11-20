@@ -26,13 +26,18 @@ const GeneralPage = (() => {
       .replace(/\s*\(.*\)\s*$/, '')
       .trim();
 
-  function build(box) {
+  // only (2.4.0, Settings Hub): the topics this page shows (Display and units: look, units, pictures; Home and club; Performance; Updates and help);
+  // the other topics are built too, out of sight, so every control keeps its handlers and the settings search can find it
+  let shownTopics = TOPICS.map(t => t[0]);
+  const PAGE_NAMES = { look: 'Display and units', home: 'Home and club', performance: 'Performance', updates: 'Updates and help' };
+  function build(box, only) {
     if (!box || box.nodeType !== 1) return;
     const get = id => box.querySelector('#' + id),
       fieldOf = id => get(id) && get(id).closest('.field'),
       S = (typeof state !== 'undefined' && state.settings) || {};
     if (!get('uiscale')) return;
-    if (!TOPICS.some(t => t[0] === topic)) topic = 'look';
+    shownTopics = Array.isArray(only) && only.length ? only.filter(id => TOPICS.some(t => t[0] === id)) : TOPICS.map(t => t[0]);
+    if (!shownTopics.includes(topic)) topic = shownTopics[0] || 'look';
     const shell = box.closest('.custshell');
     if (shell) shell.classList.add('gs-dual');
 
@@ -54,10 +59,12 @@ const GeneralPage = (() => {
     const rail = el(
       'nav',
       'gs-rail',
-      `<div class="gs-railtitle">General</div>${TOPICS.map(
-        ([id, name, icon]) =>
-          `<button type="button" class="gs-ri" data-gtopic-btn="${id}" aria-pressed="${id === topic}">${ico(icon)}<span><b>${esc(name)}</b><small>${esc(status[id] || '')}</small></span></button>`
-      ).join('')}`
+      `<div class="gs-railtitle">${esc(PAGE_NAMES[shownTopics[0]] || 'General')}</div>${TOPICS.filter(t => shownTopics.includes(t[0]))
+        .map(
+          ([id, name, icon]) =>
+            `<button type="button" class="gs-ri" data-gtopic-btn="${id}" aria-pressed="${id === topic}">${ico(icon)}<span><b>${esc(name)}</b><small>${esc(status[id] || '')}</small></span></button>`
+        )
+        .join('')}`
     );
     rail.setAttribute('aria-label', 'General topics');
     const canvas = el('div', 'gs-canvas');
@@ -280,48 +287,10 @@ const GeneralPage = (() => {
       }
       rep.append(R('', '', [get('perfmsg'), get('perfcopy')].filter(Boolean), { cls: 'ss-actions' }));
     }
-    // Database storage: the format with its state, the file with a copy button, then the three numbers in one row
+    // Database storage (2.4.0, Settings Hub: on Backups and storage now; storageView draws it there)
     {
       const body = box.querySelector('[data-folder="general:data"] .fbody');
-      const wrap = el('div', 'ss-storage'),
-        txt = e => String((e && e.textContent) || '').trim();
-      if (body) {
-        const fmt = txt(body.querySelector('.row strong')),
-          code = body.querySelector('code'),
-          paras = [...body.querySelectorAll(':scope > p')].filter(
-            p => !p.querySelector('code') && p.id !== 'storagemsg' && !p.closest('.gs-stats')
-          ),
-          about = paras.find(p => !p.classList.contains('muted')),
-          stats = body.querySelector('.gs-stats'),
-          note = paras.find(p => p.classList.contains('muted'));
-        const pill = el('span', 'ss-pill ok', esc(fmt || 'Database'));
-        const copy = el('button', 'btn ghost', 'Copy');
-        copy.type = 'button';
-        copy.onclick = async () => {
-          try {
-            await navigator.clipboard.writeText(txt(code));
-            copy.textContent = 'Copied';
-            setTimeout(() => (copy.textContent = 'Copy'), 1500);
-          } catch {
-            /* the clipboard is not available */
-          }
-        };
-        if (code) code.classList.add('ss-path');
-        group(wrap, 'Where it is saved', '', [
-          R('Format', '', [pill, get('sqliteactivate')].filter(Boolean), { hint: about ? [about] : [] }),
-          code ? R('File', '', [code, copy]) : null
-        ]);
-        if (stats) {
-          wrap.append(el('h4', 'ss-gh', 'Room it takes'));
-          wrap.append(stats);
-        }
-        if (note) {
-          note.classList.add('ss-foot');
-          wrap.append(note);
-        }
-        if (get('storagemsg')) wrap.append(get('storagemsg'));
-      }
-      sections.storage.append(wrap);
+      if (body) sections.storage.append(storageView(body, R, group));
     }
     // Updates and help
     {
@@ -349,9 +318,68 @@ const GeneralPage = (() => {
       if (b) show(b.dataset.gtopicBtn);
     };
   }
+  // Database storage: the format with its state, the file with a copy button, then the three numbers in one row. body: the part drawn by
+  // settingsStorageHtml (app.js); R and group: how a row and a group of the sheet are made (the ones of build, or of storageOn)
+  function storageView(body, R, group) {
+    const wrap = el('div', 'ss-storage'),
+      txt = e => String((e && e.textContent) || '').trim();
+    if (body) {
+      const fmt = txt(body.querySelector('.row strong')),
+        code = body.querySelector('code'),
+        paras = [...body.querySelectorAll(':scope > p')].filter(
+          p => !p.querySelector('code') && p.id !== 'storagemsg' && !p.closest('.gs-stats')
+        ),
+        about = paras.find(p => !p.classList.contains('muted')),
+        stats = body.querySelector('.gs-stats'),
+        note = paras.find(p => p.classList.contains('muted'));
+      const pill = el('span', 'ss-pill ok', esc(fmt || 'Database'));
+      const copy = el('button', 'btn ghost', 'Copy');
+      copy.type = 'button';
+      copy.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(txt(code));
+          copy.textContent = 'Copied';
+          setTimeout(() => (copy.textContent = 'Copy'), 1500);
+        } catch {
+          /* the clipboard is not available */
+        }
+      };
+      if (code) code.classList.add('ss-path');
+      group(wrap, 'Where it is saved', '', [
+        R('Format', '', [pill, body.querySelector('#sqliteactivate')].filter(Boolean), { hint: about ? [about] : [] }),
+        code ? R('File', '', [code, copy]) : null
+      ]);
+      if (stats) {
+        wrap.append(el('h4', 'ss-gh', 'Room it takes'));
+        wrap.append(stats);
+      }
+      if (note) {
+        note.classList.add('ss-foot');
+        wrap.append(note);
+      }
+      const msg = body.querySelector('#storagemsg');
+      if (msg) wrap.append(msg);
+    }
+    return wrap;
+  }
+  // (2.4.0, Settings Hub) the storage drawn in another page (Backups and storage): the same rows as in General
+  function storageOn(host) {
+    if (!host || host.nodeType !== 1 || typeof SettingsSheet === 'undefined') return;
+    const K = SettingsSheet;
+    const R = (title, desc, controls, o = {}) => K.row({ title, desc, hint: o.hint || [], ctl: [].concat(controls), cls: o.cls || '' });
+    const group = (into, title, note, rows) => {
+      if (title) into.append(el('h4', 'ss-gh', `${esc(title)}${note ? `<span>${esc(note)}</span>` : ''}`));
+      const sh = el('div', 'ss-sheet');
+      rows.filter(Boolean).forEach(r => sh.append(r));
+      into.append(sh);
+      return sh;
+    };
+    const wrap = storageView(host, R, group);
+    host.replaceChildren(wrap);
+  }
   // show a topic (also used by the settings search: a setting found in another topic opens that topic first)
   function show(id) {
-    if (!TOPICS.some(t => t[0] === id)) return;
+    if (!shownTopics.includes(id)) return;
     topic = id;
     document.querySelectorAll('.gs-topic').forEach(s => (s.hidden = s.dataset.gtopic !== id));
     document.querySelectorAll('[data-gtopic-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gtopicBtn === id)));
@@ -360,7 +388,7 @@ const GeneralPage = (() => {
     const c = document.querySelector('.gs-canvas');
     if (c && c.scrollIntoView && c.getBoundingClientRect && c.getBoundingClientRect().top < 0) c.scrollIntoView({ block: 'start' });
   }
-  return { build, show, TOPICS };
+  return { build, show, storageOn, TOPICS };
 })();
 
 // (2.4.0) the Double Rail for the other pages of App Settings. Every page keeps drawing itself as it always did (its own tabs, the sheet with its
@@ -370,7 +398,11 @@ const GeneralPage = (() => {
 const SettingsRail = (() => {
   const PAGES = {
     theme: { lead: 'The colours of the app and of the Live Race pages.' },
-    director: { lead: 'How the Race Director looks, and what its buttons add or take away.' },
+    director: { lead: 'How the Race Director looks, what its buttons do, and its page on a phone.' },
+    // (2.4.0, Settings Hub) the pages that were tabs or views of another page
+    sharing: { lead: 'Phones, tablets and other computers that follow the race.' },
+    paddock: { lead: 'SlotForge Paddock: the shared car library and the Dealership.' },
+    packs: { lead: 'Named collections of layouts, widgets and more, with versions.' },
     calculations: {
       lead: 'How pace is measured and what every racing system adds.',
       tabs: '.calc-rail button',
@@ -389,7 +421,7 @@ const SettingsRail = (() => {
         return !!dev && !(state.settings && state.settings.hwDiagnostics) && dev.diag.includes(id);
       }
     },
-    transfer: { lead: 'Backups, sharing items, and content packs.', tabs: '.transfer-views > button', tabsLabel: 'Views' },
+    transfer: { lead: 'Your backups, items to share, and where the data is kept.' },
     plugins: { lead: 'Extra features you install yourself.' }
   };
   const active = new Map(); // page (and tab) -> the section that is shown

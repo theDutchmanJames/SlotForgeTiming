@@ -204,6 +204,7 @@ const TransferViews = (() => {
     if (!box || box.nodeType !== 1) return;
     select(mode);
     box.querySelector(':scope > .transfer-views')?.remove();
+    if (typeof SETTINGS_TABS !== 'undefined' && SETTINGS_TABS.some(t => t[0] === 'packs')) return; // (2.4.0, Settings Hub: Content Packs is a page of its own)
     const nav = document.createElement('div');
     nav.className = 'transfer-views';
     nav.setAttribute('role', 'group');

@@ -263,7 +263,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
         'Racing Records',
         'Token Records',
         'Results and Records',
-        'Import and Export'
+        'Backups and storage'
       ]).length === 0
   );
   {
@@ -1617,7 +1617,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
     '1.60.0: the help has a folder Performance (with the Making it yours folders) that says where the report is, what it shows, the Copy report button, the line on the race screen (off to begin with), and that nothing is measured while both are off',
     !!fo &&
       [
-        'App Settings, General, Performance',
+        'App Settings, Performance',
         'Copy report',
         'Show the Performance line on the race screen',
         'frames a second',

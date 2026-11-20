@@ -52,6 +52,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Driver Sheet](#driver-sheet) | The driver editor: On the record tiles, the callsign in three letter boxes, Racing or Retired; the Delete question with Retire and Merge first | Database › Drivers › Edit, Delete |
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
+| [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1398,6 +1399,27 @@ html .bv-kind i{width:7px;height:7px;border-radius:50%;background:var(--c)}
 html .tr-k.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
 ```
 
+## Settings Hub
+
+App Settings grouped by task (`renderer/app.js` SETTINGS_TABS, SETTINGS_GROUPS, settingsRoute; `renderer/settingsoverview.js`; styles under `.so-`).
+
+- **The side list**: *Overview* first, then the groups as small caps labels: **Look and feel** (Display and units · App Theme · Home and club),
+  **Race night** (Timing Hardware · Race Director · Share the race · Calculations), **Your data** (Backups and storage · Paddock · Content Packs ·
+  Plugins), **This computer** (Performance · Updates and help), Help.
+- **The Overview** (`.so`): *App Settings* in Barlow italic caps and one line; a band of pills (`.so-pill`, a coloured dot: *Ready for race night*
+  green or *Not ready* amber, *N things to look at* amber with what); then a group per task (`.so-grp`: the title in Barlow, the note muted) with a
+  tile per page (`.so-t`: a 40 px icon tile, the name, the state in Roboto Mono, a green dot when set, an amber dot and an amber note when it asks for
+  a look: *No timing hardware chosen*, *The backups are on the same drive*). A tile opens its page.
+- **What moved**: General's topics are pages of their own (Display and units holds Look and size, Units and Picture quality); Database storage is a
+  section of Backups and storage, drawn as it was in General; the Race Director password and Pair a phone are **Phones and tablets** on the Race Director
+  page; Share the race keeps sharing, port and devices; Paddock and Content Packs are pages. An old link, search word or Help path opens the new place.
+
+```css
+html .so-tiles{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+html .so-dot.warn{background:#f2b705}
+```
+
 ## Finalize Review
 
 The director's final check after a race or heat (`renderer/review.js` finishHtml, `race.js` rerunHeat, `raceover.js` checkedHtml/asideHtml, `stats.js`
@@ -2537,3 +2559,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Finalize Review | New: the heat named in the final check, Your changes with the place before and after and Undo, Run this heat again, Delete the whole race with the heats saved; the changes kept with the result on the break, Race Over, the Record Book and the Race Report |
 | 2026-11 | Track Sheet, Driver Sheet, Team Sheet | New: the track, driver and team editors as sheets (lanes as tiles, Every lane, sector boxes, On the record, the callsign boxes, More), the Delete question with Retire and Merge first, lane boxes in a race setup |
 | 2026-11 | Backup Vault | New: Import and Export as Backups (status card, every backup with Restore and what is lost, notes, safety backups), an Export picker with Your file, an Import preview with Add a copy, Replace mine or Skip |
+| 2026-11 | Settings Hub | New: App Settings by task (Look and feel, Race night, Your data, This computer), an Overview of tiles with each part's state, General split, Database storage on Backups and storage, Phones and tablets on Race Director, Paddock and Content Packs pages |

@@ -109,7 +109,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 | Finalize review · **Done (2.4.0, "Finalize Review")** | In a heat race "Delete all data" deletes every earlier heat too (review.js:517). No summary of the changes before Finalize. | Discard or re-run only this heat; a changes summary |
 | Database lists and forms · **Done (2.4.0, "Track Sheet", "Driver Sheet", "Team Sheet"; Retire, Merge and the club list were in "Garage")** | Deleting a driver also takes them out of past results, with no undo. Lane lengths and points tables are typed as comma lists. | Retire instead of delete, merge duplicate drivers, import a club roster (CSV) |
 | Import and Export · **Done (2.4.0, "Backup Vault")** | Three backup systems on one page. You can't pick an automatic backup to restore. Import always adds a copy. | A list of backups with dates and Restore; "replace existing" on import |
-| App Settings structure | Database storage under General but backups under Import and Export; Director password apart from the Director page. | Group by task |
+| App Settings structure · **Done (2.4.0, "Settings Hub")** | Database storage under General but backups under Import and Export; Director password apart from the Director page. | Group by task |
 | Championships | The round date is free text. No points adjustment (a penalty or a correction). | A date picker, adjustments with a reason |
 | Find (Ctrl K) | Only drivers, cars, tracks, setups and settings. | Teams, layouts, championships, past races, Help; more actions |
 | Help | Topics in the order they were built. The only ways in are App Settings and Home. | A "?" on each page opening its article, F1 |

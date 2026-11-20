@@ -68,7 +68,8 @@ const AppSettingsPage = (() => {
         ['view', 'Director view', 'Lane cards or folders', 'drivers'],
         ['values', 'Adjustment values', 'Points, time and laps', 'settings'],
         ['layout', 'Pad layout', 'Horizontal or vertical', 'custom'],
-        ['preview', 'Preview', 'See your adjustment pads', 'timing']
+        ['preview', 'Preview', 'See your adjustment pads', 'timing'],
+        ['phones', 'Phones and tablets', 'Password and pairing a phone', 'parallel'] // (2.4.0, Settings Hub: was Director access under Connections)
       ]
     },
     network: {
@@ -96,7 +97,8 @@ const AppSettingsPage = (() => {
       sections: [
         ['backups', 'Backups', 'Made by itself and by hand', 'clock'],
         ['export', 'Export', 'Choose items to share', 'custom'],
-        ['import', 'Import', 'Add or replace from a file', 'database']
+        ['import', 'Import', 'Add or replace from a file', 'database'],
+        ['storage', 'Database storage', 'Format, place and room', 'database']
       ]
     }
   };

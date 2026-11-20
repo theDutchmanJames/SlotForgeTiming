@@ -22,7 +22,7 @@ const state = {
   refs: {},
   setupSub: 'setups',
   customSub: 'layouts',
-  settingsSub: 'general',
+  settingsSub: 'overview',
   hwSub: 'trackmate',
   editing: null
 };
@@ -201,9 +201,9 @@ function showRace(on) {
 // App Settings: General and Network
 // ---- searching App Settings (2.3.0, settingsindex.js): type a few words, pick a result, and the page opens with that setting in view ----
 async function settingsGo(e) {
-  state.settingsSub = e.s;
-  if (e.hw) state.hwSub = e.hw;
   if (e.ct && typeof connectionsTab !== 'undefined') connectionsTab = e.ct;
+  state.settingsSub = settingsRoute(e.s, e.ct);
+  if (e.hw) state.hwSub = e.hw;
   await renderSettings();
   if (e.k === 'page') return;
   await new Promise(r => setTimeout(r, 300)); // (some pages draw their parts a moment later)
@@ -218,6 +218,8 @@ async function settingsGo(e) {
   if (!hit) return;
   for (let d = hit.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
   const topic = hit.closest('[data-gtopic]'); // (2.4.0: a setting in another topic of General opens that topic first)
+  if (topic && GENERAL_TOPIC_PAGE[topic.dataset.gtopic] && GENERAL_TOPIC_PAGE[topic.dataset.gtopic] !== state.settingsSub)
+    return settingsGo({ ...e, s: GENERAL_TOPIC_PAGE[topic.dataset.gtopic] }); // (2.4.0, Settings Hub: that topic is a page of its own now)
   if (topic && typeof GeneralPage !== 'undefined') GeneralPage.show(topic.dataset.gtopic);
   if (typeof SettingsRail !== 'undefined') SettingsRail.reveal(hit); // (and a section of another page that is not shown)
   const mark = hit.closest('.gs-card,.field,label,summary,.row') || hit;
@@ -280,19 +282,54 @@ function settingsSearchBind() {
   };
   input.onblur = () => setTimeout(() => (list.hidden = true), 150);
 }
-// the sections of App Settings: id, name and icon (2.4.0: a side list)
+// the sections of App Settings: id, name and icon (2.4.0: a side list; SlotForgeRestyle.md "Settings Hub": grouped by task, an Overview first)
 const SETTINGS_TABS = [
-  ['general', 'General', 'settings'],
+  ['overview', 'Overview', 'home'],
+  ['display', 'Display and units', 'screen'],
   ['theme', 'App Theme', 'paint'],
-  ['director', 'Race Director', 'director'],
-  ['calculations', 'Calculations', 'sliders'],
-  ['network', 'Connections', 'parallel'],
+  ['home', 'Home and club', 'home'],
   ['hardware', 'Timing Hardware', 'timing'],
-  ['transfer', 'Import and Export', 'database'],
-  ['plugins', 'Plugins', 'layers'],
+  ['director', 'Race Director', 'director'],
+  ['sharing', 'Share the race', 'parallel'],
+  ['calculations', 'Calculations', 'sliders'],
+  ['transfer', 'Backups and storage', 'database'],
+  ['paddock', 'Paddock', 'garage'],
+  ['packs', 'Content Packs', 'layers'],
+  ['plugins', 'Plugins', 'bolt'],
+  ['performance', 'Performance', 'gauge'],
+  ['updates', 'Updates and help', 'bell'],
   ['help', 'Help', 'info']
 ];
+const SETTINGS_GROUPS = {
+  display: 'Look and feel',
+  hardware: 'Race night',
+  transfer: 'Your data',
+  performance: 'This computer',
+  help: 'Help'
+};
+// (2.4.0) the topics of the old General page, each on the page of its task (storage: Backups and storage)
+const GENERAL_PAGES = { display: ['look', 'units', 'pictures'], home: ['home'], performance: ['performance'], updates: ['updates'] };
+const GENERAL_TOPIC_PAGE = {
+  look: 'display',
+  units: 'display',
+  pictures: 'display',
+  home: 'home',
+  performance: 'performance',
+  updates: 'updates',
+  storage: 'transfer'
+};
+// an old page (a link, a search word, a Help article) opens the page it is on now: General -> Display and units, Connections -> Share the race or Paddock
+function settingsRoute(sub, ct) {
+  if (sub === 'general') return 'display';
+  if (sub === 'network' || sub === 'connections')
+    return ['paddock', 'dealership', 'library'].includes(ct || (typeof connectionsTab !== 'undefined' ? connectionsTab : ''))
+      ? 'paddock'
+      : 'sharing';
+  if (sub === 'contentpacks') return 'packs';
+  return SETTINGS_TABS.some(t => t[0] === sub) ? sub : 'overview';
+}
 async function renderSettings() {
+  state.settingsSub = settingsRoute(state.settingsSub);
   if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
   view.innerHTML = sideShellHtml(
@@ -315,7 +352,7 @@ async function renderSettings() {
     },
     Object.fromEntries(SETTINGS_TABS.map(t => [t[0], t[2]]))
   );
-  sideGroups(document.getElementById('settingstabs'), { general: 'This app', network: 'Race night', transfer: 'Your data', help: 'Help' });
+  sideGroups(document.getElementById('settingstabs'), SETTINGS_GROUPS);
   // (2.4.0) the pages get a second side list with their tabs and sections (generalpage.js; General draws its own, Help has its own list)
   if (typeof SettingsRail !== 'undefined') SettingsRail.attach(document.getElementById('settingsbox'), state.settingsSub);
   if (state.settingsSub === 'plugins') return PluginsPage.render(document.getElementById('settingsbox'));
@@ -326,13 +363,18 @@ async function renderSettings() {
         return render();
       }
     });
-  if (state.settingsSub === 'transfer') return TransferViews.render(document.getElementById('settingsbox'));
+  const sbox = document.getElementById('settingsbox');
+  if (state.settingsSub === 'overview') return typeof SettingsOverview !== 'undefined' ? SettingsOverview.render(sbox) : null;
+  if (state.settingsSub === 'transfer') return renderTransferSettings(sbox);
+  if (state.settingsSub === 'packs') return typeof ContentPacksPage !== 'undefined' ? ContentPacksPage.render(sbox) : null;
+  if (state.settingsSub === 'paddock')
+    return typeof renderPitLane === 'function' ? renderPitLane(sbox) : typeof PaddockUI !== 'undefined' ? PaddockUI.mount(api, sbox) : null;
+  if (state.settingsSub === 'sharing') return renderNetworkSettings(sbox, 'sharing');
   if (state.settingsSub === 'theme') return renderThemeSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'director') return renderPadSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'calculations') return renderCalculationSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'hardware') return renderHardwareArea(document.getElementById('settingsbox'));
-  if (state.settingsSub === 'network') return renderConnectionsSettings(document.getElementById('settingsbox'));
-  return renderGeneralSettings(document.getElementById('settingsbox'));
+  return renderGeneralSettings(sbox, GENERAL_PAGES[state.settingsSub] || GENERAL_PAGES.display);
 }
 
 // App Settings > Calculations: plain-language formula library. The controls are
@@ -513,7 +555,7 @@ function renderOxigenSettings(box) {
   box.innerHTML = `<p class="muted"><strong>Coming.</strong> This page is the place for <strong>oXigen Digital</strong> timing. There is nothing to set up here yet: the app does not connect to anything on this page, and a race does not use it.</p>`;
 }
 
-const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'performance', 'data', 'updates'];
+const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'performance', 'updates'];
 // the size of the interface: the window is zoomed (the Live Race window and the pages on phones are not; see UiScale)
 const applyUiScale = () => {
   if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale));
@@ -531,12 +573,9 @@ const UPDATE_UI = {
     } else if (isError && typeof Dialog !== 'undefined') Dialog.alert(message);
   }
 };
-async function renderGeneralSettings(box) {
-  const S = state.settings,
-    path = await api.dbPath(),
-    hh = Banner.height(S),
-    pos = Banner.pos(S),
-    lpos = Banner.logoPos(S);
+// (2.4.0, Settings Hub) Database storage: the format, where the file is and how much room it takes; on Backups and storage
+async function settingsStorageHtml() {
+  const path = await api.dbPath();
   const storage = api.storageStatus ? await api.storageStatus() : { backend: 'json' };
   const mb = n => {
       if (!Number.isFinite(n)) return 'Unavailable';
@@ -548,6 +587,34 @@ async function renderGeneralSettings(box) {
     ? // (2.4.0) the three numbers as tiles, with what they mean under them
       `<div class="gs-stats" data-storage-usage><div class="gs-stat"><span>Database file</span><b>${mb(usage.physicalBytes)}</b><small>${mb(usage.reusableBytes)} of it free for reuse</small></div><div class="gs-stat"><span>Pictures and sounds</span><b>${mb(usage.media?.bytes)}</b><small>${Number(usage.media?.uniqueCount) || 0} files, used ${Number(usage.media?.count) || 0} times · sharing saves ${mb(usage.media?.savedBytes)}</small></div><div class="gs-stat"><span>Free on this disk</span><b>${mb(usage.freeBytes)}</b><small>Backups and recovery copies need room too</small></div></div><p class="muted">Deleting pictures may not make the file smaller. The totals are refreshed once a minute.</p>`
     : '';
+  return {
+    backend: storage.backend,
+    html: `<div class="row"><strong>${storage.backend === 'sqlite' ? 'SQLite database' : 'JSON database'}</strong></div><p>Saved in: <code>${esc(path)}</code></p>${storage.backend === 'sqlite' ? '<p>Changes are saved by the SQLite worker. Any pre-conversion JSON files are retained, but no longer receive updates. Make a backup before moving to an older build.</p>' : '<p>SQLite saves individual records without rewriting the whole collection. Timing will restart, convert and verify a separate copy, then switch storage. Your original files are kept. Allow enough disk space for the original files, recovery copy and SQLite database.</p><button class="btn" id="sqliteactivate">Convert to SQLite and restart…</button>'}${storageUsage}<p id="storagemsg" role="status"></p>`
+  };
+}
+function settingsStorageBind() {
+  const $ = id => document.getElementById(id);
+  if ($('sqliteactivate'))
+    $('sqliteactivate').onclick = async () => {
+      const button = $('sqliteactivate');
+      button.disabled = true;
+      try {
+        const result = await api.activateSqlite();
+        $('storagemsg').textContent = result.restarting ? 'Restarting to convert a verified copy…' : 'Conversion cancelled.';
+      } catch (e) {
+        $('storagemsg').textContent = e.message;
+      } finally {
+        button.disabled = false;
+      }
+    };
+}
+// only: the topics of General that this page shows (2.4.0, Settings Hub: Display and units, Home and club, Performance, Updates and help)
+async function renderGeneralSettings(box, only) {
+  const S = state.settings,
+    hh = Banner.height(S),
+    pos = Banner.pos(S),
+    lpos = Banner.logoPos(S);
+  const storage = api.storageStatus ? await api.storageStatus() : { backend: 'json' };
   const us = UiScale.levelOf(S.uiScale),
     dp = Depth.levelOf(S.depth),
     su = Speed.unitOf(S),
@@ -655,12 +722,6 @@ async function renderGeneralSettings(box) {
       <span class="muted hint">Open the race screen with a race running while you look at this, or leave the line on and look at it during a race. If the Raspberry Pi gets slow, copy the report and send it: it shows whether the window is drawn by the graphics card or by the processor, how hot the processor is, and what the app is busy with. Measuring costs a little itself.</span></div>`
     ) +
     sf(
-      'data',
-      'Database storage',
-      'where everything is saved',
-      `<div class="row"><strong>${storage.backend === 'sqlite' ? 'SQLite database' : 'JSON database'}</strong></div><p>Saved in: <code>${esc(path)}</code></p>${storage.backend === 'sqlite' ? '<p>Changes are saved by the SQLite worker. Any pre-conversion JSON files are retained, but no longer receive updates. Use Import and Export to make a current backup before moving to an older build.</p>' : '<p>SQLite saves individual records without rewriting the whole collection. Timing will restart, convert and verify a separate copy, then switch storage. Your original files are kept. Allow enough disk space for the original files, recovery copy and SQLite database.</p><button class="btn" id="sqliteactivate">Convert to SQLite and restart…</button>'}${storageUsage}<p id="storagemsg" role="status"></p>`
-    ) +
-    sf(
       'updates',
       'Updates and diagnostics',
       'new versions, a file for bug reports',
@@ -671,7 +732,7 @@ async function renderGeneralSettings(box) {
       <div class="field" style="max-width:560px"><label>Setup guide</label><div class="row"><button type="button" class="btn" id="guiderun">Start the setup guide again</button></div><span class="muted hint">Walks through a track, drivers, cars, the timing hardware, a sensor test and a 3-lap test race, on Home. What you already have stays.</span></div></div>`
     );
   // (2.4.0) General has a second side list with its topics and a canvas of its own (generalpage.js), not the sheet of the other pages
-  if (typeof GeneralPage !== 'undefined') GeneralPage.build(box);
+  if (typeof GeneralPage !== 'undefined') GeneralPage.build(box, only);
   else if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'general');
   folderWire(box);
   box.onclick = ev => {
@@ -682,19 +743,6 @@ async function renderGeneralSettings(box) {
     }
   };
   const $ = id => document.getElementById(id);
-  if ($('sqliteactivate'))
-    $('sqliteactivate').onclick = async () => {
-      const button = $('sqliteactivate');
-      button.disabled = true;
-      try {
-        const result = await api.activateSqlite();
-        $('storagemsg').textContent = result.restarting ? 'Restarting to convert a verified copy…' : 'Conversion cancelled.';
-      } catch (e) {
-        $('storagemsg').textContent = e.message;
-      } finally {
-        button.disabled = false;
-      }
-    };
   if (storage.backend === 'sqlite') {
     $('bgsave').disabled = true;
     $('bgsave').closest('.field').querySelector('.hint').textContent =
@@ -1030,15 +1078,35 @@ async function renderSharedLibraryResults(box, note = '') {
   });
 }
 
-async function renderNetworkSettings(box) {
-  box.innerHTML = `<section data-settings-group="sharing"><h3>Share the race</h3><p class="muted">Let tablets and phones on your wifi follow the race in a browser: race timing, leaderboard, driver stats and the other Live Race pages. They can only watch. The Race Director page needs the password below.</p>
+// (2.4.0, Settings Hub) the password, pairing a phone and the warning: a part of the Race Director page ("Phones and tablets")
+function netAccessHtml() {
+  const S = state.settings || {};
+  return `<section data-settings-group="phones"><h3>Phones and tablets</h3><p class="muted">The Race Director page on a phone or tablet: the same pads, penalties and review as on this computer. Sharing must be on, under Share the race: it is ${S.netOn ? `on, port ${esc(S.netPort || 8787)}` : 'off'}.</p>
+    ${netAccessBody()}</section>`;
+}
+function netAccessBody() {
+  return `<div class="settings-network-fields"><div class="field"><label for="net-pass">Password for the Race Director</label><input id="net-pass" type="text" maxlength="40" value="${esc(state.settings.netPassword || '')}" placeholder="none: the Race Director stays on this computer"></div></div><p class="muted">Leave this empty to keep Race Director controls on this computer. Other devices can still watch when sharing is enabled.</p>
+    <div class="row"><button type="button" class="btn" id="net-pairbtn">Pair a phone…</button><span class="muted">A QR code that logs one phone or tablet in to the Race Director, without typing the password.</span></div><div id="net-pair"></div>
+    <p class="muted net-warn">The connection is not encrypted (http), as with most club timing programs: use it on your own club or home wifi, not on a public network. Anyone on the same wifi can watch the race, and could see the password while it is typed; pairing by QR code keeps the password off the phone.</p>`;
+}
+// part: 'sharing' (Share the race: sharing and the devices), 'phones' (only the bindings of Phones and tablets, drawn by the Race Director page), or all
+async function renderNetworkSettings(box, part = 'all') {
+  if (part === 'phones') return bindNetAccess(async () => {});
+  box.innerHTML = `<section data-settings-group="sharing"><h3>Share the race</h3><p class="muted">Let tablets and phones on your wifi follow the race in a browser: race timing, leaderboard, driver stats and the other Live Race pages. They can only watch. The Race Director page on a phone needs a password: ${part === 'sharing' ? 'set it under Race Director › Phones and tablets.' : 'see below.'}</p>
     <div class="field"><label class="inline"><input id="net-on" type="checkbox" ${state.settings.netOn ? 'checked' : ''}> Share on my network</label></div>
     <div class="settings-network-fields"><div class="field"><label for="net-port">Port</label><input id="net-port" type="number" min="1" max="65535" value="${esc(state.settings.netPort || 8787)}" style="width:7em"></div></div></section>
-    <section data-settings-group="access"><h3>Director access</h3><div class="settings-network-fields"><div class="field"><label for="net-pass">Password for the Race Director</label><input id="net-pass" type="text" maxlength="40" value="${esc(state.settings.netPassword || '')}" placeholder="none: the Race Director stays on this computer"></div></div><p class="muted">Leave this empty to keep Race Director controls on this computer. Other devices can still watch when sharing is enabled.</p>
-    <div class="row"><button type="button" class="btn" id="net-pairbtn">Pair a phone…</button><span class="muted">A QR code that logs one phone or tablet in to the Race Director, without typing the password.</span></div><div id="net-pair"></div>
-    <p class="muted net-warn">The connection is not encrypted (http), as with most club timing programs: use it on your own club or home wifi, not on a public network. Anyone on the same wifi can watch the race, and could see the password while it is typed; pairing by QR code keeps the password off the phone.</p></section>
+    ${part === 'sharing' ? '' : `<section data-settings-group="access"><h3>Director access</h3>${netAccessBody()}</section>`}
     <section data-settings-group="devices"><h3>Connect devices</h3><p class="muted">While sharing is enabled, this folder shows this computer’s addresses and QR codes.</p><div id="net-info"></div></section>`;
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'network');
+  if (box.addEventListener && !box._goBound) {
+    box._goBound = true;
+    box.addEventListener('click', ev => {
+      const g = ev.target.closest && ev.target.closest('[data-settings-go]');
+      if (!g) return;
+      state.settingsSub = g.dataset.settingsGo;
+      renderSettings();
+    });
+  }
   const netInfo = async () => {
     const el = document.getElementById('net-info');
     if (!el) return;
@@ -1081,6 +1149,22 @@ async function renderNetworkSettings(box) {
     state.settings = await api.setSettings(patch);
     await netInfo();
   };
+  bindNetAccess(netInfo);
+  document.getElementById('net-on').onchange = ev => setNet({ netOn: ev.target.checked });
+  document.getElementById('net-port').onchange = ev => {
+    const n = Math.round(Number(ev.target.value));
+    setNet({ netPort: n >= 1 && n <= 65535 ? n : 8787 });
+    if (!(n >= 1 && n <= 65535)) ev.target.value = 8787;
+  };
+  netInfo();
+}
+// the password and pairing a phone (Phones and tablets on the Race Director page; Director access on the old Connections page)
+function bindNetAccess(after) {
+  if (!document.getElementById('net-pairbtn')) return;
+  const setNet = async patch => {
+    state.settings = await api.setSettings(patch);
+    if (after) await after();
+  };
   // (2.3.0) pairing by QR code: one code for every address of this computer, once, for 10 minutes
   let pairTimer = null;
   document.getElementById('net-pairbtn').onclick = async () => {
@@ -1115,14 +1199,7 @@ async function renderNetworkSettings(box) {
       el.innerHTML = `<p class="error" role="alert">Could not make a QR code: ${esc(e.message)}</p>`;
     }
   };
-  document.getElementById('net-on').onchange = ev => setNet({ netOn: ev.target.checked });
-  document.getElementById('net-port').onchange = ev => {
-    const n = Math.round(Number(ev.target.value));
-    setNet({ netPort: n >= 1 && n <= 65535 ? n : 8787 });
-    if (!(n >= 1 && n <= 65535)) ev.target.value = 8787;
-  };
   document.getElementById('net-pass').onchange = ev => setNet({ netPassword: ev.target.value });
-  netInfo();
 }
 
 // Racing Rules: one text for the whole app (a club's code of conduct, for example) with a little formatting, saved as you type.
