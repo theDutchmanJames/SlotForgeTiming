@@ -247,6 +247,17 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'find',
+          title: 'Find (Ctrl K)',
+          note: 'Every driver, car, track, race, setting and Help topic',
+          body: `<ul>
+          <li>Press <b>Ctrl K</b> on any page, or <b>Find</b> in the menu. Type a few letters: <b>clb</b> finds Club Oval, and one wrong letter still finds it.</li>
+          <li>The best match comes first, with what belongs to it: the races on a track, the team and races of a driver. The chips show one kind (Drivers, Races, Help…).</li>
+          <li>On the right: a preview with figures and the actions. <b>Enter</b> does the first, <b>Tab</b> picks another (<b>Its races</b>, <b>Race with it: Home</b>, <b>The standings</b>).</li>
+          <li>With nothing typed: <b>Recent</b> and <b>Do</b> (Start the race, Back up now, Add a driver…). Type <b>&gt;</b> to see only the things to do.</li>
+        </ul>`
+        },
+        {
           id: 'copyandorder',
           title: 'Copying setups and finding records',
           note: 'Independent copies and alphabetical lists',

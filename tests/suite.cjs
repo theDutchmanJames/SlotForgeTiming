@@ -322,4 +322,5 @@ module.exports = [
   ['performance.test.js', 'node-test'],
   ['library-move.test.js', 'node-test'],
   ['mergedrivers.test.js', 'node-test'],
+  ['findeverything.test.js', 'node-test'],
 ];

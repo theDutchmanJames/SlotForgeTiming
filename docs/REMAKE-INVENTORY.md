@@ -111,7 +111,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 | Import and Export · **Done (2.4.0, "Backup Vault")** | Three backup systems on one page. You can't pick an automatic backup to restore. Import always adds a copy. | A list of backups with dates and Restore; "replace existing" on import |
 | App Settings structure · **Done (2.4.0, "Settings Hub")** | Database storage under General but backups under Import and Export; Director password apart from the Director page. | Group by task |
 | Championships · **Done (2.4.0, "Season Calendar")** | The round date is free text. No points adjustment (a penalty or a correction). | A date picker, adjustments with a reason |
-| Find (Ctrl K) | Only drivers, cars, tracks, setups and settings. | Teams, layouts, championships, past races, Help; more actions |
+| Find (Ctrl K) · **Done (2.4.0, "Find Everything")** | Only drivers, cars, tracks, setups and settings. | Teams, layouts, championships, past races, Help; more actions |
 | Help | Topics in the order they were built. The only ways in are App Settings and Home. | A "?" on each page opening its article, F1 |
 | Layout Editor | Mature. No "try it with a simulated race". Deleting a layout doesn't say which setups use it. "Image/Audio Settings" are libraries, not settings. | Try-out race, "used by" |
 | Trackmate page | A HID finder and a raw hex sender sit among the club settings. | Behind Diagnostics (part of Tier 1 #4) |

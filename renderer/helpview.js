@@ -105,6 +105,7 @@
         'paddockfiles',
         'trackbuilder',
         'settingsnavigation',
+        'find',
         'copyandorder',
         'calculations',
         'performance',

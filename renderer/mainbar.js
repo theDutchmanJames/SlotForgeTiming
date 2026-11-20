@@ -281,46 +281,77 @@ const MainBar = (() => {
     if (el.innerHTML !== html) el.innerHTML = html;
   }
 
-  // ---- Find (Ctrl K): pages, settings, drivers, cars, tracks and race setups, and a few things to do ----
+  // ---- Find (Ctrl K) (2.4.0, SlotForgeRestyle.md "Find Everything"): every kind of thing of the app (findindex.js), the best match first with what is
+  // linked to it, a filter chip per kind, a preview of the chosen one with its actions (Enter: the first, Tab: the next), Recent and Do when nothing is typed ----
   const Find = (() => {
     let box = null,
-      items = [],
+      index = [],
+      res = { list: [], counts: {} },
       sel = 0,
-      records = null;
-    const norm = s =>
-      String(s || '')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '');
+      act = 0,
+      kind = 'all',
+      of = null,
+      msg = '',
+      moved = false, // (the choice was moved by hand: it stays on that one when the lists come in)
+      lastBackup = '';
+    const FI = () => (typeof FindIndex !== 'undefined' ? FindIndex : null);
+    const RECENT_KEY = 'sf-find-recent';
+    const readRecent = () => {
+      try {
+        const v = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        return Array.isArray(v) ? v : [];
+      } catch {
+        return [];
+      }
+    };
+    const keepRecent = it => {
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(FI().remember(readRecent(), it)));
+      } catch {
+        /* (no storage: no Recent) */
+      }
+    };
     const pages = () => {
       const out = [];
       const tabName = id => ((typeof TABS !== 'undefined' && TABS.find(t => t[0] === id)) || [id, id])[1];
       (typeof TABS !== 'undefined' ? TABS : []).forEach(([id, label]) =>
-        out.push({ g: 'Pages', t: label, w: '', icon: (typeof TAB_ICONS !== 'undefined' && TAB_ICONS[id]) || 'flag', go: { tab: id } })
+        out.push({ t: label, w: 'Page', icon: (typeof TAB_ICONS !== 'undefined' && TAB_ICONS[id]) || 'flag', go: { tab: id } })
       );
       if (typeof SUBS !== 'undefined')
-        SUBS.forEach(([id, label]) =>
-          out.push({ g: 'Pages', t: label, w: tabName('database'), icon: 'database', go: { tab: 'database', sub: id } })
-        );
+        SUBS.forEach(([id, label]) => out.push({ t: label, w: tabName('database'), icon: 'database', go: { tab: 'database', sub: id } }));
       if (typeof SETUP_HERO !== 'undefined')
-        out.push({ g: 'Pages', t: SETUP_HERO[1], w: tabName('setup'), icon: 'setup', go: { tab: 'setup', setupSub: SETUP_HERO[0] } });
+        out.push({ t: SETUP_HERO[1], w: tabName('setup'), icon: 'setup', go: { tab: 'setup', setupSub: SETUP_HERO[0] } });
       if (typeof SETUP_GROUPS !== 'undefined')
         SETUP_GROUPS.forEach(([, list]) =>
-          list.forEach(([id, label]) =>
-            out.push({ g: 'Pages', t: label, w: tabName('setup'), icon: 'setup', go: { tab: 'setup', setupSub: id } })
-          )
+          list.forEach(([id, label]) => out.push({ t: label, w: tabName('setup'), icon: 'setup', go: { tab: 'setup', setupSub: id } }))
         );
       if (typeof CUSTOM_TABS !== 'undefined')
         CUSTOM_TABS.forEach(([id, label]) =>
-          out.push({ g: 'Pages', t: label, w: tabName('custom'), icon: 'custom', go: { tab: 'custom', customSub: id } })
+          out.push({ t: label, w: tabName('custom'), icon: 'custom', go: { tab: 'custom', customSub: id } })
+        );
+      if (typeof SETTINGS_TABS !== 'undefined')
+        SETTINGS_TABS.forEach(([id, label]) =>
+          out.push({ t: label, w: tabName('settings'), icon: 'settings', go: { tab: 'settings', settingsSub: id } })
         );
       return out;
     };
-    const ACTIONS = [
-      { g: 'Do', t: 'Open the Live Race on a second screen', w: '', icon: 'screen', act: () => api.liveOpen && api.liveOpen() },
-      { g: 'Do', t: 'Test the sensors', w: 'Home', icon: 'timing', act: () => homeThen('#sensortest') },
-      { g: 'Do', t: 'Start the race', w: 'Home', icon: 'flag', act: () => homeThen('#start') }
-    ];
+    // the things to do: the first three as before, and more
+    const actions = () => {
+      const setup = ((state.refs && state.refs.racesetups) || []).find(x => x.id === (state.settings || {}).lastSetupId);
+      return [
+        { id: 'start', t: 'Start the race', w: 'Home', icon: 'lights', sub: setup ? setup.name : '' },
+        { id: 'sensors', t: 'Test the sensors', w: 'Home', icon: 'check', sub: 'Lane Check' },
+        { id: 'live', t: 'Open the Live Race on a second screen', w: 'Live Race', icon: 'screen' },
+        { id: 'backup', t: 'Back up now', w: 'Backups', icon: 'shield', sub: lastBackup },
+        { id: 'add:drivers', t: 'Add a driver', w: 'Database', icon: 'plus', words: ['new driver'] },
+        { id: 'add:slotcars', t: 'Add a slotcar', w: 'Database', icon: 'plus', words: ['new car'] },
+        { id: 'add:tracks', t: 'Add a track', w: 'Database', icon: 'plus', words: ['new track'] },
+        { id: 'add:teams', t: 'Add a team', w: 'Database', icon: 'plus', words: ['new team'] },
+        { id: 'add:racesetups', t: 'Add a race setup', w: 'Race Setup', icon: 'plus', words: ['new race setup'] },
+        { id: 'help', t: 'Open Help', w: 'Help', icon: 'info', words: ['guides', 'manual'] },
+        { id: 'guide', t: 'Run the setup guide again', w: 'Home', icon: 'arrow', words: ['first race', 'start here'] }
+      ];
+    };
     const homeThen = async sel2 => {
       if (!(await leave())) return;
       state.tab = 'home';
@@ -331,169 +362,444 @@ const MainBar = (() => {
         await new Promise(r => setTimeout(r, 100));
       }
     };
-    // (2.4.0) read once per opening, into a list of its own: a Find closed and opened again while one was still reading does not get them twice
-    let loading = null,
-      gen = 0;
-    const loadRecords = () => {
-      if (records) return Promise.resolve(records);
-      if (loading) return loading;
-      const my = ++gen,
-        out = [];
-      loading = readRecords(out).then(() => {
-        if (my === gen) {
-          records = out;
-          loading = null;
-        }
-        return out;
-      });
-      return loading;
+    // (the Edit button of a card, once the page is drawn)
+    const clickEdit = async id => {
+      for (let i = 0; i < 25; i++) {
+        const b = [...document.querySelectorAll('#view [data-edit]')].find(x => x.dataset.edit === id);
+        if (b) return (b.click(), true);
+        await new Promise(r => setTimeout(r, 80));
+      }
+      return false;
     };
-    const readRecords = async records => {
-      const kinds = [
-        ['drivers', 'Drivers', 'driver'],
-        ['slotcars', 'Slotcars', 'car'],
-        ['tracks', 'Tracks', 'pin'],
-        ['racesetups', 'Race Setups', 'setup']
-      ];
-      await Promise.all(
-        kinds.map(async ([e, w, icon]) => {
-          try {
-            const list = (await api.list(e)) || [];
-            list.forEach(x => {
-              const t = typeof titleOf === 'function' && state.schema && state.schema[e] ? titleOf(e, x) : x.name;
-              if (t && t !== '(unnamed)') records.push({ g: w, t, w, icon, rec: { e, id: x.id } });
-            });
-          } catch {
-            /* a list that cannot be read is left out */
+    const SYSTEMS = {
+      fuel: 'fuelrules',
+      penalties: 'penaltysystems',
+      damage: 'damagesystems',
+      safetycar: 'safetycarsystems',
+      tyrewear: 'tyrewearsystems',
+      weather: 'weathersystems',
+      pushsave: 'pushsavesystems',
+      rotation: 'rotationsetups',
+      bop: 'bopsystems',
+      tokens: 'tokensystems',
+      virtualrivals: 'virtualrivalsystems',
+      multiclass: 'multiclasssystems',
+      resources: 'resourcesystems'
+    };
+    const FORM = new Set([
+      'drivers',
+      'slotcars',
+      'tracks',
+      'teams',
+      'racesetups',
+      'fuelrules',
+      'penaltysystems',
+      'damagesystems',
+      'safetycarsystems',
+      'tyrewearsystems',
+      'weathersystems',
+      'pushsavesystems'
+    ]);
+    // (2.4.0) everything is read once per opening, into an index of its own: a Find closed and opened again while one was still reading does not mix them
+    let gen = 0;
+    const base = () => ({
+      pages: pages(),
+      actions: actions(),
+      help: typeof Help !== 'undefined' && Help.folders ? Help.folders().map(h => ({ id: h.id, title: h.title, note: h.note })) : []
+    });
+    const ctxOf = D => ({
+      titleOf: (e, x) => (typeof titleOf === 'function' && state.schema && state.schema[e] ? titleOf(e, x) : x.name),
+      unit: typeof Speed !== 'undefined' && Speed.distUnitOf ? Speed.distUnitOf(state.settings) : 'm',
+      lengths:
+        typeof DbSheet !== 'undefined' && DbSheet.laneRows
+          ? t => {
+              try {
+                return DbSheet.laneRows(t)
+                  .rows.map(r => r.len)
+                  .filter(Boolean);
+              } catch {
+                return [];
+              }
+            }
+          : null,
+      champ: c => {
+        if (typeof Champ === 'undefined') return {};
+        try {
+          const cc = Champ.clean(c, true),
+            p = Champ.progress(cc, D.sessions || []),
+            nx = p.next ? cc.rounds[p.next.round] : null;
+          let leader = '';
+          if (typeof ChampPts !== 'undefined' && p.driven) {
+            const st = ChampPts.standings(cc, D.sessions || [], { drivers: D.drivers || [], teams: D.teams || [] });
+            leader = st.drivers && st.drivers[0] && st.drivers[0].total > 0 ? st.drivers[0].name : '';
           }
-        })
-      );
-    };
-    const search = q => {
-      const n = norm(q).trim();
-      const words = n.split(/\s+/).filter(Boolean);
-      const hit = x => words.every(w => norm(x.t + ' ' + x.w).includes(w));
-      const rank = x => (norm(x.t).startsWith(n) ? 0 : norm(x.t).includes(n) ? 1 : 2);
-      if (!words.length) return [...ACTIONS, ...pages().slice(0, 6)];
-      const settings =
-        typeof SettingsIndex !== 'undefined'
-          ? SettingsIndex.search(q)
-              .slice(0, 6)
-              .map(e => ({
-                g: 'Settings',
-                t: e.t,
-                w: typeof SettingsIndex.where === 'function' ? SettingsIndex.where(e) : 'App Settings',
-                icon: 'settings',
-                setting: e
-              }))
-          : [];
-      const groups = [
-        ACTIONS.filter(hit),
-        pages()
-          .filter(hit)
-          .sort((a, b) => rank(a) - rank(b))
-          .slice(0, 6),
-        settings,
-        (records || [])
-          .filter(hit)
-          .sort((a, b) => rank(a) - rank(b))
-          .slice(0, 8)
-      ];
-      return groups.flat();
-    };
-    const go = async x => {
-      close();
-      if (!x) return;
-      if (x.act) return x.act();
-      if (!(await leave())) return;
-      if (x.go) {
-        Object.assign(state, x.go);
-        return render();
-      }
-      if (x.setting && typeof settingsGo === 'function') {
-        state.tab = 'settings';
-        await render();
-        return settingsGo(x.setting);
-      }
-      if (x.rec) {
-        const items2 = await api.list(x.rec.e).catch(() => []);
-        const item = (items2 || []).find(r => r.id === x.rec.id);
-        if (x.rec.e === 'racesetups') {
-          state.tab = 'setup';
-          state.setupSub = 'setups';
-          await render();
-        } else {
-          state.tab = 'database';
-          state.sub = x.rec.e;
-          await render();
+          return {
+            driven: p.driven,
+            leader,
+            next: nx ? Champ.roundLabel(cc, p.next.round) + (nx.date ? ' · ' + Champ.dateText(nx.date, { short: true }) : '') : ''
+          };
+        } catch {
+          return {};
         }
-        if (item && typeof openForm === 'function') openForm(x.rec.e, item);
       }
+    });
+    const load = async () => {
+      const my = ++gen;
+      const F = FI();
+      if (!F) return;
+      index = F.build(base(), ctxOf({}));
+      const read = e => (api.list ? Promise.resolve(api.list(e)).catch(() => []) : Promise.resolve([]));
+      const names = [
+        'drivers',
+        'slotcars',
+        'tracks',
+        'teams',
+        'racesetups',
+        'championships',
+        'sessions',
+        'layouts',
+        'rowdesigns',
+        'chartdesigns',
+        'customwidgets',
+        'audiosets',
+        'imagesets'
+      ];
+      const subs = Object.keys(SYSTEMS);
+      const [lists, systems, backups] = await Promise.all([
+        Promise.all(names.map(read)),
+        Promise.all(subs.map(s => read(SYSTEMS[s]))),
+        api.backupList ? Promise.resolve(api.backupList()).catch(() => null) : null
+      ]);
+      if (my !== gen) return;
+      const D = Object.fromEntries(names.map((n, i) => [n, lists[i] || []]));
+      const label = sub =>
+        ((typeof SETUP_GROUPS !== 'undefined' ? SETUP_GROUPS.flatMap(g => g[1]) : []).find(t => t[0] === sub) || [sub, sub])[1];
+      D.systems = subs.map((sub, i) => ({ e: SYSTEMS[sub], sub, label: label(sub).replace(/s$/, ''), list: systems[i] || [] }));
+      const last = backups && (backups.items || backups.list || backups)[0];
+      const h = last && last.date ? (Date.now() - Date.parse(last.date)) / 36e5 : NaN;
+      lastBackup = !(h >= 0)
+        ? ''
+        : 'last backup ' + (h < 1 ? 'less than an hour ago' : h < 24 ? Math.round(h) + ' hours ago' : FI().dayText(last.date));
+      Object.assign(D, base());
+      index = F.build(D, ctxOf(D));
+      if (box && !box.hidden) update(true);
+    };
+    const settingsOf = q => {
+      const F = FI();
+      if (typeof SettingsIndex === 'undefined' || !String(q).trim() || /^\s*>/.test(q)) return [];
+      return SettingsIndex.search(q)
+        .slice(0, 8)
+        .map(e => {
+          const where = typeof SettingsIndex.where === 'function' ? SettingsIndex.where(e) : 'App Settings';
+          const it = F.prep({
+            kind: 'setting',
+            id: e.t + '@' + where,
+            t: e.t,
+            sub: where,
+            w: 'App Settings',
+            kicker: 'Setting · ' + where,
+            setting: e
+          });
+          it.score = Math.max(F.score(it, q), 20); // (the settings search found it by its own words)
+          return it;
+        });
+    };
+    // the typed words, marked in a title (at the start of a word)
+    const marked = (t, q) => {
+      const words = FI().norm(String(q).replace(/^\s*>/, '')).split(' ').filter(Boolean);
+      const raw = String(t),
+        low = [...raw].map(c => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')[0] || c).join(''),
+        hit = new Array(low.length).fill(false);
+      if (low.length === raw.length)
+        words.forEach(w => {
+          for (let at = low.indexOf(w); at >= 0; at = low.indexOf(w, at + 1))
+            if (!at || !/[a-z0-9]/.test(low[at - 1])) for (let i = at; i < at + w.length; i++) hit[i] = true;
+        });
+      let out = '',
+        on = false;
+      for (let i = 0; i < raw.length; i++) {
+        if (!!hit[i] !== on) {
+          out += hit[i] ? '<mark>' : '</mark>';
+          on = !!hit[i];
+        }
+        out += esc(raw[i]);
+      }
+      return out + (on ? '</mark>' : '');
+    };
+    const query = () => (box ? box.querySelector('input').value : '');
+    const update = keep => {
+      const F = FI();
+      if (!F) return;
+      const was = keep && moved && res.list[sel] ? res.list[sel].key : '';
+      res = F.search(index, query(), { kind, of, recent: readRecent(), settings: settingsOf(query()) });
+      const at = was ? res.list.findIndex(x => x.key === was) : -1;
+      sel = at >= 0 ? at : 0;
+      act = 0;
+      draw();
+    };
+    const chipsHtml = () => {
+      const F = FI(),
+        typed = !!String(query()).trim();
+      if (of)
+        return `<button type="button" class="fd-chip" data-chip="all">All</button><button type="button" class="fd-chip on" data-of-clear aria-pressed="true">Races of ${esc(of.t)}<b>${res.list.length}</b><span aria-hidden="true">×</span></button>`;
+      const DEFAULT = ['all', 'driver', 'car', 'track', 'team', 'race', 'setup', 'champ', 'custom', 'help'];
+      return F.KINDS.filter(([k]) => k === 'all' || k === kind || (typed ? res.counts[k] : DEFAULT.includes(k)))
+        .map(
+          ([k, label]) =>
+            `<button type="button" class="fd-chip${k === kind ? ' on' : ''}" data-chip="${k}" aria-pressed="${k === kind}">${esc(label)}${typed && res.counts[k] !== undefined ? `<b>${res.counts[k]}</b>` : ''}</button>`
+        )
+        .join('');
+    };
+    const rowsHtml = () => {
+      let g = '';
+      if (!res.list.length)
+        return `<li class="mb-fnone">${String(query()).trim() ? 'Nothing found. Try fewer letters, or another word.' : kind !== 'all' ? 'None yet.' : 'Type a name: a driver, a car, a track, a race, a setting or a Help topic.'}</li>`;
+      return res.list
+        .map((x, i) => {
+          const head = x.g !== g ? `<li class="mb-fgh" role="presentation">${esc((g = x.g))}</li>` : '';
+          return `${head}<li role="option" id="mb-fo${i}" class="mb-fit${i === sel ? ' sel' : ''}" aria-selected="${i === sel}" data-i="${i}">${ico(x.icon, 16)}<span class="t"><span class="n">${marked(x.t, query())}</span>${x.sub ? `<span class="s">${esc(x.sub)}</span>` : ''}</span>${x.w ? `<small>${esc(x.w)}</small>` : ''}</li>`;
+        })
+        .join('');
+    };
+    const pictureOf = x => {
+      if (x.kind === 'track' && x.rec && typeof DbSheet !== 'undefined' && DbSheet.trackSvg) return DbSheet.trackSvg(x.rec);
+      if (x.kind === 'driver' && x.rec && typeof Garage !== 'undefined' && Garage.helmetOf)
+        return `<img src="avatars/Lane${Garage.helmetOf(x.rec)}.png" alt="">`;
+      return `<span class="fd-pvico">${ico(x.icon, 34)}</span>`;
+    };
+    const previewHtml = () => {
+      const x = res.list[sel];
+      if (!x) return '';
+      const acts = FI().actionsOf(x);
+      const big = ['track', 'driver', 'car', 'team', 'race', 'champ'].includes(x.kind);
+      return `${big ? `<div class="fd-pic">${pictureOf(x)}</div>` : ''}<span class="fd-k">${esc(x.kicker || x.w || '')}</span><h3>${esc(x.t)}</h3>${!x.facts && x.sub ? `<p class="fd-sub">${esc(x.sub)}</p>` : ''}${
+        x.facts
+          ? `<div class="fd-tiles">${x.facts.map(([k, v, c]) => `<div class="fd-tile"><small>${esc(k)}</small><b${c ? ` class="${c}"` : ''}>${esc(v)}</b></div>`).join('')}</div>`
+          : ''
+      }${x.lines && x.lines.length ? `<ol class="fd-lines${x.kind === 'team' ? ' plain' : ''}">${x.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ol>` : ''}<div class="fd-acts" role="group" aria-label="Actions">${acts
+        .map(
+          (a, i) =>
+            `<button type="button" class="fd-act${i === act ? ' on' : ''}" data-act="${i}">${ico(a.icon, 16)}<span>${esc(a.label)}</span><kbd>${i === act ? 'Enter' : 'Tab'}</kbd></button>`
+        )
+        .join('')}</div>`;
     };
     const draw = () => {
+      if (!box) return;
+      box.querySelector('.fd-chips').innerHTML = chipsHtml();
       const list = box.querySelector('.mb-flist');
-      let g = '';
-      list.innerHTML = items.length
-        ? items
-            .map((x, i) => {
-              const head = x.g !== g ? `<li class="mb-fgh" role="presentation">${esc((g = x.g))}</li>` : '';
-              return `${head}<li role="option" id="mb-fo${i}" class="mb-fit${i === sel ? ' sel' : ''}" aria-selected="${i === sel}" data-i="${i}">${ico(x.icon, 16)}<span class="t">${esc(x.t)}</span>${x.w ? `<small>${esc(x.w)}</small>` : ''}</li>`;
-            })
-            .join('')
-        : '<li class="mb-fnone">Nothing found. Try another word.</li>';
-      box.querySelector('input').setAttribute('aria-activedescendant', items.length ? 'mb-fo' + sel : '');
+      list.innerHTML = rowsHtml();
+      box.querySelector('.fd-pv').innerHTML = previewHtml();
+      box.querySelector('.fd-msg').textContent = msg;
+      box.querySelector('input').setAttribute('aria-activedescendant', res.list.length ? 'mb-fo' + sel : '');
       const s = list.querySelector('.sel');
       if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' });
     };
-    const update = () => {
-      items = search(box.querySelector('input').value);
-      sel = 0;
+    const drawSel = () => {
+      act = 0;
       draw();
     };
+    // ---- doing it ----
+    const go = async (x, actIndex = act) => {
+      if (!x) return;
+      const a = FI().actionsOf(x)[actIndex] || { id: 'open' };
+      if (a.id === 'races') {
+        of = { id: x.id, kind: x.kind, t: x.t };
+        kind = 'all';
+        box.querySelector('input').value = '';
+        keepRecent(x);
+        return update();
+      }
+      if (x.kind === 'do' && x.id === 'backup') return backup();
+      keepRecent(x);
+      close();
+      if (x.kind === 'do') return doIt(x.id);
+      if (!(await leave())) return;
+      const to = async patch => {
+        Object.assign(state, patch);
+        await render();
+      };
+      const fresh = async () => ((await Promise.resolve(api.list(x.e)).catch(() => [])) || []).find(r => r.id === x.id) || x.rec;
+      if (x.kind === 'page') return to(x.go);
+      if (x.kind === 'setting' && typeof settingsGo === 'function') {
+        await to({ tab: 'settings' });
+        return settingsGo(x.setting);
+      }
+      if (x.kind === 'help') {
+        if (typeof Help !== 'undefined' && Help.view) Help.view().select(x.id);
+        return to({ tab: 'settings', settingsSub: 'help' });
+      }
+      if (x.kind === 'race') {
+        if (a.id === 'again') return raceWith({ lastSetupId: x.setupId, champId: null, champTag: null });
+        return to({ focusSession: x.id, resultsSub: x.tokens ? 'tokens' : 'racing', tab: 'database', sub: 'results' });
+      }
+      if (a.id === 'book') return to({ tab: 'database', sub: 'results', resultsSub: 'racing' });
+      if (x.kind === 'setup' && a.id === 'home') return raceWith({ lastSetupId: x.id, champId: null, champTag: null });
+      if (x.kind === 'champ') {
+        if (a.id === 'home') return raceWith({ champId: x.id, champTag: null });
+        if (a.id === 'standings') {
+          if (typeof champView !== 'undefined') champView.id = x.id;
+          return to({ tab: 'database', sub: 'results', resultsSub: 'champs' });
+        }
+        await to({ tab: 'setup', setupSub: 'championships' });
+        return clickEdit(x.id);
+      }
+      if (['driver', 'car', 'track', 'team'].includes(x.kind)) {
+        await to({ tab: 'database', sub: x.e });
+        const item = await fresh();
+        if (item && typeof openForm === 'function') openForm(x.e, item);
+        return;
+      }
+      if (x.kind === 'setup') {
+        await to({ tab: 'setup', setupSub: 'setups' });
+        const item = await fresh();
+        if (item && typeof openForm === 'function') openForm('racesetups', item);
+        return;
+      }
+      if (x.kind === 'system' || x.kind === 'custom') {
+        await to(x.page);
+        if (FORM.has(x.e) && typeof openForm === 'function') {
+          const item = await fresh();
+          if (item) return openForm(x.e, item);
+        }
+        return clickEdit(x.id);
+      }
+    };
+    const raceWith = async patch => {
+      if (api.setSettings) state.settings = await api.setSettings(patch);
+      state.tab = 'home';
+      return render();
+    };
+    const doIt = async id => {
+      if (id === 'live') return api.liveOpen && api.liveOpen();
+      if (id === 'sensors') return homeThen('#sensortest');
+      if (id === 'start') return homeThen('#start');
+      if (id === 'help') {
+        if (!(await leave())) return;
+        state.tab = 'settings';
+        state.settingsSub = 'help';
+        return render();
+      }
+      if (id === 'guide') {
+        if (!(await leave())) return;
+        return raceWith({ setupGuide: { step: 0 } });
+      }
+      if (id.startsWith('add:')) {
+        const e = id.slice(4);
+        if (!(await leave())) return;
+        Object.assign(state, e === 'racesetups' ? { tab: 'setup', setupSub: 'setups' } : { tab: 'database', sub: e });
+        await render();
+        if (typeof openForm === 'function') openForm(e, null);
+      }
+    };
+    // Back up now: made here, Find stays open and says how it went
+    const backup = async () => {
+      if (!api.backupMake) return;
+      msg = 'Making a backup…';
+      draw();
+      try {
+        const r = await api.backupMake({ kind: 'hand', note: 'Made from Find' });
+        msg =
+          r && r.skipped
+            ? 'Not now: ' + r.skipped + '.'
+            : r && r.ok === false
+              ? 'Could not make the backup: ' + r.error
+              : 'Backed up. It is in App Settings, Backups.';
+        if (!(r && (r.skipped || r.ok === false))) lastBackup = 'last backup just now';
+      } catch (e) {
+        msg = 'Could not make the backup: ' + e.message;
+      }
+      if (box && !box.hidden) {
+        index = index.map(x => (x.key === 'do:backup' ? FI().prep({ ...x, sub: lastBackup }) : x));
+        update(true);
+      }
+    };
     function open() {
+      if (!FI()) return;
       if (!box) {
         box = document.createElement('div');
         box.className = 'mb-find-box';
-        box.innerHTML = `<div class="mb-fshade" data-close></div><div class="mb-fpanel" role="dialog" aria-modal="true" aria-label="Find"><label class="mb-fin">${ico('search', 18)}<input type="search" placeholder="Find a page, a setting, a driver, a car or a track" role="combobox" aria-expanded="true" aria-controls="mb-flist" autocomplete="off"><kbd>Esc</kbd></label><ul class="mb-flist" id="mb-flist" role="listbox"></ul></div>`;
+        box.innerHTML = `<div class="mb-fshade" data-close></div><div class="mb-fpanel fd" role="dialog" aria-modal="true" aria-label="Find"><label class="mb-fin">${ico('search', 18)}<input type="search" placeholder="Find a driver, a car, a track, a race, a setting or a Help topic" role="combobox" aria-expanded="true" aria-controls="mb-flist" autocomplete="off"><kbd>Esc</kbd></label><div class="fd-chips" role="group" aria-label="Show"></div><div class="fd-body"><ul class="mb-flist" id="mb-flist" role="listbox" aria-label="Found"></ul><aside class="fd-pv" aria-live="polite"></aside></div><div class="fd-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Tab</kbd> another action</span><span><kbd>&gt;</kbd> things to do</span><span class="fd-msg" role="status"></span><span class="fd-any">Ctrl K anywhere</span></div></div>`;
         document.body.append(box);
         const inp = box.querySelector('input');
-        inp.oninput = update;
+        inp.oninput = () => {
+          msg = '';
+          moved = false;
+          update();
+        };
         inp.onkeydown = ev => {
+          const n = res.list.length;
           if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
             ev.preventDefault();
-            if (items.length) sel = (sel + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
-            draw();
+            if (n) sel = (sel + (ev.key === 'ArrowDown' ? 1 : n - 1)) % n;
+            moved = true;
+            drawSel();
           } else if (ev.key === 'Enter') {
             ev.preventDefault();
-            go(items[sel]);
+            go(res.list[sel]);
+          } else if (ev.key === 'Tab') {
+            ev.preventDefault(); // (a modal window: the focus stays in the search; Tab chooses the action)
+            const k = FI().actionsOf(res.list[sel]).length;
+            if (k) act = (act + (ev.shiftKey ? k - 1 : 1)) % k;
+            draw();
           } else if (ev.key === 'Escape') {
             ev.preventDefault();
-            close();
-          } else if (ev.key === 'Tab') ev.preventDefault(); // (a modal window: the focus stays in the search)
+            if (of) {
+              of = null;
+              update();
+            } else close();
+          } else if (ev.key === 'Backspace' && !inp.value && (of || kind !== 'all')) {
+            of = null;
+            kind = 'all';
+            update();
+          }
         };
         box.onclick = ev => {
           if (ev.target.closest('[data-close]')) return close();
+          const chip = ev.target.closest('[data-chip]');
+          if (chip) {
+            of = null;
+            kind = chip.dataset.chip;
+            update();
+            return box.querySelector('input').focus();
+          }
+          if (ev.target.closest('[data-of-clear]')) {
+            of = null;
+            update();
+            return box.querySelector('input').focus();
+          }
+          const b = ev.target.closest('[data-act]');
+          if (b) return go(res.list[sel], Number(b.dataset.act));
           const li = ev.target.closest('[data-i]');
-          if (li) go(items[Number(li.dataset.i)]);
+          if (li) go(res.list[Number(li.dataset.i)], 0);
+        };
+        box.onmousemove = ev => {
+          const li = ev.target.closest && ev.target.closest('[data-i]');
+          if (li && Number(li.dataset.i) !== sel) {
+            sel = Number(li.dataset.i);
+            moved = true;
+            drawSel();
+          }
         };
       }
       if (box.hidden !== false) before = document.activeElement;
       box.hidden = false;
+      kind = 'all';
+      of = null;
+      msg = '';
+      moved = false;
       const inp = box.querySelector('input');
       inp.value = '';
+      index = FI().build(base(), ctxOf({}));
       update();
       inp.focus();
-      loadRecords().then(() => {
-        if (!box.hidden && inp.value) update();
-      });
+      load();
     }
     let before = null;
     function close() {
       const was = box && !box.hidden;
       if (box) box.hidden = true;
-      records = null; // (read again next time: a new driver or car is found too)
-      gen++;
-      loading = null;
+      gen++; // (a reading still going is dropped; the next opening reads again: a new driver or race is found too)
+      index = [];
       if (was) {
         if (before && before !== document.body && before.isConnected && typeof before.focus === 'function')
           before.focus(); // (the focus goes back where it was)
@@ -501,6 +807,7 @@ const MainBar = (() => {
       }
       before = null;
     }
+    const search = q => (FI() ? FI().search(index, q, { settings: settingsOf(q) }).list : []);
     return { open, close, search };
   })();
 

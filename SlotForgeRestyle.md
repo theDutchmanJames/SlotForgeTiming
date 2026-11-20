@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
+| [Find Everything](#find-everything) | Find (Ctrl K) over everything: chips, rows with facts, the best match and its links, a preview with actions, Recent and Do | Ctrl K on every page |
 | [Season Calendar](#season-calendar) | Championship rounds with real dates and the season strip, Fill the dates, the calendar file; Adjustments in the standings | Race Setup › Championships, Results › Championships |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
@@ -1421,6 +1422,31 @@ html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--pane
 html .so-dot.warn{background:#f2b705}
 ```
 
+## Find Everything
+
+Find (Ctrl K) (`renderer/findindex.js` build, score, search, actionsOf, remember; `mainbar.js` Find; styles `.mb-fpanel.fd`, `.fd-chips`, `.fd-body`,
+`.fd-pv`, `.fd-acts`, `.fd-foot`). The panel is 980 px wide; under 860 px the preview is left out.
+
+- **What it finds**: drivers, slotcars, tracks, teams, past races (the setup name, date, track, winner and drivers), race setups, championships, the race
+  systems, layouts, leaderboard rows, charts, widgets, audio and picture sets, the settings, the Help topics, the pages, and the things to do.
+- **How it ranks**: a whole word first, then the start of a word, then inside a word, then the letters in order (*clb*), then one letter wrong (*anan*).
+  The best match leads, and what is linked to it follows (*Races on Club Oval*, *With Anna*, *Drivers of QA Racing*); then a group per kind.
+- **Filter chips** (`.fd-chip`): pills with a count in Roboto Mono, the chosen one ringed in the accent; *Its races* puts *Races of Club Oval ×* there.
+- **A row** (`.mb-fit`): the icon, the title with the typed letters in the accent (`mark`), a line of facts under it in Roboto Mono
+  (*4 lanes · 22.6–24.5 m · best 5.000 Anna*), the kind on the right; the chosen row has an accent tint and a 3 px accent bar.
+- **The preview** (`.fd-pv`): a picture box (the track's lanes, the driver's helmet, or the kind's icon in an accent tile), the kicker in Roboto Mono caps
+  (*TRACK · RACED ON 48 TIMES*), the name in Barlow italic caps, figure tiles (best laps in purple, `--fd-purple`), the finishing order of a race, and the
+  actions as buttons (`.fd-act`): the chosen one ringed in the accent with *Enter*, the others *Tab*.
+- **Nothing typed**: *Recent* (the last eight things opened) and *Do* (Start the race, Test the sensors, the Live Race screen, Back up now with the time
+  of the last backup, Add a driver, slotcar, track, team or race setup, Open Help, the setup guide). *>* shows only *Do*.
+- **The foot** (`.fd-foot`): the keys (↑ ↓, Enter, Tab, >) as small Roboto Mono keycaps, a message (*Backed up.*), *Ctrl K anywhere*.
+
+```css
+.mb-fpanel.fd .mb-fit.sel{background:color-mix(in srgb,var(--accent) 12%,var(--panel));box-shadow:inset 3px 0 0 var(--accent)}
+.fd-pv h3{margin:0;font:800 italic 26px/1.05 var(--fd-cond);text-transform:uppercase}
+html .fd-act.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+```
+
 ## Season Calendar
 
 Championship dates and adjustments (`renderer/championship.js` dateOf, dateText, fillDates, calendar, addAdjustment; `champpoints.js` standings and
@@ -2584,3 +2610,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Backup Vault | New: Import and Export as Backups (status card, every backup with Restore and what is lost, notes, safety backups), an Export picker with Your file, an Import preview with Add a copy, Replace mine or Skip |
 | 2026-11 | Settings Hub | New: App Settings by task (Look and feel, Race night, Your data, This computer), an Overview of tiles with each part's state, General split, Database storage on Backups and storage, Phones and tablets on Race Director, Paddock and Content Packs pages |
 | 2026-11 | Season Calendar | New: round dates as dates (picker, read from text), the season strip, Fill the dates, the calendar file; Adjustments with a reason in the standings, table and PDF; drivers not raced folded away |
+| 2026-11 | Find Everything | New: Find (Ctrl K) searches every kind of thing (teams, races, championships, systems, Customization, Help), ranks by word start and typos, shows linked things, filter chips, a preview with actions (Enter, Tab), Recent and Do |
