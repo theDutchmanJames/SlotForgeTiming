@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
+| [Season Calendar](#season-calendar) | Championship rounds with real dates and the season strip, Fill the dates, the calendar file; Adjustments in the standings | Race Setup › Championships, Results › Championships |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1420,6 +1421,28 @@ html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--pane
 html .so-dot.warn{background:#f2b705}
 ```
 
+## Season Calendar
+
+Championship dates and adjustments (`renderer/championship.js` dateOf, dateText, fillDates, calendar, addAdjustment; `champpoints.js` standings and
+tableOf; `championshipui.js`; `report.js`; styles under `.chstrip`, `.chfill`, `.chrdate`, `.chadj`). The championship pink is `--ch-pk` (#e0559b).
+
+- **The season strip** (`.chstrip`, above the rounds in the editor): *The season* in Barlow italic caps, the first and last date and how far the next
+  round is (*round 6 is in 9 weeks*); a 3 px line, a dot per dated round (filled pink when driven, ringed with a soft halo when next), R1 · 5 Nov
+  under it in Roboto Mono, a *Today* marker in the accent, the months under the line.
+- **Fill the dates** (`.chfill`, a dashed box): from a date, every week, 2 weeks or month, *Fill N rounds without a date*; *Save the calendar (.ics)…*.
+- **A round**: its date in Roboto Mono after *Round N* in the summary (`.chrdate`, *Thu 5 Nov*); a date picker in the round; a date typed before that
+  can not be read says *Written before as "Sat 3 Oct": choose the date.* in amber text.
+- **Adjustments**: an **Adj.** column before Points (red minus, green plus, the reasons on hover) with a legend; an **Adjustments** card under the
+  table (`.chadj`: the points in Roboto Mono, the driver, the reason, the round and date, *Remove…*) with **Adjust points…**; the question has Take off /
+  Give as a Gear Selector, the points, the reason, the round, and a live line (*Bjorn: 90 → 85 points, still 2nd*). The PDF lists them under the table.
+- **Not raced yet**: the roster drivers with no points and no adjustment are folded under a ghost button (*▸ 30 drivers of the roster, not raced yet*).
+
+```css
+html .chstrip-dot.next i{box-shadow:0 0 0 5px color-mix(in srgb,var(--ch-pk) 25%,transparent)}
+html .chtable td.neg{color:#e5484d;font-weight:700}
+html .chadj li{grid-template-columns:70px minmax(110px,160px) minmax(0,1fr) auto auto}
+```
+
 ## Finalize Review
 
 The director's final check after a race or heat (`renderer/review.js` finishHtml, `race.js` rerunHeat, `raceover.js` checkedHtml/asideHtml, `stats.js`
@@ -2560,3 +2583,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Track Sheet, Driver Sheet, Team Sheet | New: the track, driver and team editors as sheets (lanes as tiles, Every lane, sector boxes, On the record, the callsign boxes, More), the Delete question with Retire and Merge first, lane boxes in a race setup |
 | 2026-11 | Backup Vault | New: Import and Export as Backups (status card, every backup with Restore and what is lost, notes, safety backups), an Export picker with Your file, an Import preview with Add a copy, Replace mine or Skip |
 | 2026-11 | Settings Hub | New: App Settings by task (Look and feel, Race night, Your data, This computer), an Overview of tiles with each part's state, General split, Database storage on Backups and storage, Phones and tablets on Race Director, Paddock and Content Packs pages |
+| 2026-11 | Season Calendar | New: round dates as dates (picker, read from text), the season strip, Fill the dates, the calendar file; Adjustments with a reason in the standings, table and PDF; drivers not raced folded away |

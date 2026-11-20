@@ -3173,7 +3173,7 @@ async function renderRace() {
         label: Champ.roundLabel(c, at.round),
         short: at.round + 1 === view.round ? 'the next session' : 'round ' + (at.round + 1),
         track: tr ? tr.name : '',
-        date: round.date || '',
+        date: round.date ? Champ.dateText(round.date) : '',
         lanes: tr ? (tr.lanes || []).length || tr.laneCount || 0 : 0,
         sessions: later.map(x => (D.setups.find(y => y.id === x.setup) || {}).name || 'Session')
       };

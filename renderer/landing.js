@@ -1981,7 +1981,11 @@ async function renderHome() {
           if (!p.next) return null;
           const r = c.rounds[p.next.round];
           const tr = r && tracks.find(t => t.id === r.track);
-          return { label: Champ.roundLabel(c, p.next.round), track: tr ? tr.name || '' : '', date: r && r.date ? r.date : '' };
+          return {
+            label: Champ.roundLabel(c, p.next.round),
+            track: tr ? tr.name || '' : '',
+            date: r && r.date ? Champ.dateOf(r.date) || r.date : ''
+          };
         })()
       };
     } catch {

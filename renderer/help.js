@@ -729,6 +729,7 @@ const Help = (() => {
           <li>Make one in <b>Race Setup, Championships</b>: the <b>rounds</b> (a name, a track and a date if you want) and the <b>sessions</b> of every round, each driven with one of your race setups. A new round starts with the sessions of the round before it.</li>
           <li>The kind of a session (Practice, Qualifying or Race) comes from its race setup. A Time Token Session can not be part of a championship. A race counts for 100%, 50% (a sprint) or no points.</li>
           <li>The <b>roster</b> holds the drivers, each with a team and the round he joins in.</li>
+          <li>Every round has a <b>date</b> (picked; a date typed before is read). <b>The season</b> shows the rounds on a line with today. <b>Fill the dates</b> gives the rounds without one a date every week, 2 weeks or month; <b>Save the calendar (.ics)</b> makes a file for a phone or a calendar app.</li>
           <li>On <b>Home</b>, choose the championship in <b>Start a race</b>, under the name of the race setup (<b>None</b> is a normal race). Its card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the race setup and the lanes, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
           <li>The race says <b>Counts for</b> the championship on Home, the race screen and in Results and Records. A session is driven when its race is saved.</li>
           <li>The points, the bonuses, the dropped results and the standings are in the next folder, <b>Championship points</b>.</li>
@@ -740,13 +741,14 @@ const Help = (() => {
           note: 'Table, bonuses, drops, teams and standings',
           body: `
         <ul>
-          <li><b>Points</b> in a championship (Race Setup, Championships) is the table: start from a ready-made one or <b>My own</b>, change any place, and set what the rest get. <b>One point per car beaten</b> needs none.</li>
-          <li><b>Bonuses</b>: fastest lap (only in the first places you set), pole position (fastest in the qualifying of the round, if he starts) and a point for starting. A car that is out gets no points for its place.</li>
-          <li><b>Dropped results</b> take away the worst rounds of every driver and team. <b>Teams</b> count the best drivers of a team, all of them, or no team standings. A tie goes to the most wins, the last round or the qualifying.</li>
-          <li>A race at 50% (a sprint) gives half of the points, rounded as you choose. A driver who is not in the roster is a guest: no points, and the drivers behind him move up (can be switched off).</li>
-          <li>Finalize puts the points of a race in the standings (a session counts once: a second run replaces the first). <b>Undo</b> takes them out, <b>Award these points</b> puts them back, and <b>Do not count this race</b> keeps the result but offers the session again on Home.</li>
-          <li><b>Races of teams</b> (Endurance, team heats) are scored: the team gets the points of its place once. Each driver who drove for it gets the same, a share by laps, or nothing, as you choose (with a minimum share of laps).</li>
+          <li><b>Points</b> in a championship (Race Setup, Championships) is the table: start from a ready-made one or <b>My own</b>, change any place and what the rest get. <b>One point per car beaten</b> needs none.</li>
+          <li><b>Bonuses</b>: fastest lap (only in the first places you set), pole position (fastest in qualifying, if he starts) and a point for starting. A car that is out gets no points for its place.</li>
+          <li><b>Dropped results</b> take away the worst rounds. <b>Teams</b> count the best drivers of a team, all of them, or no team standings. A tie goes to the most wins, the last round or the qualifying.</li>
+          <li>A race at 50% (a sprint) gives half of the points, rounded as you choose. A driver not in the roster is a guest: no points, and the drivers behind move up (can be switched off).</li>
+          <li>Finalize puts the points of a race in the standings (a second run of a session replaces the first). <b>Undo</b> takes them out, <b>Award these points</b> puts them back, and <b>Do not count this race</b> keeps the result but offers the session again on Home.</li>
+          <li><b>Races of teams</b> (Endurance, team heats) are scored: the team gets the points of its place once; its drivers the same, a share by laps, or nothing (a minimum share of laps).</li>
           <li>Results and Records, <b>Championships</b>: Drivers, Teams and Rounds, with <b>Export to PDF</b>. Home shows who leads ("Maria leads by 5") and the top five.</li>
+          <li><b>Adjust points…</b> gives or takes points with a reason: in the standings, the <b>Adj.</b> column and the PDF.</li>
         </ul>`
         },
         {

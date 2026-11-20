@@ -334,9 +334,11 @@
       .r { text-align: right; } .big { font: 700 11pt "SF Mono", "Roboto Mono", Consolas, monospace; } tr.lead td { background: #fde8f1; -webkit-print-color-adjust: exact; print-color-adjust: exact; } tr { page-break-inside: avoid; }
       .dr { color: #888; text-decoration: line-through; } .fl { font-weight: bold; color: #b8326f; } .mu { color: #888; }
       .st-legend { margin: 5pt 0 0; font-size: 7.6pt; color: var(--mut); }
+      .neg { color: #c0262d; font-weight: bold; } .pos { color: #1e8a4c; font-weight: bold; }
+      .st-adj { margin: 8pt 0 0; font-size: 8pt; } .st-adj h3 { margin: 0 0 3pt; font: italic 700 10pt "SF Barlow", "Barlow Condensed", "Arial Narrow", sans-serif; text-transform: uppercase; } .st-adj li { margin: 1pt 0; }
       ${mono ? 'tr.lead td { background: #eef0f3 !important; } .fl { color: #15181d; text-decoration: underline; }' : ''}`;
     const page = `<main class="st">${RR ? RR.head({ session: RR.today(), kicker: 'Championship standings', title: championship || 'Championship', sub: `${esc(t.title)}${t.note ? ' &middot; ' + esc(t.note) : ''}${lead ? ' &middot; ' + esc(lead) : ''}`, right: RR.mark }) : `<h1>${esc(championship)}</h1>`}
-      ${podium}<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${legend ? `<p class="st-legend">${legend}</p>` : ''}<footer class="rp-foot"><span>Made with SlotForge Timing</span><span>${esc(t.title)}</span></footer></main>`;
+      ${podium}<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${legend ? `<p class="st-legend">${legend}</p>` : ''}${(t.adjustments || []).length ? `<section class="st-adj"><h3>Adjustments</h3><ul>${t.adjustments.map(a => `<li><b>${esc(a.points)}</b> ${esc(a.name)}: ${esc(a.reason)}${a.round ? ` <span class="mu">(${esc(a.round)})</span>` : ''}</li>`).join('')}</ul></section>` : ''}<footer class="rp-foot"><span>Made with SlotForge Timing</span><span>${esc(t.title)}</span></footer></main>`;
     if (!RR)
       return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(championship)}</title><style>@page { size: A4 landscape; margin: 14mm; }${extra}</style></head><body>${page}</body></html>`;
     return RR.printDoc({ title: championship || 'Championship', mono, landscape: true, extra, body: page });

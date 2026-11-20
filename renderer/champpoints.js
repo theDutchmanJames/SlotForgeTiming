@@ -437,6 +437,19 @@
         qplaces
       };
     });
+    // (2.4.0, SlotForgeRestyle.md "Season Calendar") the adjustments: points given or taken by hand, with the reason; they count in the total (never dropped)
+    const adjustments = (Array.isArray(c.adjustments) ? c.adjustments : []).map(a => ({
+      ...a,
+      name: nameOf(a.driver),
+      roundLabel: a.round ? (ri => (ri >= 0 ? C.roundLabel(c, ri) : ''))(c.rounds.findIndex(r => r.id === a.round)) : ''
+    }));
+    drivers.forEach(d => {
+      const mine = adjustments.filter(a => a.driver === d.id);
+      d.adj = round2(mine.reduce((n, a) => n + a.points, 0));
+      d.adjWhy = mine.map(a => `${signed(a.points)}: ${a.reason}`).join('; ');
+      d.raced = d.cells.some(x => x.state === 'score' && x.pts > 0) || d.places.length > 0;
+      if (d.adj) d.total = round2(d.total + d.adj);
+    });
     const cellPts = (row, i) => (row.cells[i] && row.cells[i].state === 'score' ? row.cells[i].pts : 0);
     function tie(a, b) {
       if (c.tie === 'last') {
@@ -519,7 +532,7 @@
       return {
         ri,
         label: C.roundLabel(c, ri),
-        date: r.date,
+        date: C.dateText(r.date), // (2.4.0: a date in words; a date typed before as text stays as it was)
         decided,
         winner: win ? (win.kind === 'team' ? teamName(win.teamId) : nameOf(win.driverId)) : '',
         winnerId: win ? win.driverId || win.teamId : '',
@@ -539,6 +552,7 @@
       last,
       teamRaces,
       dropNote: c.drops > 0 && total ? `Best ${Math.max(1, total - c.drops)} of ${total} rounds count` : '',
+      adjustments,
       results: roundRes,
       awarded: aw
     };
@@ -827,13 +841,17 @@
         legend: []
       };
     }
+    const anyAdj = st.drivers.some(d => d.adj);
+    if (anyAdj) legend.push({ cls: 'adj', text: 'Adj. points given or taken by hand (see the adjustments)' });
     const rows = st.drivers.map((d, i) => ({
       lead: i === 0 && st.decided > 0,
+      raced: d.raced !== false || !!d.adj,
       cells: [
         { t: String(d.pos) },
         { t: d.name, b: true },
         { t: d.teamName },
         ...d.cells.map(cellOf),
+        ...(anyAdj ? [d.adj ? { t: signed(d.adj), cls: d.adj < 0 ? 'neg' : 'pos', title: d.adjWhy } : { t: '–', cls: 'mu' }] : []),
         { t: fmt(d.total), b: true, big: true },
         { t: behind(d, i) },
         { t: String(d.wins) }
@@ -847,12 +865,14 @@
         { label: 'Driver' },
         { label: 'Team' },
         ...roundCols,
+        ...(anyAdj ? [{ label: 'Adj.', r: true, title: 'Points given or taken by hand' }] : []),
         { label: 'Points', r: true },
         { label: 'Behind', r: true },
         { label: 'Wins', r: true }
       ],
       rows,
-      legend
+      legend,
+      adjustments: (st.adjustments || []).map(a => ({ name: a.name, points: signed(a.points), reason: a.reason, round: a.roundLabel }))
     };
   }
 

@@ -101,7 +101,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   await change({ sf: '0:2:share' }, '50');
   say('the points of a race are changed to 50% (a sprint), and to 100% again', run('chEd.draft.rounds[0].sessions[2].share') === 50 && (await change({ sf: '0:2:share' }, '100'), run('chEd.draft.rounds[0].sessions[2].share') === 100));
   const spy = { sel: '', node: {} }; mgr().querySelector = sel => { spy.sel = sel; return spy.node; };
-  await change({ rf: '0:track' }, 't4'); mgr().oninput({ target: { dataset: { rf: '0:name' }, value: 'Opener' } }); mgr().oninput({ target: { dataset: { rf: '0:date' }, value: 'Sat 3 Oct' } }); await change({ rf: '0:name' }, 'Opener');
+  await change({ rf: '0:track' }, 't4'); mgr().oninput({ target: { dataset: { rf: '0:date' }, value: 'Sat 3 Oct' } }); mgr().oninput({ target: { dataset: { rf: '0:name' }, value: 'Opener' } }); /* (2.4.0: the date also shows in the line of the round, so it is typed first here) */ await change({ rf: '0:name' }, 'Opener');
   say('a round gets a track, a name and a date', run('chEd.draft.rounds[0].track') === 't4' && run('chEd.draft.rounds[0].name') === 'Opener' && run('chEd.draft.rounds[0].date') === 'Sat 3 Oct');
   say('...the name shows in the line of the round at once (the page is not drawn again, so typing keeps its place)', spy.sel === '[data-round="0"] .chrname' && spy.node.textContent === 'Opener');
   E('ch-addround').onclick();

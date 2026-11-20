@@ -962,7 +962,7 @@ function registerResourceAndSessionHandlers() {
 function registerExportHandlers() {
   // (2.3.0) the results as a web page, a CSV file or a text: asks where, then writes the text as it is. Only these three kinds, and only text.
   ipcMain.handle('share:save', async (event, text, name, kind) => {
-    const kinds = { html: ['Web page', 'html'], csv: ['CSV (spreadsheet)', 'csv'], txt: ['Text', 'txt'] };
+    const kinds = { html: ['Web page', 'html'], csv: ['CSV (spreadsheet)', 'csv'], txt: ['Text', 'txt'], ics: ['Calendar', 'ics'] }; // (2.4.0: a championship's calendar)
     if (!kinds[kind] || typeof text !== 'string' || text.length > 64 * 1024 * 1024) throw Error('Nothing to save.');
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
       defaultPath: path.basename(String(name || 'results.' + kinds[kind][1])),

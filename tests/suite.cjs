@@ -275,6 +275,7 @@ module.exports = [
   ['dbsheets.test.js', 'node-test'],
   ['backupvault.test.js', 'node-test'],
   ['settingshub.test.js', 'node-test'],
+  ['seasoncalendar.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],

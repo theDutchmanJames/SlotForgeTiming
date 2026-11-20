@@ -22,7 +22,9 @@
     drops: 10,
     teamBest: 20,
     fastTop: 99,
-    teamMin: 100
+    teamMin: 100,
+    reason: 120,
+    adjustments: 200
   };
   // The rules of the points (1.56.0): the table for the finishing places, the bonuses, the dropped results, the team points and the tie rule.
   const DEFAULT_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
@@ -94,11 +96,50 @@
     share: shareOf(s && s.share),
     ...(s && s.skipped === true ? { skipped: true } : {})
   });
+  // ---- (2.4.0, SlotForgeRestyle.md "Season Calendar") the date of a round: a real date (YYYY-MM-DD) ----
+  const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const two = n => String(n).padStart(2, '0');
+  const isoOf = (y, m, d) => {
+    const t = new Date(Date.UTC(y, m - 1, d));
+    return y >= 1900 && y <= 2200 && t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d
+      ? `${y}-${two(m)}-${two(d)}`
+      : '';
+  };
+  // a date as it was typed before ("Thu 5 Nov 2026", "5/11/2026", "Nov 5, 2026") or kept ("2026-11-05") -> "2026-11-05"; '' when it can not be read
+  // safely (no year: "Sat 3 Oct", or words that are not a date)
+  function dateOf(v) {
+    const t = String(v === undefined || v === null ? '' : v)
+      .trim()
+      .toLowerCase();
+    let m;
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t))) return isoOf(+m[1], +m[2], +m[3]);
+    if ((m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t))) return isoOf(+m[3], +m[2], +m[1]); // (day first, as in most of Europe)
+    const words = t.replace(/,/g, ' ').split(/\s+/).filter(Boolean),
+      mon = words.findIndex(w => MONTHS.includes(w.slice(0, 3)) && /^[a-z]+\.?$/.test(w)),
+      nums = words.filter(w => /^\d{1,4}(st|nd|rd|th)?$/.test(w)).map(w => parseInt(w, 10));
+    if (mon < 0 || nums.length !== 2) return '';
+    const year = nums.find(n => n > 31),
+      day = nums.find(n => n <= 31);
+    return year && day ? isoOf(year, MONTHS.indexOf(words[mon].slice(0, 3)) + 1, day) : '';
+  }
+  const dateParts = v => {
+    const iso = dateOf(v);
+    return iso ? new Date(iso + 'T12:00:00') : null;
+  };
+  // a round date in words: "Thu 5 Nov 2026" (o.short: "Thu 5 Nov"); a date that could not be read stays as it was typed
+  function dateText(v, o = {}) {
+    const d = dateParts(v);
+    if (!d) return String(v || '');
+    return d
+      .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(o.short ? {} : { year: 'numeric' }) })
+      .replace(/,/g, '');
+  }
+  const keepDate = v => dateOf(v) || str(v, LIMITS.date);
   const cleanRound = r => ({
     id: id(r && r.id) || newId('r'),
     name: str(r && r.name, LIMITS.roundName),
     track: id(r && r.track),
-    date: str(r && r.date, LIMITS.date),
+    date: keepDate(r && r.date),
     sessions: (r && Array.isArray(r.sessions) ? r.sessions : []).slice(0, LIMITS.sessions).map(cleanSession)
   });
   // Any record (from the file, a mistake, an import) made into one that holds together: limits kept, every id there and unique, a driver once in the roster.
@@ -147,6 +188,12 @@
       teamRace: oneOf(r.teamRace, TEAM_RACES, RULE_DEFAULTS.teamRace),
       teamMin: int(r.teamMin, RULE_DEFAULTS.teamMin, 0, LIMITS.teamMin)
     };
+    // (2.4.0) the adjustments of a driver of the roster, with a reason (none: the record has no list, as before)
+    const adj = (Array.isArray(r.adjustments) ? r.adjustments : [])
+      .map(cleanAdj)
+      .filter(a => a.driver && taken.has(a.driver) && a.points && a.reason.trim())
+      .slice(-LIMITS.adjustments);
+    if (adj.length) out.adjustments = adj;
     if (keepId && typeof r.id === 'string') out.id = r.id;
     return out;
   }
@@ -193,7 +240,107 @@
       r = out.rounds[i];
     if (patch.name !== undefined) r.name = str(patch.name, LIMITS.roundName);
     if (patch.track !== undefined) r.track = id(patch.track);
-    if (patch.date !== undefined) r.date = str(patch.date, LIMITS.date);
+    if (patch.date !== undefined) r.date = keepDate(patch.date);
+    return { rec: out };
+  }
+  // (2.4.0) the rounds without a date get one: one step (a week, two weeks, a month) after the round before it; a round with no dated round before
+  // it gets the first date, and the next ones follow it
+  function fillDates(c, from, every) {
+    const start = dateOf(from);
+    if (!start) return { error: 'Choose the date of the first round.' };
+    const step = iso => {
+      const [y, m, d] = iso.split('-').map(Number);
+      const t =
+        every === 'month'
+          ? new Date(Date.UTC(y, m, Math.min(d, new Date(Date.UTC(y, m + 1, 0)).getUTCDate()))) // (the 31st in a short month: its last day)
+          : new Date(Date.UTC(y, m - 1, d + (every === '2weeks' ? 14 : 7)));
+      return isoOf(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+    };
+    const out = clone(c);
+    let last = '',
+      filled = 0;
+    out.rounds.forEach(r => {
+      const own = dateOf(r.date);
+      if (own) return void (last = own);
+      r.date = last ? step(last) : start;
+      last = r.date;
+      filled++;
+    });
+    return filled ? { rec: out, filled } : { error: 'Every round has a date already.' };
+  }
+  // (2.4.0) the season as a calendar file (iCalendar): a whole-day event for every round with a date, with its track and sessions
+  function calendar(c, ctx = {}) {
+    const esc = t =>
+      String(t || '')
+        .replace(/([\\;,])/g, '\\$1')
+        .replace(/\r?\n/g, '\\n');
+    const day = iso => iso.replace(/-/g, '');
+    const next = iso => {
+      const [y, m, d] = iso.split('-').map(Number),
+        t = new Date(Date.UTC(y, m - 1, d + 1));
+      return `${t.getUTCFullYear()}${two(t.getUTCMonth() + 1)}${two(t.getUTCDate())}`;
+    };
+    const stamp = (ctx.now ? new Date(ctx.now) : new Date())
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d+Z$/, 'Z');
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SlotForge//Timing//EN',
+      'CALSCALE:GREGORIAN',
+      `X-WR-CALNAME:${esc(c.name || 'Championship')}`
+    ];
+    let n = 0;
+    c.rounds.forEach((r, i) => {
+      const iso = dateOf(r.date);
+      if (!iso) return;
+      n++;
+      const track = (ctx.tracks || []).find(t => t.id === r.track);
+      const sessions = r.sessions
+        .map(x => ((ctx.setups || []).find(su => su.id === x.setup) || {}).name)
+        .filter(Boolean)
+        .join(', ');
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${r.id}@slotforge-timing`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${day(iso)}`,
+        `DTEND;VALUE=DATE:${next(iso)}`,
+        `SUMMARY:${esc(`${c.name || 'Championship'} · ${roundLabel(c, i)}`)}`,
+        ...(track ? [`LOCATION:${esc(track.name)}`] : []),
+        ...(sessions ? [`DESCRIPTION:${esc(sessions)}`] : []),
+        'END:VEVENT'
+      );
+    });
+    lines.push('END:VCALENDAR');
+    return { text: lines.join('\r\n') + '\r\n', events: n };
+  }
+
+  // ---- (2.4.0, SlotForgeRestyle.md "Season Calendar") adjustments: points given or taken by hand (a penalty, a correction), with the reason ----
+  const cleanAdj = a => ({
+    id: id(a && a.id) || newId('a'),
+    driver: id(a && a.driver),
+    points: Math.round(num(a && a.points, 0, -LIMITS.points, LIMITS.points) * 100) / 100,
+    reason: str(a && a.reason, LIMITS.reason),
+    round: id(a && a.round),
+    date: str(a && a.date, LIMITS.date)
+  });
+  function addAdjustment(c, a) {
+    const x = cleanAdj({ ...a, id: '' });
+    if (!x.driver || !c.roster.some(r => r.driver === x.driver)) return { error: 'Choose a driver of the roster.' };
+    if (!x.points) return { error: 'Give or take at least one point.' };
+    if (!x.reason.trim()) return { error: 'Say why: the reason shows in the standings.' };
+    if (x.round && !c.rounds.some(r => r.id === x.round)) x.round = '';
+    const out = clone(c);
+    out.adjustments = [...(out.adjustments || []), x].slice(-LIMITS.adjustments);
+    return { rec: out, id: x.id };
+  }
+  function removeAdjustment(c, aid) {
+    if (!(c.adjustments || []).some(a => a.id === aid)) return { error: 'There is no such adjustment.' };
+    const out = clone(c);
+    out.adjustments = out.adjustments.filter(a => a.id !== aid);
+    if (!out.adjustments.length) delete out.adjustments;
     return { rec: out };
   }
   function addSession(c, i, setup) {
@@ -551,6 +698,12 @@
     removeRound,
     moveRound,
     setRound,
+    dateOf,
+    dateText,
+    fillDates,
+    calendar,
+    addAdjustment,
+    removeAdjustment,
     addSession,
     removeSession,
     moveSession,

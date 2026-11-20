@@ -182,12 +182,12 @@ function renderChampionshipEditor(box) {
       open = chEd.open.has(r.id);
     const track = nameOf(L.tracks, 'tracks', r.track);
     return (
-      `<details class="chround${st.state === 'next' ? ' next' : ''}${looks[i] ? ' look' : ''}" data-round="${i}"${open ? ' open' : ''}><summary><span class="chrn">Round ${i + 1}</span><span class="chrname">${esc(r.name)}</span><span class="chrtrack muted">${esc(track || (r.track ? '(deleted track)' : 'track of the race setup'))}</span>` +
+      `<details class="chround${st.state === 'next' ? ' next' : ''}${looks[i] ? ' look' : ''}" data-round="${i}"${open ? ' open' : ''}><summary><span class="chrn">Round ${i + 1}</span><span class="chrdate">${esc(Champ.dateText(r.date, { short: true }))}</span><span class="chrname">${esc(r.name)}</span><span class="chrtrack muted">${esc(track || (r.track ? '(deleted track)' : 'track of the race setup'))}</span>` +
       `<span class="muted">${r.sessions.length} ${r.sessions.length === 1 ? 'session' : 'sessions'}${st.driven ? ` · ${st.driven} driven` : ''}</span>${pill ? `<span class="chpill ${pill.tone}">${esc(pill.text)}</span>` : ''}</summary>
       <div class="chrbody"><div class="fgrid c3">
         <div class="field"><label for="ch-rn-${i}">Round name</label><input type="text" id="ch-rn-${i}" data-rf="${i}:name" value="${esc(r.name)}" maxlength="${Champ.LIMITS.roundName}" placeholder="Round ${i + 1}"></div>
         <div class="field"><label for="ch-rt-${i}">Track</label><select id="ch-rt-${i}" data-rf="${i}:track"><option value="">(the track of the race setup)</option>${L.tracks.map(t => `<option value="${esc(t.id)}"${t.id === r.track ? ' selected' : ''}>${esc(t.name || '(unnamed)')}</option>`).join('')}</select></div>
-        <div class="field"><label for="ch-rd-${i}">Date (optional)</label><input type="text" id="ch-rd-${i}" data-rf="${i}:date" value="${esc(r.date)}" maxlength="${Champ.LIMITS.date}" placeholder="Sat 24 Oct 2026"></div></div>
+        <div class="field"><label for="ch-rd-${i}">Date (optional)</label><input type="date" id="ch-rd-${i}" data-rf="${i}:date" value="${esc(Champ.dateOf(r.date))}">${r.date && !Champ.dateOf(r.date) ? `<span class="hint chdatewas">Written before as “${esc(r.date)}”: choose the date.</span>` : ''}</div></div>
         <h4>Sessions of this round, in the order you drive them</h4>
         ${r.sessions.length ? `<div class="chses chh" aria-hidden="true"><span></span><span>Race setup</span><span>Kind</span><span>Points</span><span></span></div>${r.sessions.map((s, k) => sessionHtml(r, i, s, k)).join('')}` : '<p class="muted">No sessions yet. Add a practice, a qualifying or a race.</p>'}
         <div class="row"><button type="button" class="btn" data-sadd="${i}"${r.sessions.length >= Champ.LIMITS.sessions ? ' disabled' : ''}>${I('plus')} Add a session</button>
@@ -238,11 +238,49 @@ function renderChampionshipEditor(box) {
   const cards = (key, list) =>
     `<div class="fu-cards fu-c3" role="group" aria-labelledby="ch-q-${key}">${list.map(([v, title, line]) => `<button type="button" class="fu-card${d[key] === v ? ' on' : ''}" aria-pressed="${d[key] === v}" data-pick="${key}" data-val="${v}"><span class="fu-ct"><b>${esc(title)}</b></span>${line ? `<span class="fu-cd">${esc(line)}</span>` : ''}<span class="fu-ck" aria-hidden="true">${Icons.svg('check', { size: 14, stroke: 3 })}</span></button>`).join('')}</div>`;
 
+  // (2.4.0, SlotForgeRestyle.md "Season Calendar") the season on a line: a dot per round with a date (filled when driven, ringed when next), today
+  const seasonHtml = () => {
+    const p = prog(),
+      dated = d.rounds.map((r, i) => ({ r, i, iso: Champ.dateOf(r.date), st: (p.rounds[i] || {}).state })).filter(x => x.iso);
+    if (!dated.length) return '<p class="muted chseason-none">Give the rounds a date to see the season here.</p>';
+    const t = x => Date.parse(x + 'T12:00:00'),
+      lo = Math.min(...dated.map(x => t(x.iso))),
+      hi = Math.max(...dated.map(x => t(x.iso))),
+      span = Math.max(hi - lo, 864e5),
+      at = ms => (dated.length === 1 ? 50 : Math.max(0, Math.min(100, ((ms - lo) / span) * 100))),
+      now = Date.now(),
+      todayIso = new Date(now - new Date(now).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const next = d.rounds.map((r, i) => ({ i, iso: Champ.dateOf(r.date), st: (p.rounds[i] || {}).state })).find(x => x.st === 'next');
+    const days = next && next.iso ? Math.round((t(next.iso) - t(todayIso)) / 864e5) : null;
+    const when =
+      days === null
+        ? ''
+        : days < 0
+          ? ` · round ${next.i + 1} was due ${-days === 1 ? 'yesterday' : -days + ' days ago'}`
+          : days === 0
+            ? ` · round ${next.i + 1} is today`
+            : days < 14
+              ? ` · round ${next.i + 1} is in ${days} ${days === 1 ? 'day' : 'days'}`
+              : ` · round ${next.i + 1} is in ${Math.round(days / 7)} weeks`;
+    const doneTo = dated.filter(x => x.st === 'done').reduce((m, x) => Math.max(m, at(t(x.iso))), 0);
+    const months = [];
+    for (let m = new Date(lo); m.getTime() <= hi; m = new Date(m.getFullYear(), m.getMonth() + 1, 1))
+      months.push(m.toLocaleDateString('en-GB', { month: 'short' }));
+    return `<div class="chstrip"><div class="chstrip-k"><b>The season</b><small>${esc(Champ.dateText(dated[0].iso))}${dated.length > 1 ? ' – ' + esc(Champ.dateText(dated[dated.length - 1].iso)) : ''}${esc(when)}</small></div>
+      <div class="chstrip-line"><span class="chstrip-done" style="width:${doneTo}%"></span>${dated.map(x => `<span class="chstrip-dot ${x.st === 'done' ? 'done' : x.st === 'next' ? 'next' : ''}" style="left:${at(t(x.iso))}%" title="${esc(Champ.roundLabel(d, x.i) + ' · ' + Champ.dateText(x.iso))}"><i></i><small>R${x.i + 1} · ${esc(new Date(x.iso + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}</small></span>`).join('')}${now >= lo - 864e5 && now <= hi + 864e5 ? `<span class="chstrip-today" style="left:${at(now)}%"><span>Today</span></span>` : ''}</div>
+      <div class="chstrip-m">${[...new Set(months)].map(m => `<span>${esc(m)}</span>`).join('')}</div></div>`;
+  };
+  const fillHtml = () => {
+    const first = d.rounds.map(r => Champ.dateOf(r.date)).find(Boolean) || new Date().toISOString().slice(0, 10),
+      missing = d.rounds.filter(r => !Champ.dateOf(r.date)).length;
+    return `<div class="chfill"><span>Fill the dates: from</span><input type="date" id="ch-fillfrom" value="${esc(first)}" aria-label="The date of the first round"><span>every</span><select id="ch-fillevery" aria-label="How often"><option value="week">week</option><option value="2weeks" selected>2 weeks</option><option value="month">month</option></select><button type="button" class="btn sm" id="ch-fill"${missing ? '' : ' disabled'}>Fill ${missing ? missing + ' ' + (missing === 1 ? 'round' : 'rounds') : 'the rounds'} without a date</button><span class="chgrow"></span><button type="button" class="btn sm" id="ch-ics"${d.rounds.some(r => Champ.dateOf(r.date)) ? '' : ' disabled'}>Save the calendar (.ics)…</button></div>`;
+  };
   const roundsBody =
     () => `<div class="fgrid"><div class="field full">${note('info', 'Every session uses one of your race setups, so a championship can mix a short sprint with a long final. <b>The kind comes from the race setup</b>: Race, Qualifying or Practice. A round with no track of its own uses the track of the race setup. A round that is driven keeps its results: changing its sessions afterwards does not change races that were saved. A Time Token Session can not be part of a championship.')}
       <div class="row"><button type="button" class="btn" id="ch-addround"${d.rounds.length >= Champ.LIMITS.rounds ? ' disabled' : ''} title="A new round starts with the sessions of the round before it">${I('plus')} Add a round</button>
         <button type="button" class="btn" id="ch-copyfirst"${d.rounds.length < 2 ? ' disabled' : ''} title="Gives every other round the sessions of round 1">${I('layers')} Copy the sessions of round 1 to all rounds</button><span class="muted hint">A new round starts with the sessions of the round before it.</span></div>
       <div id="ch-remarks" class="chremarks">${remarksHtml()}</div>
+      <div id="ch-season" class="pl">${seasonHtml()}</div><div id="ch-fillbox" class="pl">${fillHtml()}</div>
       <div id="ch-rounds">${roundsHtml()}</div></div></div>`;
   const pointsBody = () => {
     const pre = Champ.presetOf(d),
@@ -411,6 +449,22 @@ function renderChampionshipEditor(box) {
   const drivenIn = (r, s) => r.sessions.filter(x => (!s || x.id === s.id) && prog().done.has(Champ.keyOf(r.id, x.id))).length;
   const idx = v => String(v).split(':').map(Number);
 
+  // (2.4.0) fill the dates of the rounds that have none; the calendar as a file
+  if (box._chCal && box.removeEventListener) box.removeEventListener('click', box._chCal); // (the editor is drawn again after a change: one listener, of this drawing)
+  box._chCal = async ev => {
+    const b = ev.target && ev.target.closest ? ev.target.closest('#ch-fill,#ch-ics') : null;
+    if (!b || !box.contains(b)) return;
+    if (b.id === 'ch-fill') return apply(Champ.fillDates(d, $('ch-fillfrom').value, $('ch-fillevery').value));
+    const cal = Champ.calendar(d, { tracks: L.tracks, setups: L.setups });
+    if (!cal.events) return say('Give the rounds a date first.');
+    try {
+      const r = await api.shareSave(cal.text, `${(d.name || 'Championship').replace(/[\\/:*?"<>|]/g, ' ')} calendar.ics`, 'ics');
+      say(r && r.saved ? `The calendar is saved (${cal.events} ${cal.events === 1 ? 'round' : 'rounds'}): ${r.path}` : 'Not saved.');
+    } catch (x) {
+      say('Could not save the calendar: ' + x.message);
+    }
+  };
+  if (box.addEventListener) box.addEventListener('click', box._chCal);
   // ---- the header and the bar ----
   $('ch-name').oninput = e => {
     d.name = e.target.value;
@@ -616,6 +670,12 @@ function renderChampionshipEditor(box) {
           const n = box.querySelector(`[data-round="${i}"] .chrname`);
           if (n) n.textContent = d.rounds[Number(i)].name;
         }
+        if (key === 'date') {
+          const n = box.querySelector(`[data-round="${i}"] .chrdate`);
+          if (n) n.textContent = Champ.dateText(d.rounds[Number(i)].date, { short: true });
+          if ($('ch-season')) $('ch-season').innerHTML = seasonHtml();
+          if ($('ch-fillbox')) $('ch-fillbox').innerHTML = fillHtml();
+        }
         frame();
       }
     }
@@ -731,7 +791,7 @@ async function champData(selection = {}) {
     setups: setups || []
   };
 }
-let champView = { id: '', which: 'drivers' }; // the standings page: the championship that is shown, and Drivers, Teams or Rounds
+let champView = { id: '', which: 'drivers', all: false }; // (2.4.0: all: the roster drivers who have not raced yet are shown too) // the standings page: the championship that is shown, and Drivers, Teams or Rounds
 
 // The panel for one saved session of a championship: the points of a race and what to do with them.
 function champPanelHtml(c, v, s) {
@@ -960,13 +1020,16 @@ const champTableHtml = (t, src) => {
     }
     return '';
   };
+  const ptsAt = t.columns.findIndex(c => c.label === 'Points'); // (2.4.0: an Adj. column can stand before it)
   const bar = (ri, i) =>
-    src && src[ri] && i === first + n && most > 0 ? `<i class="chbar" style="--w:${Math.round((src[ri].total / most) * 100)}%"></i>` : '';
+    src && src[ri] && i === (ptsAt >= 0 ? ptsAt : first + n) && most > 0
+      ? `<i class="chbar" style="--w:${Math.round((src[ri].total / most) * 100)}%"></i>`
+      : '';
   return (
     `<div class="wrap chwrap"><table class="fields chtable"><thead><tr>${t.columns.map(c => `<th${c.r ? ' class="r"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${t.rows
       .map(
         (r, ri) =>
-          `<tr${r.lead ? ' class="lead"' : ''}>${r.cells.map((c, i) => `<td class="${[(t.columns[i] || {}).r ? 'r' : '', c.cls, extra(ri, i)].filter(Boolean).join(' ')}">${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}${bar(ri, i)}</td>`).join('')}</tr>`
+          `<tr${r.lead ? ' class="lead"' : ''}${r.hidden ? ' hidden' : ''}>${r.cells.map((c, i) => `<td class="${[(t.columns[i] || {}).r ? 'r' : '', c.cls, extra(ri, i)].filter(Boolean).join(' ')}"${c.title ? ` title="${esc(c.title)}"` : ''}>${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}${bar(ri, i)}</td>`).join('')}</tr>`
       )
       .join('')}</tbody></table></div>` +
     (t.legend && t.legend.length
@@ -975,6 +1038,92 @@ const champTableHtml = (t, src) => {
   );
 };
 
+// (2.4.0, SlotForgeRestyle.md "Season Calendar") the adjustments of a championship: a card under the drivers' standings, and the question to add one
+function champAdjHtml(st) {
+  const list = st.adjustments || [];
+  return `<section class="chadj"><div class="chadj-h"><h3>Adjustments</h3><small>points given or taken by hand, with the reason; they count in the standings and show in the PDF</small><span class="chgrow"></span><button type="button" class="btn sm primary" id="chs-adjust">Adjust points…</button></div>${
+    list.length
+      ? `<ul>${list
+          .map(
+            a =>
+              `<li><em class="${a.points < 0 ? 'neg' : 'pos'}">${esc(ChampPts.signed(a.points))}</em><b>${esc(a.name)}</b><span>${esc(a.reason)}</span><small>${esc([a.roundLabel, a.date ? Champ.dateText(a.date, { short: true }) : ''].filter(Boolean).join(' · ') || 'the whole season')}</small><button type="button" class="btn sm ghost" data-adj-del="${esc(a.id)}">Remove…</button></li>`
+          )
+          .join('')}</ul>`
+      : '<p class="muted chadj-none">None. A penalty decided after a race, or a correction, goes here with its reason.</p>'
+  }</section>`;
+}
+// -> the championship with the adjustment added, or null
+function champAdjustAsk(c, D, ctx, st) {
+  return new Promise(resolve => {
+    const d = document.createElement('dialog');
+    d.className = 'appdlg chadj-dlg';
+    const drivers = st.drivers;
+    if (!drivers.length) return resolve(null);
+    const todayIso = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const lastDone = [...st.board].reverse().find(b => b.decided);
+    const roundDefault = lastDone ? c.rounds[lastDone.ri].id : '';
+    d.innerHTML = `<h3>Adjust points</h3><div class="appdlg-body chadj-f">
+      <label>Driver<select data-a="driver">${drivers.map(x => `<option value="${esc(x.id)}">${esc(x.name)} · ${esc(ChampPts.fmt(x.total))} points</option>`).join('')}</select></label>
+      <div class="chadj-row"><span class="bs-gearsel" role="group" aria-label="Give or take"><button type="button" class="on" data-a-sign="-1" aria-pressed="true">Take off</button><button type="button" data-a-sign="1" aria-pressed="false">Give</button></span><label>Points<input type="number" min="0" step="any" value="5" data-a="points"></label></div>
+      <label>Reason (shown in the standings and the PDF)<input maxlength="${Champ.LIMITS.reason}" data-a="reason" placeholder="For instance: Jump start in round 3 (Race Director decision)"></label>
+      <label>For round<select data-a="round"><option value="">The whole season</option>${c.rounds.map((r, i) => `<option value="${esc(r.id)}"${r.id === roundDefault ? ' selected' : ''}>${esc(Champ.roundLabel(c, i))}${r.date ? ' · ' + esc(Champ.dateText(r.date, { short: true })) : ''}</option>`).join('')}</select></label>
+      <p class="chadj-say" data-a-say></p><p class="error" data-a-err role="alert"></p></div>
+      <div class="row appdlg-buttons"><button type="button" class="btn" data-a-no>Cancel</button><button type="button" class="btn primary" data-a-ok>Take off 5 points</button></div>`;
+    document.body.appendChild(d);
+    let sign = -1;
+    const val = k => d.querySelector(`[data-a="${k}"]`).value;
+    const draft = () => ({
+      driver: val('driver'),
+      points: sign * Math.abs(Number(val('points')) || 0),
+      reason: val('reason'),
+      round: val('round'),
+      date: todayIso
+    });
+    const say = () => {
+      const a = draft(),
+        before = drivers.find(x => x.id === a.driver),
+        res = Champ.addAdjustment(c, { ...a, reason: a.reason || '-' }),
+        n = Math.abs(a.points);
+      d.querySelector('[data-a-ok]').textContent = `${sign < 0 ? 'Take off' : 'Give'} ${ChampPts.fmt(n)} ${n === 1 ? 'point' : 'points'}`;
+      const out = d.querySelector('[data-a-say]');
+      if (res.error || !before) return (out.textContent = '');
+      const after = ChampPts.standings(res.rec, D.sessions, ctx).drivers.find(x => x.id === a.driver),
+        lead = ChampPts.standings(res.rec, D.sessions, ctx).drivers[0];
+      const ord = p => p + (p % 100 >= 11 && p % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][p % 10] || 'th');
+      out.innerHTML = `${esc(before.name)}: <b>${esc(ChampPts.fmt(before.total))} → ${esc(ChampPts.fmt(after.total))}</b> points, ${after.pos === before.pos ? 'still' : 'now'} <b>${ord(after.pos)}</b>${after.pos > 1 ? ` (${esc(ChampPts.fmt(lead.total - after.total))} behind ${esc(lead.name)})` : ''}.`;
+    };
+    const done = v => {
+      d.close();
+      d.remove();
+      resolve(v);
+    };
+    d.addEventListener('input', say);
+    d.addEventListener('change', say);
+    d.addEventListener('click', ev => {
+      const b = ev.target.closest && ev.target.closest('[data-a-sign],[data-a-no],[data-a-ok]');
+      if (!b) return;
+      if (b.dataset.aSign) {
+        sign = Number(b.dataset.aSign);
+        d.querySelectorAll('[data-a-sign]').forEach(x => {
+          x.classList.toggle('on', x === b);
+          x.setAttribute('aria-pressed', String(x === b));
+        });
+        return say();
+      }
+      if (b.dataset.aNo !== undefined) return done(null);
+      const res = Champ.addAdjustment(c, draft());
+      if (res.error) return (d.querySelector('[data-a-err]').textContent = res.error);
+      done(res.rec);
+    });
+    d.addEventListener('cancel', ev => {
+      ev.preventDefault();
+      done(null);
+    });
+    d.showModal();
+    say();
+    d.querySelector('[data-a="reason"]').focus();
+  });
+}
 async function renderChampStandings(box) {
   const selectedId = champView.id,
     request = {};
@@ -1012,6 +1161,9 @@ async function renderChampStandings(box) {
     lead = ChampPts.leadText(st),
     more = ChampPts.remainingNote(c, st, D.setups);
   if (champView.classId) t.title = (classChoices.find(x => x.id === champView.classId)?.name || 'Class') + ' · ' + t.title;
+  // (2.4.0, Season Calendar) the drivers of the roster who have not raced (no points, no adjustment) are folded away
+  const quiet = which === 'drivers' ? t.rows.filter(r => r.raced === false).length : 0;
+  if (quiet && !champView.all && quiet < t.rows.length) t.rows.forEach(r => (r.hidden = r.raced === false));
   const next = st.board.find(b => !b.decided),
     stateOf = b => (b.decided ? 'done' : b === next ? 'next' : 'later'),
     tagOf = b => (b.decided ? 'Done' : b === next ? 'Next' : 'Later');
@@ -1039,11 +1191,44 @@ async function renderChampStandings(box) {
     ${lead || more ? `<p class="chlead">${lead ? `<b>${esc(lead)}.</b> ` : ''}${esc(more)}</p>` : ''}
     ${pending.length ? `<p class="hint2 chpending">${pending.length} ${pending.length === 1 ? 'race of this championship is' : 'races of this championship are'} saved but not awarded yet, so ${pending.length === 1 ? 'it is' : 'they are'} not in the standings. Open ${pending.length === 1 ? 'it' : 'one'} in Racing Records to award the points.</p>` : ''}
     ${podium}
-    <section class="chsec"><h3>${esc(t.title)}</h3>${t.note && which !== 'rounds' ? `<p class="hint2">${esc(t.note)}</p>` : ''}${which === 'rounds' ? `<p class="hint2">Winner of each race</p>${board}` : champTableHtml(t, src)}</section>`;
+    <section class="chsec"><h3>${esc(t.title)}</h3>${t.note && which !== 'rounds' ? `<p class="hint2">${esc(t.note)}</p>` : ''}${which === 'rounds' ? `<p class="hint2">Winner of each race</p>${board}` : champTableHtml(t, src)}${quiet && quiet < t.rows.length ? `<div class="chquiet"><button type="button" class="btn sm ghost" id="chs-all" aria-expanded="${champView.all}">${champView.all ? '▾ Fold away' : '▸'} ${quiet} ${quiet === 1 ? 'driver' : 'drivers'} of the roster, not raced yet</button></div>` : ''}</section>
+    ${which === 'drivers' && !champView.classId ? champAdjHtml(st) : ''}`;
   renderTabs(byId('chs-which'), [['drivers', 'Drivers'], ...(st.teams ? [['teams', 'Teams']] : []), ['rounds', 'Rounds']], which, id => {
     champView.which = id;
     renderChampStandings(box);
   });
+  if (byId('chs-all'))
+    byId('chs-all').onclick = () => {
+      champView.all = !champView.all;
+      renderChampStandings(box);
+    };
+  // (2.4.0) points given or taken by hand, with the reason
+  box.querySelectorAll('[data-adj-del]').forEach(
+    b =>
+      (b.onclick = async () => {
+        const a = (c.adjustments || []).find(x => x.id === b.dataset.adjDel);
+        if (!a) return;
+        const who = (st.adjustments.find(x => x.id === a.id) || {}).name || 'the driver';
+        if (
+          !(await Dialog.confirm(
+            `Remove the adjustment of ${ChampPts.signed(a.points)} for ${who} (“${a.reason}”)? The standings count without it.`,
+            { ok: 'Remove', danger: true }
+          ))
+        )
+          return;
+        const r = Champ.removeAdjustment(c, a.id);
+        if (r.error) return;
+        await api.update('championships', c.id, { adjustments: r.rec.adjustments || [] });
+        renderChampStandings(box);
+      })
+  );
+  if (byId('chs-adjust'))
+    byId('chs-adjust').onclick = async () => {
+      const rec = await champAdjustAsk(c, D, ctx, st);
+      if (!rec) return;
+      await api.update('championships', c.id, { adjustments: rec.adjustments || [] });
+      renderChampStandings(box);
+    };
   if (byId('chs-class'))
     byId('chs-class').onchange = e => {
       champView.classId = e.target.value;
