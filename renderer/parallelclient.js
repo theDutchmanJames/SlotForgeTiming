@@ -36,9 +36,10 @@ function ppInit() {
         pp.error = x.message;
         ppNotify();
       });
+  if (typeof MainClock !== 'undefined') MainClock.sync(api); // (2.4.0 review: the offset to the main process's clock, measured once)
   api.onParallel(event => {
     if (event.type === 'sample') {
-      const sample = { ...event, at: event.at - performance.timeOrigin };
+      const sample = { ...event, at: typeof MainClock !== 'undefined' ? MainClock.toLocal(event.at) : event.at - performance.timeOrigin }; // (2.4.0 review: on this window's clock)
       const raw = event.status + ':' + event.control;
       if (pp.detailed && raw !== pp.lastRaw)
         ppLog(

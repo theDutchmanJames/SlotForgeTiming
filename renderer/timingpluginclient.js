@@ -26,6 +26,7 @@ function ptInit() {
       pt.backend.error = e.message;
       ptNotify();
     });
+  if (typeof MainClock !== 'undefined') MainClock.sync(api); // (2.4.0 review: the offset to the main process's clock, measured once)
   api.onPluginTiming(e => {
     pt.eventVersion++;
     if (e.type === 'state' || e.type === 'snapshot') {
@@ -44,7 +45,7 @@ function ptInit() {
           pt.link.feed({
             key: DigitalInputs.key(TimingPlugin.address(v.kind, v.channel)),
             value: v.on ? 1 : 0,
-            at: e.at - performance.timeOrigin
+            at: typeof MainClock !== 'undefined' ? MainClock.toLocal(e.at) : e.at - performance.timeOrigin
           });
         }
       }
@@ -56,7 +57,7 @@ function ptInit() {
       pt.link.feed({
         key: DigitalInputs.key(TimingPlugin.address(e.kind, e.channel)),
         value: e.on ? 1 : 0,
-        at: e.at - performance.timeOrigin
+        at: typeof MainClock !== 'undefined' ? MainClock.toLocal(e.at) : e.at - performance.timeOrigin
       });
     }
   });

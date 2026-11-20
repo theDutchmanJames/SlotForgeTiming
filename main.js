@@ -1681,6 +1681,8 @@ function registerSettingsAndNetHandlers() {
     return s;
   });
   ipcMain.handle('net:status', () => netStatus());
+  // (2.4.0 review) this process's clock, the one the parallel port and the timing plugin stamp their inputs with: the window measures its offset to it
+  ipcMain.handle('clock:now', () => performance.timeOrigin + performance.now());
   ipcMain.handle('net:pair', e => {
     if (!mainWin || e.sender !== mainWin.webContents) throw Error('Pair a phone from the main app window.');
     return netPairing();

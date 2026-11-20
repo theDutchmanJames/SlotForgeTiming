@@ -323,6 +323,7 @@ contextBridge.exposeInMainWorld('api', {
   windowFullscreen: on => call('win:fullscreen', on),
   liveOpen: () => call('live:open'),
   netStatus: () => call('net:status'),
+  mainClock: () => call('clock:now'),
   netPair: () => call('net:pair'),
   // choosing a USB device (the main process lists them, this window shows the list)
   onHwChoose: f => {
