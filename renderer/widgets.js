@@ -2032,8 +2032,8 @@
   };
   const titleStyleOf = w => {
     const a = titleAlignOf(w);
-    // A title is always an overlay: the changing value owns the complete frame's
-    // centre.  Kept titleSpace data from older layouts is deliberately ignored.
+    // The title is a row at the top; since 2.4.0 the value starts under it (Frame.fitTitle moves the value's top), so they never overlap.
+    // Kept titleSpace data from older layouts is still ignored.
     const pos = `left:12px;right:12px;top:6px;text-align:${a};`;
     return `font-size:${(w.titleSize || 12) / 10}cqw;${w.type === 'clock' ? 'color:var(--muted);' : ''}${w.titleBold ? 'font-weight:700;' : ''}${pos}`;
   };

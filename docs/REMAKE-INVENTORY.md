@@ -208,6 +208,9 @@ the App Settings structure, Teams and Virtual Rival (designed cards).
 11. **Thin pages:** Units and Picture quality are pages of their own with one or two settings; Share the race keeps the
     addresses and QR codes on a second section.
 
+**Done (20 Nov 2026):** all eleven. The plain fixes ("Design pass fixes": 2, 6, 8, 9, 10) and the look changes ("Quiet Pages": 1, 3, 4, 5, 7,
+11) are in SlotForgeRestyle.md.
+
 Not looked at again: the race window after Finalize and between heats (remade in "Chequered Flag"; not re-run today).
 
 ### What this changes in the order

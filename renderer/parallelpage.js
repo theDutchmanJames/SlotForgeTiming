@@ -22,7 +22,7 @@ const parallelPageHtml = `
      <label class="pp-field" data-manual-field hidden>Base address in hexadecimal<input type="text" value="378" placeholder="e.g. 378 or D010" data-setting="address"><small>Use the I/O address shown for the port in Device Manager.</small></label>
      <div class="pp-line"><div class="pp-statusline" data-driver-line><i class="pp-dot" aria-hidden="true"></i><span data-driver-text>Port access has not been checked</span></div><button type="button" class="pp-button cursor-interaction" data-check><i data-lucide="search" aria-hidden="true"></i>Check port</button></div>
      <p class="pp-hint">Windows needs an already installed, running InpOut driver. SlotForge does not install or start a driver. If Windows blocks the legacy driver, this interface cannot connect.</p><div class="pp-alert" data-access-note hidden><i data-lucide="info" aria-hidden="true"></i><span></span></div>
-     <div class="pp-line"><label class="pp-inlinecheck"><input type="checkbox" data-setting="autoConnect">Connect when SlotForge starts</label><button class="pp-button pp-primary cursor-interaction" type="button" data-connect><i data-lucide="plug-zap" aria-hidden="true"></i><span>Connect</span></button></div>
+     <div class="pp-line"><label class="pp-inlinecheck"><input type="checkbox" data-setting="autoConnect">Connect when SlotForge starts</label><button class="pp-button cursor-interaction" type="button" data-connect><i data-lucide="plug-zap" aria-hidden="true"></i><span>Connect</span></button></div>
      <p class="pp-hint">The port preset is a starting address, not proof that a port is installed there. A successful read verifies driver access, not the presence of a track. Check each sensor in the monitor.</p>
     </div></details>
     <details class="pp-section" data-section="sensors" open><summary><i data-lucide="scan-line" aria-hidden="true"></i><span class="pp-summary-title">Lane sensors</span><span class="pp-summary-note" data-sensor-summary>4 lanes · Race Coordinator wiring</span><span class="pp-chevron" aria-hidden="true">⌄</span></summary><div class="pp-content">
@@ -56,7 +56,7 @@ const parallelPageHtml = `
     </div></details>
    </main>
   </div>
-  <footer class="pp-foot"><span class="pp-footmessage" data-message role="status" aria-live="polite">Settings are saved. Connect when you are ready.</span><div class="pp-footactions"><button type="button" class="pp-button cursor-interaction" data-undo disabled>Undo changes</button><button type="button" class="pp-button pp-primary cursor-interaction" data-save disabled><i data-lucide="check" aria-hidden="true"></i>Save settings</button></div></footer>
+  <footer class="pp-foot"><span class="pp-footmessage" data-message role="status" aria-live="polite">Settings are saved. Connect when you are ready.</span><div class="pp-footactions"><button type="button" class="pp-button cursor-interaction" data-undo disabled>Undo changes</button><button type="button" class="pp-button cursor-interaction" data-save disabled><i data-lucide="check" aria-hidden="true"></i>Save settings</button></div></footer>
  </div>
 
 `;

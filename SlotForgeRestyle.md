@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
+| [Quiet Pages](#quiet-pages) | Page notes folded to one line, explanations on two, one red button per page, dots with words, values under their titles, a designed empty Plugins card, short topics on one page | Every page |
 | [Sensor Bench](#sensor-bench) | The Trackmate's Live monitor (lane lights, the time between passes, Trackcall, what came in) and Track power (the state, a switch, what a race does, the relay) | App Settings › Timing Hardware › Trackmate |
 | [Try It](#try-it) | The Layout Editor with a sample race (moments, lanes, speed), who uses a layout, the words a text widget does not know, Delete with a replacement; Audio sets and Picture sets under Libraries | Customization › Layout Editor |
 | [Help Desk](#help-desk) | The "?" beside every page title and F1: the page's article in a drawer; the Help home (your first race ticked, read lately, a tile per group); counts, Before / Next, settings in the search | Every page; App Settings › Help |
@@ -1425,6 +1426,31 @@ html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--pane
 html .so-dot.warn{background:#f2b705}
 ```
 
+## Quiet Pages
+
+The look changes of the design pass checked again (`renderer/helpdesk.js` foldNotes; `frame.js` fitTitle and fit; `database/manager.js` the Ready pill;
+`editor.js` the legend; `pluginsui.js` the empty card; `generalpage.js` the topics and `all` sections; styles `.sn-fold`, `.sn-toggle`, `.rsready`,
+`.sslegend`, `.plugin-empty`).
+
+- **A page note folds** (`.sn.sn-fold`): the icon tile shrinks to 30 px, the first line of the note in 13.5 px, the rest and the *where you use it* line
+  hidden; *More ▾* on the right in the accent opens it (*Less ▴*), and it stays open for that note while the app runs. Every page note does it (Race
+  Setup, Customization, the settings pages, the system editors).
+- **A setting's explanation** shows two lines before *More* (it was one).
+- **One red button per page**: Parallel Port's *Connect* and *Save settings* are plain buttons (its *Connect & use* stays red); *Export to PDF* on the
+  standings is plain; the Widget Builder's *Add to a layout…* is plain; *Delete* on a card is muted text that turns red under the pointer.
+- **Dots with words**: a race setup card says **Ready** in a green pill with a light (**Not ready** grey), the reason as a tooltip; the Race Setup list
+  ends its groups with *● used by a race setup*.
+- **A value under its title**: a widget with a title keeps the title's height free (Frame.fitTitle and Frame.fit); the value is fitted in the rest.
+- **Plugins, empty**: the dashed empty card (as Results): a bolt tile, *NO PLUGINS YET*, what a plugin is, **Install a plugin…**.
+- **Short topics on one page**: Display and units shows Look and size, Units and Picture quality one under the other; Share the race shows the switch
+  and the addresses with their QR codes together. The side list jumps to a part.
+
+```css
+html .sn.sn-fold:not(.sn-open)>:is(.sn-more,.sn-use){display:none}
+.rsready{padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#3ecf8e 14%,transparent);color:#3ecf8e;font-size:11.5px;font-weight:600}
+html :is(.rsactions,.lactions,.gfoot,.wk-foot) .btn.danger:not(:hover):not(:focus-visible){color:var(--muted)}
+```
+
 ## Sensor Bench
 
 The Trackmate page's Live monitor and Track power (`renderer/tmmonitor.js` hit, call, html, rules, powerHtml; `hardwareui.js` tmMonDraw, tmMonLeds,
@@ -2694,3 +2720,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Try It | New: the Layout Editor plays a sample race (moments, 2 to 8 lanes, 1× and 4×; Try it on the cards); who uses a layout on the cards and in a chip; a warning for words a text widget does not know; Delete names the setups and asks what they use instead (a backup first); Audio sets and Picture sets under Libraries |
 | 2026-11 | Sensor Bench | New: the Trackmate Live monitor (lane lights, the time between two passes and the best, Trackcall, what came in, a sensor switched off flagged) and Track power (the state, an Off/On switch, what a race does with it from the race setup, the relay as a switch); a Debounce hint |
 | 2026-11 | Design pass fixes | Small: the race bar status up to 260 px with the whole line as a tooltip; the Tracks bar on one line at 1366 px (the word *Sort* goes under 1500 px); the Results search says *Race or driver*; *Used in N layouts* under chart designs and picture sets (`.lt-usedline`); an amber warning line on a Widget Builder card with a word its text does not know (`.wk-warn`); no *(optional)* beside the track length |
+| 2026-11 | Quiet Pages | New: page notes folded to one line with More; explanations on two lines; one red button per page (Parallel Port, the standings, the Widget Builder; Delete muted on cards); Ready / Not ready on race setup cards and a legend for the list dot; values under their widget titles; the Plugins empty card; Display and units and Share the race on one page |

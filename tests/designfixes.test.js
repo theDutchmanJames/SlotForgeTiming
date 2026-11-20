@@ -71,3 +71,23 @@ test('the texts that were cut off', () => {
   assert(has(css, '@media (max-width:1500px){html .gx-sort>span{display:none}}'));
   assert(has(code('renderer/database/recordbookview.js'), 'placeholder="Race or driver"'));
 });
+
+test('the look changes ("Quiet Pages")', () => {
+  const desk = code('renderer/helpdesk.js'),
+    css = code('renderer/styles.css');
+  assert(has(desk, 'if (n.dataset.fold === key) return;'), 'a note folds again when its words change');
+  assert(has(desk, "b.textContent = n.classList.contains('sn-open') ? 'Less ▴' : 'More ▾';"));
+  assert(has(css, 'html .sn.sn-fold:not(.sn-open)>:is(.sn-more,.sn-use){display:none}'));
+  assert(has(css, '.ss-t>.ss-hint{-webkit-line-clamp:2}'));
+  assert(!code('renderer/parallelpage.js').includes('pp-primary'), 'Parallel Port: only Connect & use is red');
+  assert(has(code('renderer/championshipui.js'), '<button class="btn" id="chs-pdf" type="button">Export to PDF</button>'));
+  assert(has(code('renderer/database/manager.js'), "${d.ready.ok ? 'Ready' : 'Not ready'}</span>"));
+  assert(has(code('renderer/editor.js'), '<div class="sslegend"><i class="ssuse" aria-hidden="true"></i>used by a race setup</div>'));
+  const frame = code('renderer/frame.js');
+  assert(has(frame, "value.style.top = Math.round(title.offsetTop + title.offsetHeight + 2) + 'px';"));
+  assert(has(frame, 'title.offsetTop + title.offsetHeight + (pitcontrol || fuelGauge || list || aio || rows ? 6 : 2)'));
+  assert(has(code('renderer/pluginsui.js'), '<div class="rr-empty plugin-empty ss-skip">'));
+  const gp = code('renderer/generalpage.js');
+  assert(has(gp, 's.hidden = shownTopics.length > 1 ? !shownTopics.includes(id) : id !== topic;'));
+  assert(has(gp, "sharing: { lead: 'Phones, tablets and other computers that follow the race.', all: true },"));
+});

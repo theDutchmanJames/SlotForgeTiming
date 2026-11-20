@@ -7735,3 +7735,35 @@ html .tmx-sw button:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:1500px){html .gx-sort>span{display:none}}
 /* 2.4.0 ("Try It"): a Widget Builder card whose text has a word it does not know */
 html .wk-warn{display:block;margin-top:6px;color:color-mix(in srgb,#f2b705 70%,var(--ink));font-size:12px;line-height:1.4}
+/* ---- 2.4.0 the design pass, look changes (SlotForgeRestyle.md "Quiet Pages") ---- */
+/* a page note folded to its first line; More opens the rest */
+html .sn.sn-fold:not(.sn-open)>:is(.sn-more,.sn-use){display:none}
+html .sn.sn-fold:not(.sn-open){align-items:center;padding-top:10px;padding-bottom:10px}
+html .sn.sn-fold:not(.sn-open)>.sn-tile{grid-row:auto;width:30px;height:30px}
+html .sn.sn-fold:not(.sn-open)>.sn-lead{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;font-size:13.5px}
+html .sn.sn-fold{grid-template-columns:40px minmax(0,1fr) auto}
+html .sn.sn-fold>:is(.sn-lead,.sn-more,.sn-use){grid-column:2}
+html .sn.sn-fold>.sn-toggle{grid-column:3;grid-row:1;align-self:center;margin:0 0 0 12px;padding:0;border:0;background:none;box-shadow:none;min-height:0;color:var(--accent-text,var(--accent));font:500 12.5px "Segoe UI",system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+html .sn.sn-fold>.sn-toggle:hover{text-decoration:underline}
+/* a setting's explanation shows two lines before More */
+.ss-t>.ss-hint{-webkit-line-clamp:2}
+html .setupshell>.setuppage>#setupnote.sn.sn-fold{grid-template-columns:40px minmax(0,1fr) auto}
+html .setupshell>.setuppage>#setupnote.sn.sn-fold:not(.sn-open){align-items:center;padding-top:10px;padding-bottom:10px}
+html #setupnote.sn.sn-fold:not(.sn-open) .sn-tile{grid-row:auto;width:30px;height:30px}
+html #setupnote.sn.sn-fold:not(.sn-open) .sn-lead{font-size:13.5px}
+/* one red button per page: Delete on a card is quiet text that turns red under the pointer */
+html :is(.rsactions,.lactions,.gfoot,.wk-foot) .btn.danger:not(:hover):not(:focus-visible){color:var(--muted);border-color:transparent;background:transparent}
+/* dots with words: a race setup card says Ready (or Not ready); the Race Setup list says what its dot means */
+.rsready{display:inline-flex;align-items:center;gap:5px;flex:none;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#3ecf8e 14%,transparent);color:#3ecf8e;font-size:11.5px;font-weight:600;white-space:nowrap}
+.rsready::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.rsready.off{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--muted)}
+[data-theme="light"] .rsready:not(.off){color:#1e7a46;background:color-mix(in srgb,#1e8a4c 12%,transparent)}
+.sslegend{display:flex;align-items:center;gap:6px;margin:8px 12px 0;color:var(--muted);font-size:11.5px}
+html #setupnote.sn.sn-fold:not(.sn-open) :is(.sn-more,.sn-use){display:none}
+/* (a folded note inside a settings page: the sheet takes its More button for a control and nests it; the note keeps its own box) */
+html #settingsbox .sn:is(.sy-note,.ss-intro).sn-fold.ss-nest,html .sn:is(.sy-note,.ss-intro).sn-fold.ss-nest{display:grid;grid-template-columns:40px minmax(0,1fr) auto;column-gap:14px;row-gap:3px;align-items:start;max-width:860px;margin:0 0 24px;padding:14px 18px 14px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html #settingsbox .sn:is(.sy-note,.ss-intro).sn-fold.ss-nest:not(.sn-open){align-items:center;padding-top:10px;padding-bottom:10px}
+html .sn.sn-fold.ss-nest>.sn-tile{grid-column:1;grid-row:1}
+html .sn.sn-fold.ss-nest>.sn-lead{grid-column:2;grid-row:1;margin:0;color:var(--ink);font-weight:500}
+html .sn.sn-fold.ss-nest>.sn-more{grid-column:2}
+html #settingsbox .sn.sn-fold.ss-nest:not(.sn-open)>.sn-tile,html .sn.sn-fold:not(.sn-open)>.sn-tile{align-self:center;width:30px;height:30px}

@@ -77,7 +77,8 @@ const GeneralPage = (() => {
         `<header class="gs-head"><span class="gs-headico">${ico(icon, 20)}</span><div><h2>${esc(name)}</h2><p>${esc(lead)}</p></div></header>`
       );
       s.dataset.gtopic = id;
-      s.hidden = id !== topic;
+      // (2.4.0, design pass: "Quiet Pages") a page of a few short topics (Display and units) shows them all, one under the other
+      s.hidden = shownTopics.length > 1 ? !shownTopics.includes(id) : id !== topic;
       sections[id] = s;
       canvas.append(s);
     });
@@ -381,12 +382,17 @@ const GeneralPage = (() => {
   function show(id) {
     if (!shownTopics.includes(id)) return;
     topic = id;
-    document.querySelectorAll('.gs-topic').forEach(s => (s.hidden = s.dataset.gtopic !== id));
+    const all = shownTopics.length > 1;
+    document
+      .querySelectorAll('.gs-topic')
+      .forEach(s => (s.hidden = all ? !shownTopics.includes(s.dataset.gtopic) : s.dataset.gtopic !== id));
     document.querySelectorAll('[data-gtopic-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gtopicBtn === id)));
     const shown = document.querySelector(`.gs-topic[data-gtopic="${id}"]`);
     if (shown && typeof SettingsSheet !== 'undefined') SettingsSheet.folds(shown);
     const c = document.querySelector('.gs-canvas');
-    if (c && c.scrollIntoView && c.getBoundingClientRect && c.getBoundingClientRect().top < 0) c.scrollIntoView({ block: 'start' });
+    if (all && shown && shown.scrollIntoView)
+      shown.scrollIntoView({ block: 'start', behavior: 'smooth' }); // (all shown: the list jumps to it)
+    else if (c && c.scrollIntoView && c.getBoundingClientRect && c.getBoundingClientRect().top < 0) c.scrollIntoView({ block: 'start' });
   }
   return { build, show, storageOn, TOPICS };
 })();
@@ -400,7 +406,7 @@ const SettingsRail = (() => {
     theme: { lead: 'The colours of the app and of the Live Race pages.' },
     director: { lead: 'How the Race Director looks, what its buttons do, and its page on a phone.' },
     // (2.4.0, Settings Hub) the pages that were tabs or views of another page
-    sharing: { lead: 'Phones, tablets and other computers that follow the race.' },
+    sharing: { lead: 'Phones, tablets and other computers that follow the race.', all: true }, // (2.4.0: the switch and the addresses and QR codes on one page)
     paddock: { lead: 'SlotForge Paddock: the shared car library and the Dealership.' },
     packs: { lead: 'Named collections of layouts, widgets and more, with versions.' },
     calculations: {
@@ -577,8 +583,8 @@ const SettingsRail = (() => {
       // one section at a time, open, its title bar as the heading of the canvas
       allSecs.forEach(s => {
         s.el.classList.add('sr-sec');
-        s.el.hidden = s.id !== cur;
-        if (s.id === cur && !s.el.open) s.el.open = true;
+        s.el.hidden = cfg.all ? !secs.includes(s) : s.id !== cur; // (cfg.all: every section of the page, one under the other)
+        if ((cfg.all || s.id === cur) && !s.el.hidden && !s.el.open) s.el.open = true;
       });
       // (2.4.0) the sections as tabs in the page, under its big card (the Timing Desk)
       if (cfg.secTabs) {
@@ -693,6 +699,11 @@ const SettingsRail = (() => {
             const k = key + ':' + (tabsOf(canvas, cfg).find(x => x.on) || { label: '' }).label;
             active.set(k, s.dataset.srSec);
             refresh(box, key);
+            if (cfg.all) {
+              const sec = secs.find(x => x.id === s.dataset.srSec);
+              if (sec && sec.el.scrollIntoView) sec.el.scrollIntoView({ block: 'start', behavior: 'smooth' }); // (all shown: the list jumps to it)
+              return;
+            }
             if (canvas.getBoundingClientRect && canvas.getBoundingClientRect().top < 0) canvas.scrollIntoView({ block: 'start' });
           }
         };

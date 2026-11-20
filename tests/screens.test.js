@@ -6076,8 +6076,8 @@ const say = (m, c) => {
       sg.includes('data-del=')
   );
   say(
-    '...a card has no track picture (the design has none), and a dot that says whether the setup is ready (a track is chosen)',
-    !sg.includes('base64,AAAA') && sg.includes('class="rsdot"')
+    '...a card has no track picture (the design has none), and a pill that says whether the setup is ready (a track is chosen; 2.4.0: Ready in words)',
+    !sg.includes('base64,AAAA') && /class="rsready"[^>]*>Ready</.test(sg)
   );
   say(
     '...and under the cards, Start from a kind, with a button for each kind',

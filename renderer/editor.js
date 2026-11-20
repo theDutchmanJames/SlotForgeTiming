@@ -316,7 +316,7 @@ const setupTabsHtml = (current, used = new Set()) => {
       ? `<div class="ssgroup"><span class="sslabel">${esc(SETUP_HEADINGS[name] || name)}</span>${items.map(chip).join('')}</div>`
       : '';
   }).join('');
-  return `<div class="ssrailtitle">Race Setup</div><button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 18, stroke: 1.8 })}</span><span class="sstext">${esc(hlabel)}</span></button>${groups}${tools}`;
+  return `<div class="ssrailtitle">Race Setup</div><button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 18, stroke: 1.8 })}</span><span class="sstext">${esc(hlabel)}</span></button>${groups}${[...used].some(id => SETUP_GROUPS.some(g => g[1].some(t => t[0] === id && !hidden.includes(id)))) ? '<div class="sslegend"><i class="ssuse" aria-hidden="true"></i>used by a race setup</div>' : ''}${tools}`;
 };
 // (2.4.0) the note under the title of a page: what it is (one line), a few more words, and where you use it. A box with the icon of the section.
 const SETUP_NOTES = {

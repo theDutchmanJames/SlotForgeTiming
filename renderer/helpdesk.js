@@ -162,7 +162,43 @@ const HelpDesk = (() => {
     if (use && !use.querySelector('.hlp-more'))
       use.insertAdjacentHTML('beforeend', `<button type="button" class="hlp-more" data-hlp-open="${id}">Read more in Help →</button>`);
   }
+  // (2.4.0, design pass: "Page Note, folded") a page note shows its first line; More opens the rest (and stays open for that note while the app runs)
+  const opened = new Set();
+  const noteKey = n => ((n.querySelector(':scope > .sn-lead') || {}).textContent || '').trim().slice(0, 80);
+  function foldNotes() {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+    document.querySelectorAll('#view .sn, dialog[open] .sn').forEach(n => {
+      const lead = n.querySelector(':scope > .sn-lead');
+      if (!lead || !n.offsetParent) return; // (measured once it is on screen)
+      const key = noteKey(n);
+      if (n.dataset.fold === key) return; // (the Race Setup note is one element whose words change with the page: folded again for new words)
+      n.dataset.fold = key;
+      n.classList.remove('sn-fold', 'sn-open');
+      n.querySelectorAll(':scope > .sn-toggle').forEach(x => x.remove());
+      const more = n.querySelector(':scope > .sn-more, :scope > .sn-use'),
+        lh = parseFloat(getComputedStyle(lead).lineHeight) || 20;
+      if (!more && lead.scrollHeight <= lh * 1.6) return; // (one line and nothing under it: nothing to fold)
+      n.classList.add('sn-fold');
+      if (opened.has(key)) n.classList.add('sn-open');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sn-toggle';
+      b.setAttribute('aria-expanded', String(n.classList.contains('sn-open')));
+      b.textContent = n.classList.contains('sn-open') ? 'Less ▴' : 'More ▾';
+      n.append(b);
+    });
+  }
   if (typeof document !== 'undefined') {
+    document.addEventListener('click', ev => {
+      const t = ev.target && ev.target.closest ? ev.target.closest('.sn-toggle') : null;
+      if (!t) return;
+      const n = t.closest('.sn'),
+        open = n.classList.toggle('sn-open');
+      if (open) opened.add(noteKey(n));
+      else opened.delete(noteKey(n));
+      t.textContent = open ? 'Less ▴' : 'More ▾';
+      t.setAttribute('aria-expanded', String(open));
+    });
     document.addEventListener('click', ev => {
       const b = ev.target && ev.target.closest ? ev.target.closest('[data-hlp-open]') : null;
       if (!b) return;
@@ -178,8 +214,23 @@ const HelpDesk = (() => {
       if (isOpen() && view && view.state.topic === topicNow()) return close();
       open();
     });
-    setInterval(decorate, 600);
+    setInterval(() => {
+      decorate();
+      foldNotes();
+    }, 600);
+    // (a page drawn again folds its notes in the same frame, so a note does not open for a moment first)
+    if (typeof MutationObserver === 'function' && document.body) {
+      let queued = false;
+      new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : f => setTimeout(f, 0))(() => {
+          queued = false;
+          foldNotes();
+        });
+      }).observe(document.body, { childList: true, subtree: true });
+    }
   }
-  return { open, close, isOpen, recent, read, settings, progress, topicNow, decorate };
+  return { open, close, isOpen, recent, read, settings, progress, topicNow, decorate, foldNotes };
 })();
 if (typeof module !== 'undefined') module.exports = HelpDesk;

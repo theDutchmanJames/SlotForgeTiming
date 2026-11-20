@@ -638,6 +638,17 @@
         whiteSpace: 'nowrap'
       });
     }
+    // (2.4.0, design pass: "Quiet Pages") the value starts under the title, so a big value never sits on it ("Race clock" over the time); it is fitted
+    // in the room that is left. Without a title the value has the whole frame, as before.
+    const value = el?.querySelector?.(':scope > .lw-val');
+    if (!value || !value.style) return;
+    if (title && title.offsetHeight) {
+      value.style.top = Math.round(title.offsetTop + title.offsetHeight + 2) + 'px';
+      value.dataset.underTitle = '1';
+    } else if (value.dataset && value.dataset.underTitle) {
+      value.style.top = '';
+      delete value.dataset.underTitle;
+    }
   }
   const fitCache = new WeakMap();
   let fontEpoch = 0;
@@ -698,11 +709,17 @@
     });
     if (el.hasAttribute?.('data-wd-padding'))
       for (const side of ['top', 'right', 'bottom', 'left']) v.style[side] = el.style.getPropertyValue('--wd-pad-' + side);
-    // List-style overviews reserve the actual title height, including manual sizing.
+    // Every widget with a title reserves its actual height, including manual sizing (2.4.0: not only the list-style overviews, so a value never sits
+    // on its title); the overviews keep a little more room.
     const fuelGauge = v.querySelector(':scope > .fuel-gauge');
-    if (pitcontrol || fuelGauge || list || aio || rows) {
+    {
       const title = el.querySelector(':scope > .lw-title');
-      if (title) v.style.top = Math.max(parseFloat(v.style.top) || pad, title.offsetTop + title.offsetHeight + 6) + 'px';
+      if (title && title.offsetHeight)
+        v.style.top =
+          Math.max(
+            parseFloat(v.style.top) || pad,
+            title.offsetTop + title.offsetHeight + (pitcontrol || fuelGauge || list || aio || rows ? 6 : 2)
+          ) + 'px';
     }
     if (fuelGauge) {
       const compact = v.clientHeight < 68 || (fuelGauge.classList.contains('fg-vertical') && v.clientWidth < 90);
