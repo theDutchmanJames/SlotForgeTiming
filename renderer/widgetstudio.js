@@ -969,7 +969,9 @@ const WidgetStudio = (() => {
         else ed.id = (await api.add('customwidgets', data)).id;
         U.hist.markSaved(token);
         ed.dirty = !U.hist.isClean();
-        message('Saved. Add it from My widgets in the Layout Editor' + (scope === 'lane' ? ' or Leaderboard Editor.' : '.'));
+        message('Saved.');
+        if (typeof wwAfterSave === 'function') await wwAfterSave({ ...data, id: ed.id }, ed.saved, message); // (2.4.0: the layouts that use it, and Add to a layout)
+        ed.saved = { ...data, id: ed.id };
       } catch (err) {
         message('Could not save: ' + err.message);
       } finally {

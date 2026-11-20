@@ -782,6 +782,20 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'widgetworkshop',
+          title: 'Widget Workshop',
+          note: 'Where a widget is used, Add to a layout, Simple or Canvas, Play a race, the Fuel Strip',
+          body: `<ul>
+          <li>The Widget Builder shows every widget as a card on a race screen, with <b>Used in</b>: the layouts and leaderboard rows that have it.</li>
+          <li><b>Add to a layout…</b> puts the widget on a layout you choose (at the top left; a per-driver widget on the next lane that does not have it yet). Move it in the Layout Editor.</li>
+          <li>When you save a widget that layouts use, it asks to <b>update</b> them: their copies take the new content and keep their place and size. Choose <b>Keep their copies</b> to leave them as they are.</li>
+          <li><b>Simple / Canvas</b> beside Save: a simple text widget becomes a canvas with one text block, and a canvas with one text block becomes simple again.</li>
+          <li>The preview shows all eight lanes in their colours. <b>Play a race</b> lets the sample values move like a real race: laps, lap times and fuel.</li>
+          <li>A picture rule can have more conditions with <b>+ and…</b>: all of them must hold (a trophy when the position is 1 and more than 5 laps are done).</li>
+          <li><b>Fuel Strip</b>: the Fuel widget as a slim strip with FUEL, a bar from green to the fuel colour and the value. Pick Fuel Strip in the Layout Editor (Slotcar), or choose Fuel Strip as the Fuel Bar style of a Fuel Level widget.</li>
+        </ul>`
+        },
+        {
           id: 'widgetcomposer',
           title: 'Widget Builder',
           note: 'Content blocks, live preview and conditional states',

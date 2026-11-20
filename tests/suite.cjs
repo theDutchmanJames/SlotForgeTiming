@@ -262,6 +262,7 @@ module.exports = [
   ['recordbook.test.js', 'node-test'],
   ['hwdesk.test.js', 'node-test'],
   ['audiobooth.test.js', 'node-test'],
+  ['widgetworkshop.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],

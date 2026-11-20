@@ -37,11 +37,21 @@ function wbToWidget(r, lane) {
 }
 
 async function renderWidgetBuilder(box) {
-  if (wbEd?.draft?.composition && typeof WidgetStudio !== 'undefined') return WidgetStudio.edit(box);
-  if (wbEd) return renderWidgetBuilderEditor(box);
+  if (typeof wwWatch === 'function') wwWatch(box); // (2.4.0: the Simple / Canvas switch, widgetworkshop.js)
+  if (wbEd?.draft?.composition && typeof WidgetStudio !== 'undefined') {
+    const r = WidgetStudio.edit(box);
+    if (typeof wwModeSwitch === 'function') wwModeSwitch(box);
+    return r;
+  }
+  if (wbEd) {
+    const r = renderWidgetBuilderEditor(box);
+    if (typeof wwModeSwitch === 'function') wwModeSwitch(box);
+    return r;
+  }
   manager = null;
   box.onchange = box.oninput = null;
   const list = await api.list('customwidgets');
+  if (typeof wwRenderList === 'function' && typeof WidgetLinks !== 'undefined') return wwRenderList(box, list); // (2.4.0: the Widget Workshop)
   box.innerHTML =
     `<div class="row"><button class="btn primary" id="new-composer">New canvas widget</button><button class="btn" id="newwb">Simple text or image</button></div>` +
     (list.length
@@ -94,7 +104,7 @@ async function renderWidgetBuilder(box) {
         composition: r.composition
       });
     if (b.dataset.edit) {
-      wbEd = { id: r.id, draft: own(), dirty: false };
+      wbEd = { id: r.id, draft: own(), dirty: false, saved: clone(r) };
       return renderWidgetBuilder(box);
     }
     if (b.dataset.dup) {
@@ -135,8 +145,39 @@ const WB_VAR_GROUPS = [
   ['Race', ['timeleft', 'elapsed', 'flag', 'weather', 'session', 'track', 'heat', 'heats', 'time', 'clock']]
 ];
 const wbGroupOf = key => (WB_VAR_GROUPS.find(g => g[1].includes(key)) || ['More'])[0];
+// Play a race (2.4.0): the sample race of the preview, k laps further on (every car its own pace, the fuel going down); returns how to put it back
+function wbPlayRace(st, k) {
+  const back = [],
+    now = st.now;
+  for (let l = 0; l < 8; l++) {
+    const c = st.carByLane?.(l);
+    if (!c || !Array.isArray(c.laps)) continue;
+    back.push([c, { n: c.laps.length, last: c.last, total: c.total, best: c.best, fuel: c.fuel }]);
+    const base = (c.best || 10200) * (1 + 0.011 * l);
+    for (let i = 0; i < k; i++) {
+      const lap = Math.round(base + 420 * Math.sin(i * 1.7 + l * 2.3) + 180 * Math.cos(i * 0.9));
+      c.laps.push(lap);
+      c.last = lap;
+      c.total = (c.total || 0) + lap;
+      c.best = Math.min(c.best || lap, lap);
+    }
+    if (typeof c.fuel === 'number') c.fuel = Math.max(0, c.fuel * Math.pow(0.965, k));
+  }
+  st.now += k * 10200;
+  return () => {
+    for (const [c, b] of back) {
+      c.laps.length = b.n;
+      Object.assign(c, { last: b.last, total: b.total, best: b.best, fuel: b.fuel });
+    }
+    st.now = now;
+  };
+}
+// the eight lane colours of the app (frame.js)
+const wbLaneColour = i => (typeof Frame !== 'undefined' && Frame.laneColour({ lane: i % 8 })) || '#2f9fc5';
 let wbVarCat = 'all',
-  wbPrevLane = 0;
+  wbPrevLane = 0,
+  wbPlay = 0, // (2.4.0: when Play a race started; 0 = the fixed samples)
+  wbPlayTimer = 0;
 const WB_STAGE = { w: 1000, h: 562.5 };
 function renderWidgetBuilderEditor(box) {
   box.onclick = box.onchange = box.oninput = null;
@@ -159,12 +200,29 @@ function renderWidgetBuilderEditor(box) {
       lane = d.type === 'textlane' || d.type === 'imagelane' ? wbPrevLane : 0,
       cw = Math.max(Widgets.MIN, Math.min(WB_STAGE.w - 40, Number(d.w) || 300)),
       ch = Math.max(Widgets.MIN, Math.min(WB_STAGE.h - 40, Number(d.h) || 60)),
-      colour = ['#2d6fc6', '#2f9e44', '#c98a12', '#8a4fd1'][lane];
+      colour = wbLaneColour(lane);
     const ghosts =
       '<i class="wb-ghost" style="left:20px;top:20px;right:20px;height:70px"></i><i class="wb-ghost" style="right:20px;bottom:20px;width:300px;height:150px"></i><i class="wb-ghost" style="left:20px;right:340px;bottom:20px;height:80px"></i>';
+    const sample = () => {
+      if (wbPlay && typeof WidgetPreview !== 'undefined' && typeof Timing !== 'undefined')
+        try {
+          const st = WidgetPreview.state({}, { scenario: 'race' }),
+            undo = wbPlayRace(st, Math.floor((Date.now() - wbPlay) / 1000) % 40);
+          let c;
+          try {
+            c = Timing.content({ ...w, lane }, st);
+          } finally {
+            undo(); // (the sample race is shared: it is put back as it was)
+          }
+          if (c && c.html !== undefined) return c.html;
+        } catch (e) {
+          /* the fixed sample */
+        }
+      return Widgets.sampleOf(Widgets.def(d.type), lane, w);
+    };
     const body = img
-      ? `<div class="wbprev" style="width:100%;height:100%">${Widgets.sampleOf(Widgets.def(d.type), lane, w)}</div>`
-      : `<div class="wbprev" style="font-size:${Math.max(5, Number(d.textSize) || 30)}px;${Widgets.valueStyleOf(w)}">${Widgets.sampleOf(Widgets.def(d.type), lane, w)}</div>`;
+      ? `<div class="wbprev" style="width:100%;height:100%">${sample()}</div>`
+      : `<div class="wbprev" style="font-size:${Math.max(5, Number(d.textSize) || 30)}px;${Widgets.valueStyleOf(w)}">${sample()}</div>`;
     return `${ghosts}<div class="wb-widget${img ? ' pic' : ''}" style="left:40px;top:120px;width:${cw}px;height:${ch}px;--lane:${img ? 'transparent' : colour}">${body}</div><span class="wb-size">${esc(cw)} × ${esc(ch)}${img ? '' : ' · text ' + esc(d.textSize)}</span>`;
   };
   // the sample screen is 1000 wide and is scaled down to the width of the preview
@@ -200,7 +258,12 @@ function renderWidgetBuilderEditor(box) {
           (r, i) => `<div class="row wb-rule" data-rule="${i}"><span class="wb-if">If</span>${varSel(r.var, `data-rv="${i}"`)}
       <select data-ro="${i}" aria-label="Comparison">${Widgets.IMG_OPS.map(o => `<option value="${esc(o[0])}"${o[0] === (r.op || '=') ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>
       <input type="text" data-rval="${i}" value="${esc(r.value)}" placeholder="value" aria-label="Value"><span class="wb-if">show</span><span class="wb-rulepic">${pic(r.image, `data-pic="${i}"`, 'no picture')}</span>
-      <button class="btn danger sm" type="button" data-rdel="${i}">Remove rule</button></div>`
+      <button class="btn danger sm" type="button" data-rdel="${i}">Remove rule</button></div>${(r.and || [])
+        .map(
+          (c, k) =>
+            `<div class="row wb-rule wb-and" data-rule-and="${i}:${k}"><span class="wb-if">and</span>${varSel(c.var, `data-av="${i}:${k}"`)}<select data-ao="${i}:${k}" aria-label="Comparison">${Widgets.IMG_OPS.map(o => `<option value="${esc(o[0])}"${o[0] === (c.op || '=') ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select><input type="text" data-aval="${i}:${k}" value="${esc(c.value ?? '')}" placeholder="value" aria-label="Value"><button class="btn ghost sm" type="button" data-adel="${i}:${k}">Remove</button></div>`
+        )
+        .join('')}<div class="row wb-andadd"><button class="btn ghost sm" type="button" data-aadd="${i}">+ and…</button></div>`
         )
         .join('') || '<p class="muted">No rules yet.</p>'
     }</div>
@@ -231,9 +294,9 @@ function renderWidgetBuilderEditor(box) {
   })}<div class="wb-cols"><div class="wb-set">${kinds}${img ? imgBody() : textBody}${sizeBody}</div>
     <aside class="wb-preview" aria-label="Preview"><header><strong>On the race screen</strong>${
       lanes
-        ? `<span class="seg" role="group" aria-label="Sample lane">${[0, 1, 2, 3].map(i => `<button type="button" class="btn${i === wbPrevLane ? ' on' : ''}" aria-pressed="${i === wbPrevLane}" data-wblane="${i}">Lane ${i + 1}</button>`).join('')}</span>`
+        ? `<span class="wk-lanes" role="group" aria-label="Sample lane">${Array.from({ length: 8 }, (_, i) => `<button type="button" class="${i === wbPrevLane ? 'on' : ''}" style="--c:${wbLaneColour(i)}" aria-pressed="${i === wbPrevLane}" data-wblane="${i}" title="Lane ${i + 1}">${i + 1}</button>`).join('')}</span>`
         : ''
-    }</header><div class="wb-screen"><div class="wb-stage" id="wb-prev">${preview()}</div></div><p class="wb-hint">${
+    }</header><div class="wb-screen"><div class="wb-stage" id="wb-prev">${preview()}</div></div><div class="wk-bar"><button type="button" class="btn" data-wbplay>${wbPlay ? '❚❚ Pause' : '▶ Play a race'}</button><span class="wb-hint">Sample values move like a real race.</span></div><p class="wb-hint">${
       img ? 'The fixed picture, or the picture of the first rule that is true, with sample values.' : 'With sample values.'
     } The grey boxes stand for the rest of a layout, so you see how big your widget is. Colours and the exact place are set in the Layout Editor.</p></aside></div></div>`;
   const $ = id => document.getElementById(id),
@@ -248,9 +311,20 @@ function renderWidgetBuilderEditor(box) {
   }
   // the lane of the sample, and the subjects and the search of the variables (they only show and hide; nothing in the widget changes)
   box._wbShow = show;
+  clearInterval(wbPlayTimer);
+  if (wbPlay)
+    wbPlayTimer = setInterval(() => {
+      if (!wbEd || !$('wb-prev')) return clearInterval(wbPlayTimer);
+      box._wbShow();
+    }, 500);
   if (!box._wbLane && box.addEventListener) {
     box._wbLane = true; // (the box stays while the editor is drawn again: one listener, which calls the latest preview)
     box.addEventListener('click', ev => {
+      const play = ev.target.closest?.('[data-wbplay]');
+      if (play && wbEd && !wbEd.draft.composition) {
+        wbPlay = wbPlay ? 0 : Date.now();
+        return renderWidgetBuilderEditor(box);
+      }
       const l = ev.target.closest?.('[data-wblane]');
       if (!l || !box._wbShow) return;
       wbPrevLane = Number(l.dataset.wblane) || 0;
@@ -351,6 +425,14 @@ function renderWidgetBuilderEditor(box) {
       if (ds.rv !== undefined) return set('rules', ((d.rules[Number(ds.rv)].var = t.value), d.rules));
       if (ds.ro !== undefined) return set('rules', ((d.rules[Number(ds.ro)].op = t.value), d.rules));
       if (ds.rval !== undefined) return set('rules', ((d.rules[Number(ds.rval)].value = t.value), d.rules));
+      // (2.4.0) the "and" conditions of a rule
+      const andOf = key => {
+        const [i, k] = key.split(':').map(Number);
+        return d.rules[i].and[k];
+      };
+      if (ds.av !== undefined) return set('rules', ((andOf(ds.av).var = t.value), d.rules));
+      if (ds.ao !== undefined) return set('rules', ((andOf(ds.ao).op = t.value), d.rules));
+      if (ds.aval !== undefined) return set('rules', ((andOf(ds.aval).value = t.value), d.rules));
       if (ds.pic !== undefined && t.files && t.files[0]) {
         try {
           const data = await resizeImage(t.files[0], 512, true);
@@ -370,6 +452,12 @@ function renderWidgetBuilderEditor(box) {
         mark();
         show();
       }
+      if (ds.aval !== undefined) {
+        const [i, k] = ds.aval.split(':').map(Number);
+        d.rules[i].and[k].value = ev.target.value;
+        mark();
+        show();
+      }
     };
     box.onclick = ev => {
       const b = ev.target.closest('button');
@@ -377,6 +465,19 @@ function renderWidgetBuilderEditor(box) {
       const ds = b.dataset || {};
       if (ds.rdel !== undefined) {
         d.rules.splice(Number(ds.rdel), 1);
+        step();
+        return renderWidgetBuilderEditor(box);
+      }
+      if (ds.aadd !== undefined) {
+        const r = d.rules[Number(ds.aadd)];
+        (r.and = r.and || []).push({ var: vars[0][0], op: '=', value: '' });
+        step();
+        return renderWidgetBuilderEditor(box);
+      }
+      if (ds.adel !== undefined) {
+        const [i, k] = ds.adel.split(':').map(Number);
+        d.rules[i].and.splice(k, 1);
+        if (!d.rules[i].and.length) delete d.rules[i].and;
         step();
         return renderWidgetBuilderEditor(box);
       }
@@ -419,6 +520,8 @@ function renderWidgetBuilderEditor(box) {
       U.hist.markSaved(token);
       wbEd.dirty = !U.hist.isClean();
       msg('Saved.'); // (a change made while it was being written is not saved yet)
+      if (typeof wwAfterSave === 'function') await wwAfterSave({ ...data, id: wbEd.id }, wbEd.saved, msg); // (2.4.0: the layouts that use it)
+      wbEd.saved = { ...data, id: wbEd.id };
     } finally {
       saving = false;
     }

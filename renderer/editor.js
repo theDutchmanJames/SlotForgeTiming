@@ -563,7 +563,7 @@ const CUSTOM_NOTES = {
   ],
   widgets: [
     'Build your own widgets: values, icons, meters and pictures, arranged the way you like.',
-    'A canvas widget is drawn freely, with groups, layers and snapping. A simple widget is one line of text with variables such as {name} and {best}, or a picture that changes with a rule (a trophy when the position is 1). A layout keeps its own copy, so changing a widget here later does not change layouts that already use it.',
+    'A canvas widget is drawn freely, with groups, layers and snapping. A simple widget is one line of text with variables such as {name} and {best}, or a picture that changes with a rule (a trophy when the position is 1). Each card says which layouts use the widget; when you save a change, those layouts can follow it (or keep their own copy).',
     'Saved widgets appear under My widgets in the Layout Editor (and the Leaderboard Editor, for per-lane widgets).'
   ],
   results: [
@@ -1908,13 +1908,23 @@ function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
       valueBold: c.valueBold,
       valueItalic: c.valueItalic,
       title: c.title,
-      showTitle: row ? false : c.showTitle
+      showTitle: row ? false : c.showTitle,
+      src: r.id // (2.4.0: the copy knows the widget it came from, so saving the widget can update it)
     });
     step();
     redraw();
   };
-  window.editorAdd = type => {
-    addWidget(type);
+  window.editorAdd = (type, preset) => {
+    const g = addWidget(type);
+    // (2.4.0) a ready-made look of a widget: the Fuel Strip is the Fuel widget with its strip style (SlotForgeRestyle.md "Widget Workshop")
+    if (g && preset === 'fuelstrip') {
+      g.opt = { ...(g.opt || {}), mode: 'both', barStyle: 'strip' };
+      g.title = 'Fuel Strip';
+      g.showTitle = false; // (the strip says FUEL itself)
+      g.h = Math.min(g.h, 56);
+      g.w = Math.max(g.w, 300);
+      redraw();
+    }
     hist.commit();
   };
   const addWidget = type => {
@@ -2289,7 +2299,7 @@ function edPalette({ $, Hh, U, d, drawCanvas, ed, hasGuides, redraw, row, step }
     );
   document.querySelector('.ed-pal').onclick = e => {
     const b = e.target.closest('[data-add]');
-    if (b) window.editorAdd(b.dataset.add);
+    if (b) window.editorAdd(b.dataset.add, b.dataset.preset);
     const c = e.target.closest('[data-addcw]');
     if (c) window.editorAddCustom(c.dataset.addcw);
   };
@@ -3284,7 +3294,10 @@ function renderEditor() {
         folder(
           g,
           REG.filter(x => x.group === g)
-            .map(x => `<button class="btn" data-add="${x.type}">${esc(x.label)}</button>`)
+            .map(
+              x =>
+                `<button class="btn" data-add="${x.type}">${esc(x.label)}</button>${x.type === 'fuel' ? '<button class="btn" data-add="fuel" data-preset="fuelstrip" title="The Fuel widget as a slim strip: FUEL, a bar and the value">Fuel Strip</button>' : ''}`
+            )
             .join('')
         )
       )

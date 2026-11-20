@@ -75,7 +75,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 - **Ideas:** presets first, then a short list of the calls; a "play a sample race" button; how each driver's name is said
   (or a recorded name per driver); a choice of speaker (`setSinkId`).
 
-### 7. Widget Builder and canvas editor · Remake
+### 7. Widget Builder and canvas editor · Remake · **Done (2.4.0, "Widget Workshop")**
 - Two editors for one idea, with different rules: a simple picture allows one condition, the canvas editor allows many.
 - A widget is *copied* into a layout, so no "used in N layouts" and no "update the copies". Chart designs are linked,
   which makes the two inconsistent.

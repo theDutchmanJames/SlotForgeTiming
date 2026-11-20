@@ -407,6 +407,15 @@ button.rspill:hover,button.rspill:focus-visible{border-color:var(--accent)}
 .ffill{position:absolute;left:0;top:0;bottom:0;transition:width .3s}
 .ftxt{position:relative;display:flex;height:100%;align-items:center;justify-content:center;font-size:min(.7em,calc(var(--th,60) * .55cqmin),27cqw);font-weight:700;mix-blend-mode:normal;text-shadow:0 0 3px var(--bg)} /* (never taller than the bar, never wider than the widget) */
 .fbar.fv{width:calc(var(--th,60) * 1cqmin);height:100%;min-height:0;min-width:.9em}
+/* (2.4.0) the Fuel Strip style of the Fuel Level widget */
+.fstrip{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.6em;width:100%;height:100%;padding:0 .7em;border-radius:clamp(4px,14cqmin,12px);background:rgba(10,12,16,.85);color:#fff;box-sizing:border-box}
+.fstrip small{font-size:.72em;font-weight:700;letter-spacing:.14em;color:#9aa3ad}
+.fstrack{position:relative;display:block;height:calc(var(--th,60) * .2cqmin);min-height:5px;max-height:14px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.fsfill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#3ecf8e,var(--fc,#f5c211));transition:width .3s,height .3s}
+.fstrip b{font-family:'SF Roboto Mono',Consolas,monospace;font-weight:600;font-size:.9em}
+.fstrip.fv{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;justify-items:center;padding:.5em 0}
+.fstrip.fv .fstrack{width:calc(var(--th,60) * .2cqmin);min-width:5px;max-width:14px;height:100%;max-height:none}
+.fstrip.fv .fsfill{top:auto;right:0;width:auto}
 .fbar.fv .ffill{left:0;right:0;top:auto;bottom:0;transition:height .3s}
 .fbar.fv .ftxt{font-size:min(.7em,calc(var(--th,60) * .28cqmin),30cqh)} /* (a number across a narrow bar has to fit its width) */
 .fnum{font-variant-numeric:tabular-nums}
@@ -6816,3 +6825,42 @@ html .ab-tr .st{font-size:12px;text-align:right;color:var(--muted)}
 html .ab-tr.now .st{color:#ff6b6b;font-weight:600}
 html .ab-sfoot{display:flex;gap:8px}
 @media (max-width:1000px){html .ab-booth,html .ab-presets{grid-template-columns:minmax(0,1fr)}html .ab-nr{grid-template-columns:30px minmax(0,1fr) minmax(0,1.3fr) 30px}html .ab-nr .cs,html .ab-nr .ab-rec{display:none}}
+/* Widget Workshop (2.4.0, SlotForgeRestyle.md "Widget Workshop"): the widgets as cards on a race screen, Add to a layout, Simple / Canvas, eight lanes and Play a race */
+html .wk{display:grid;gap:14px}
+html .wk-strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+html .wk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+html .wk-card{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+html .wk-stage{position:relative;display:flex;align-items:center;justify-content:center;height:150px;padding:26px 14px 14px;background:radial-gradient(120% 90% at 50% 0%,#1d2330,#0b0e14);color:#f3f5f8;overflow:hidden}
+html .wk-kind{position:absolute;left:10px;top:9px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:#9aa4b5}
+html .wk-sample{display:flex;align-items:center;justify-content:center;max-width:100%;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 3px 0 0 var(--lane);font-size:22px;font-weight:700;white-space:nowrap;overflow:hidden}
+html .wk-sample img{max-width:100%;max-height:100%}
+html .wk-body{padding:11px 14px 4px}
+html .wk-body h3{margin:0 0 3px;font-size:15px}
+html .wk-body small{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;line-height:1.35}
+html .wk-body small b{color:var(--ink)}
+html .wk-foot{display:flex;gap:6px;align-items:center;padding:10px 14px 12px;margin-top:auto}
+html .wk-foot .wk-m{margin-left:auto}
+html .wk-new{display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:220px;padding:18px;border:1.5px dashed var(--line);border-radius:12px;color:var(--muted)}
+html .wk-new b{color:var(--ink);font-size:15px}
+html .wk-mode{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:999px;background:var(--bg)}
+html .wk-mode button{height:26px;padding:0 12px;border:0;border-radius:999px;background:transparent;font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer}
+html .wk-mode button.on{background:var(--ink);color:var(--panel);font-weight:600}
+html .wk-lanes{display:inline-flex;gap:3px}
+html .wk-lanes button{width:28px;height:28px;border:1px solid var(--line);border-radius:7px;background:var(--panel);font:600 12px 'SF Roboto Mono',Consolas,monospace;color:var(--ink);box-shadow:inset 0 -3px 0 var(--c);cursor:pointer}
+html .wk-lanes button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,var(--panel))}
+html .wk-bar{display:flex;align-items:center;gap:10px;margin:8px 0 0}
+html .wk-bar .wb-hint{margin:0}
+html .wb-rule.wb-and{margin:-4px 0 8px 26px;border-style:dashed}
+html .wb-if{font:600 11.5px 'SF Roboto Mono',Consolas,monospace;text-transform:uppercase;color:var(--muted)}
+html .wb-andadd{margin:-4px 0 10px 26px}
+html .wk-win{width:min(760px,94vw)}
+html .wk-whd small{color:var(--muted);font-size:12px}
+html .wk-whd h2{margin:2px 0 12px}
+html .wk-lays{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;max-height:56vh;overflow:auto}
+html .wk-lay{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border:1.5px solid var(--line);border-radius:10px;background:var(--panel);font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+html .wk-lay.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+html .wk-lay small{color:var(--muted);font-size:11.5px}
+html .wk-mini{position:relative;width:100%;border-radius:6px;background:#0b0e14;overflow:hidden}
+html .wk-mini i{position:absolute;border-radius:2px;background:rgba(255,255,255,.22)}
+html .wk-mini i.me{background:var(--accent)}
+html .wk-note{margin:10px 0 0;font-size:12.5px}

@@ -59,6 +59,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Record Book](#record-book) | Results and Records: track records as cards with their history, one filter bar, the races by month, a driver panel, a driver's history, correcting a result | Database › Results and Records › Racing Records |
 | [Timing Desk](#timing-desk) | Timing Hardware: a big card for what counts the laps, live lanes, the interfaces as cards with Connect & use, an interface's parts as tabs, Diagnostics folded away, finding the lane order | App Settings › Timing Hardware |
 | [Commentary Booth](#commentary-booth) | The audio set editor: the voice on air first, the presets as cards, driver names said or recorded, a sample race | Customization › Audio Settings › Edit |
+| [Widget Workshop](#widget-workshop) | The Widget Builder: widgets as cards on a race screen, Used in, Add to a layout, Simple / Canvas, eight lanes, Play a race; the Fuel Strip | Customization › Widget Builder |
 | [Race Control](#race-control) | The race window while a race is on: a bar with the state in words and the colour of its flag, the clock and the controls; a track call as a decision; the order as a timing tower; the race screen as a monitor | Race tab |
 | [Chequered Flag](#chequered-flag) | The screens after a race as broadcast graphics: the winner big with the lane's helmet, a timing tower, the race story, the title fight as big as the race, the break between heats | Race tab, after Finalize |
 | [Record Card](#record-card) | The card of a slotcar, a driver or a track: the picture beside the name, the statistics as tiles, the service with a meter, the progress of a driver as track cards | Database (a click on a row or card) |
@@ -1899,6 +1900,38 @@ html .ab-tr.now{background:color-mix(in srgb,#e5484d 9%,var(--panel));box-shadow
 
 ---
 
+## Widget Workshop
+
+The Widget Builder (`renderer/widgetworkshop.js` makes the list, the Add to a layout window and the Simple / Canvas switch; `renderer/widgetlinks.js` works out
+the links between a widget and its copies; the editors stay in `widgetbuilder.js` and `widgetstudio.js`; styles under `.wk-`). A layout still keeps its own copy of
+a widget, but the copy now has `src` (the id of the saved widget), so the builder knows where a widget is used. Copies from before are found by their content.
+
+- **The list** (`.wk-grid`): a card per widget. On top a dark race screen (`.wk-stage`, a radial gradient from #1d2330 to #0b0e14) with the kind in Roboto Mono
+  caps (*Per driver · text*) and the widget's sample with a lane-colour edge; under it the name in Barlow and *Used in N layouts · names* (or *Not in a layout
+  yet*); then *Edit*, *Add to a layout…* (red when the widget is in no layout yet) and ⋯ (Duplicate, Delete). Filter chips *All / Per driver / Once on screen*
+  (`.gx-chip`) beside *＋ New widget*, and a dashed *New widget* card with *Simple* and *Canvas*.
+- **Add to a layout** (`.wk-win`): the layouts as small dark pictures of their widgets (`.wk-mini`; this widget's copies in the accent colour), the name, and
+  *has it* / *add it here*; the chosen one has the accent edge. The button says where it goes (*Add to QA layout*).
+- **Saving** a widget that layouts use asks *Update the layouts*: *Update N layouts* or *Keep their copies*. The status says *Saved · 2 layouts updated.*
+- **Simple / Canvas** (`.wk-mode`): a pill switch beside Save, the chosen side filled with the ink colour; *Add to a layout…* beside it once the widget is saved.
+- **The preview** of a simple widget: eight lane buttons (`.wk-lanes`, square, with a 3 px underline in the lane colour, tinted when chosen) and *▶ Play a race*
+  (`.wk-bar`): the sample race moves on a lap a second.
+- **Picture rules**: *+ and…* under a rule adds a condition (`.wb-and`, dashed and indented, *AND* in Roboto Mono caps).
+- **Fuel Strip** (`.fstrip`): the Fuel widget as a dark pill: *FUEL* in small spaced caps, a thin bar from #3ecf8e to the fuel colour, and the value in Roboto
+  Mono. A Fuel Bar style of the Fuel Level widget, and its own pick (*Fuel Strip*) in the Layout Editor under Slotcar.
+
+```css
+html .wk-stage{height:150px;background:radial-gradient(120% 90% at 50% 0%,#1d2330,#0b0e14);color:#f3f5f8}
+html .wk-sample{border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 3px 0 0 var(--lane)}
+html .wk-mode button.on{background:var(--ink);color:var(--panel);font-weight:600}
+html .wk-lanes button{width:28px;height:28px;border-radius:7px;box-shadow:inset 0 -3px 0 var(--c)}
+html .wk-mini i.me{background:var(--accent)}
+.fstrip{border-radius:clamp(4px,14cqmin,12px);background:rgba(10,12,16,.85)}
+.fsfill{background:linear-gradient(90deg,#3ecf8e,var(--fc))}
+```
+
+---
+
 ## Race Control
 
 The race window while a race is on (`renderer/racecontrol.js`, wired in `race.js`: rcInit, rcDraw, rcMonitor; styles under `.rc-`). The Lane Desk
@@ -2228,3 +2261,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Record Book | New: Racing Records as a record book (record cards, filter bar, race log by month, driver panel, record history, driver history, Correct the result, CSV) |
 | 2026-11 | Timing Desk | New: Timing Hardware as a desk (big card, live lanes, interface cards, Connect & use, parts as tabs, Diagnostics, Find the lane order, Forgotten devices); the dropdown, the banner, Other and the oXigen page are gone |
 | 2026-11 | Commentary Booth | New: the audio set editor opens on the voice (On air, Plays on, Hear it) and the presets as cards; Driver names; Play a sample race; the editor keeps its place |
+| 2026-11 | Widget Workshop | New: the Widget Builder list as cards on a race screen with Used in and Add to a layout; saving updates the layouts that use it; Simple / Canvas switch; eight lanes and Play a race; "and" conditions; the Fuel Strip |

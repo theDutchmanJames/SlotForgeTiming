@@ -38,7 +38,7 @@ test('quantity colours, warning visibility, values and invalid input behave in e
 });
 test('only relevant editor options appear; samples use the shared renderer',()=>{
  const ops=Object.fromEntries(W.def('fuel').options.map(o=>[o.key,o]));
- assert.equal(ops.barStyle.default,'original');assert.equal(ops.barStyle.choices.length,3);
+ assert.equal(ops.barStyle.default,'original');assert.equal(ops.barStyle.choices.length,4,'Original, Digital, Scale and the Fuel Strip (2.4.0)');
  assert(!ops.barStyle.show({mode:'number'}));assert(!ops.segments.show({barStyle:'scale'}));assert(ops.segments.show({barStyle:'digital'}));
  assert(!ops.barValues.show({mode:'bar'}));
  for(const barStyle of ['digital','scale'])assert(W.sampleOf(W.def('fuel'),0,{opt:{barStyle}}).includes('fg-'+barStyle));

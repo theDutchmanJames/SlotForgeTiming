@@ -357,7 +357,11 @@
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&amp;/g, '&'); // (the values of the variables are made safe for the page: a name with an & is compared as typed)
+  // (2.4.0) a rule of a simple picture: its condition, and every condition of its "and" list
   function ruleHolds(r, vars) {
+    return oneHolds(r, vars) && (Array.isArray(r && r.and) ? r.and : []).every(c => oneHolds(c, vars));
+  }
+  function oneHolds(r, vars) {
     if (!r || !r.var || !Object.prototype.hasOwnProperty.call(vars, r.var)) return false;
     const a = unesc(String(vars[r.var] ?? '').trim()),
       b = String(r.value ?? '').trim(),
@@ -1172,7 +1176,8 @@
       choices: [
         ['original', 'Original'],
         ['digital', 'Digital Segments'],
-        ['scale', 'Reserve Scale']
+        ['scale', 'Reserve Scale'],
+        ['strip', 'Fuel Strip']
       ],
       show: o => fuelIsBar(o)
     },
@@ -1338,6 +1343,12 @@
     const vert = fuelOpt(opt, 'dir') === 'vertical',
       th = clampInt(fuelOpt(opt, 'thick'), 10, 100, 60),
       size = Math.round(pct * 10) / 10;
+    // (2.4.0) the Fuel Strip: a dark pill with FUEL, a thin bar from green to the fuel colour, and the value in figures (SlotForgeRestyle.md "Widget Workshop")
+    if (fuelOpt(opt, 'barStyle') === 'strip') {
+      const v = fuelOpt(opt, 'barValues'),
+        shown = v === 'litres' ? txt : v === 'both' ? `${Math.round(size)}% · ${txt}` : `${Math.round(size)}%`;
+      return `<span class="fstrip${vert ? ' fv' : ''}" style="--th:${th}"><small>FUEL</small><span class="fstrack"><span class="fsfill" style="${vert ? 'height' : 'width'}:${size}%;--fc:${fuelBarColour(pct, opt)}"></span></span>${mode === 'both' ? `<b>${shown}</b>` : ''}</span>`;
+    }
     const style = ['digital', 'scale'].includes(fuelOpt(opt, 'barStyle')) ? fuelOpt(opt, 'barStyle') : 'original';
     const chosen = fuelOpt(opt, 'barValues'),
       format = ['litres', 'percent', 'both'].includes(chosen) ? chosen : style === 'original' ? 'litres' : 'both';
