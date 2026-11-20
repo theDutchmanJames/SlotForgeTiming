@@ -113,7 +113,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 | Championships · **Done (2.4.0, "Season Calendar")** | The round date is free text. No points adjustment (a penalty or a correction). | A date picker, adjustments with a reason |
 | Find (Ctrl K) · **Done (2.4.0, "Find Everything")** | Only drivers, cars, tracks, setups and settings. | Teams, layouts, championships, past races, Help; more actions |
 | Help · **Done (2.4.0, "Help Desk")** | Topics in the order they were built. The only ways in are App Settings and Home. | A "?" on each page opening its article, F1 |
-| Layout Editor | Mature. No "try it with a simulated race". Deleting a layout doesn't say which setups use it. "Image/Audio Settings" are libraries, not settings. | Try-out race, "used by" |
+| Layout Editor · **Done (2.4.0, "Try It")** | Mature. No "try it with a simulated race". Deleting a layout doesn't say which setups use it. "Image/Audio Settings" are libraries, not settings. | Try-out race, "used by" |
 | Trackmate page | A HID finder and a raw hex sender sit among the club settings. | Behind Diagnostics (part of Tier 1 #4) |
 
 ## Fine as they are

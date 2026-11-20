@@ -3981,10 +3981,8 @@ const say = (m, c) => {
   run("state.tab='custom'; state.customSub='audio'");
   await run('render()');
   say(
-    'Customization has Layout Editor, Leaderboard Editor, Race Results, Audio Settings and Image Settings',
-    ['Layout Editor', 'Leaderboard Editor', 'Race Results', 'Audio Settings', 'Image Settings'].every(t =>
-      E('customtabs').innerHTML.includes(t)
-    )
+    'Customization has Layout Editor, Leaderboard Editor, Race Results, Audio sets and Picture sets',
+    ['Layout Editor', 'Leaderboard Editor', 'Race Results', 'Audio sets', 'Picture sets'].every(t => E('customtabs').innerHTML.includes(t))
   );
   run('state.editing=null');
   await run('render()');

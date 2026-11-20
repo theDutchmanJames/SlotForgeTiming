@@ -544,8 +544,8 @@ const CUSTOM_TABS = [
   ['charts', 'Chart Editor', 'gauge'],
   ['widgets', 'Widget Builder', 'layers'],
   ['results', 'Race Results', 'star', 'After the race'],
-  ['audio', 'Audio Settings', 'say', 'Sound and pictures'],
-  ['images', 'Image Settings', 'paint'],
+  ['audio', 'Audio sets', 'say', 'Libraries'],
+  ['images', 'Picture sets', 'paint'],
   ['pluginpages', 'Plugin Pages & Tools', 'cog', 'Add-ons']
 ];
 // (2.4.0) the note under the title of a Customization page, as on the Race Setup pages (Page Note): what it is, a few more words, and where you use it
@@ -1282,8 +1282,9 @@ async function renderLayoutList(box) {
   const layouts = await EditorData.choices(api, 'layouts');
   const prop = l => `${l.ratioW}:${l.ratioH}`;
   // (2.4.0) every layout is a card with a sketch of its page: the boxes of its widgets, drawn once the layout is read (the list itself does not carry them)
-  const card = (key, name, note, ratio, count, actions, builtIn = false) =>
-    `<div class="card lcard"><div class="lsketch" style="aspect-ratio:${ratio.replace(':', ' / ')}" data-sketch="${esc(key)}"></div><div class="lbody"><h3>${esc(name)}${builtIn ? ' <span class="ltag">Built in</span>' : ''}</h3>${note ? `<p class="muted">${esc(note)}</p>` : ''}<div class="lmeta"><span>${esc(ratio)}</span><span>${count} widgets</span></div></div><div class="lactions">${actions}</div></div>`;
+  // (2.4.0, "Try It") usedId: the race setups that use the layout come in under it
+  const card = (key, name, note, ratio, count, actions, builtIn = false, usedId = '') =>
+    `<div class="card lcard"><div class="lsketch" style="aspect-ratio:${ratio.replace(':', ' / ')}" data-sketch="${esc(key)}"></div><div class="lbody"><h3>${esc(name)}${builtIn ? ' <span class="ltag">Built in</span>' : ''}</h3>${note ? `<p class="muted">${esc(note)}</p>` : ''}<div class="lmeta"><span>${esc(ratio)}</span><span>${count} widgets</span></div>${usedId ? `<div class="lt-usedline" data-lt-used="${esc(usedId)}"></div>` : ''}</div><div class="lactions">${actions}</div></div>`;
   box.innerHTML =
     `<div class="row"><button class="btn primary" id="newl">New layout</button></div>
     <div class="lgrid">` +
@@ -1295,7 +1296,9 @@ async function renderLayoutList(box) {
           l.note || '',
           prop(l),
           l.widgetCount ?? (l.widgets || []).length,
-          `<button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button>`
+          `<button class="btn" data-try="${esc(l.id)}" title="Open it and play a sample race">Try it</button> <button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button>`,
+          false,
+          l.id
         )
       )
       .join('') +
@@ -1347,7 +1350,8 @@ async function renderLayoutList(box) {
       );
   }
 
-  const open = (draft, id) => {
+  if (typeof LayoutTry !== 'undefined' && box.querySelector) LayoutTry.cards(box, layouts).catch(() => {});
+  const open = (draft, id, tryIt = false) => {
     state.editing = {
       id,
       draft: { guides: { v: [], h: [] }, laneColors: [], note: '', ...draft, widgets: knownWidgets(draft.widgets) },
@@ -1357,6 +1361,7 @@ async function renderLayoutList(box) {
       dupStep: null,
       lastDup: null
     };
+    if (tryIt && typeof LayoutTry !== 'undefined') LayoutTry.start(state.editing, { fresh: true }); // (Try it: the editor opens playing)
     render();
   };
   box.onclick = async ev => {
@@ -1377,9 +1382,9 @@ async function renderLayoutList(box) {
         null
       );
     }
-    let l = layouts.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del));
+    let l = layouts.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del || b.dataset.try));
     if (!l) return;
-    if (b.dataset.edit || b.dataset.dup) {
+    if (b.dataset.edit || b.dataset.dup || b.dataset.try) {
       try {
         l = api.getRecord ? await api.getRecord('layouts', l.id) : l;
         if (!l) throw Error('This layout is no longer available. Refresh the list.');
@@ -1388,7 +1393,7 @@ async function renderLayoutList(box) {
         return;
       }
     }
-    if (b.dataset.edit)
+    if (b.dataset.edit || b.dataset.try)
       open(
         clone({
           name: l.name,
@@ -1401,7 +1406,8 @@ async function renderLayoutList(box) {
           ...Frame.pickLayout(l),
           ...Backdrop.pick(l)
         }),
-        l.id
+        l.id,
+        !!b.dataset.try
       );
     if (b.dataset.dup) {
       await api.add(
@@ -1420,7 +1426,10 @@ async function renderLayoutList(box) {
       );
       renderLayoutList(box);
     }
-    if (
+    // (2.4.0, "Try It") Delete names the race setups that use the layout and lets you choose what they use instead (a backup first)
+    if (b.dataset.del && typeof LayoutTry !== 'undefined') {
+      if ((await LayoutTry.remove(l, layouts)) && box.isConnected !== false && !state.editing) renderLayoutList(box);
+    } else if (
       b.dataset.del &&
       (await Dialog.confirm(
         `Delete the layout "${l.name}"?\n\nRace setups that use it go back to the default layout (the default token layout for a Time Token Session).\n\nThis can't be undone.`,
@@ -1444,7 +1453,8 @@ function editorPreviewContext(ed) {
     rowDesigns: ed.rowDesigns || [],
     chartDesigns: ed.chartDesigns || [],
     imageSets: ed.imageSets || [],
-    clubLogo: state.settings?.clubLogo || ''
+    clubLogo: state.settings?.clubLogo || '',
+    play: typeof LayoutTry !== 'undefined' ? LayoutTry.shared(ed) : null // (2.4.0, "Try It": the sample race on the canvas, when it plays)
   };
 }
 function previewOf(def, w) {
@@ -1459,9 +1469,16 @@ function widgetHtml(w, sel, single, d) {
   const handles = single
     ? '<i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>'
     : '';
+  // (2.4.0, "Try It") a lane the sample race does not have is faded; a custom text with a word it does not know is ringed
+  const tried = typeof LayoutTry !== 'undefined' && !row;
   return WidgetView.html(w, d, previewOf(def, w), {
     row,
-    extraClass: (sel ? ' sel' : '') + (tiny ? ' tiny' : '') + (row ? ' flat' : ''),
+    extraClass:
+      (sel ? ' sel' : '') +
+      (tiny ? ' tiny' : '') +
+      (row ? ' flat' : '') +
+      (tried && LayoutTry.off(state.editing, w) ? ' lt-off' : '') +
+      (tried && LayoutTry.bad(w) ? ' lt-bad' : ''),
     attributes: `data-i="${d.widgets.indexOf(w)}"`,
     decoration: badge + handles
   });
@@ -1560,7 +1577,7 @@ function sideHtml() {
                 .map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`)
                 .join(
                   ''
-                )}</select>${d0.type === 'avatar' || (state.editing.imageSets || []).some(r => r.kind === o.kind) ? '' : '<p class="muted">No sets yet. Make one under Customization > Image Settings.</p>'}${!setIn(v, d0) && sameType && ownPictures(w0) ? '<button class="btn" type="button" data-saveset="1">Save this widget\'s pictures as a set</button>' : ''}</div>`;
+                )}</select>${d0.type === 'avatar' || (state.editing.imageSets || []).some(r => r.kind === o.kind) ? '' : '<p class="muted">No sets yet. Make one under Customization > Picture sets.</p>'}${!setIn(v, d0) && sameType && ownPictures(w0) ? '<button class="btn" type="button" data-saveset="1">Save this widget\'s pictures as a set</button>' : ''}</div>`;
             if (o.type === 'team')
               return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">The team of the lane</option>${(state.editing.teams || []).map(t => `<option value="${esc(t.id)}"${t.id === v ? ' selected' : ''}>${esc(t.name || '(unnamed)')}</option>`).join('')}</select><span class="muted hint">A team of the lane is the team you chose on the Home tab. Choose a team from the database to always show that team.</span></div>`;
             if (o.type === 'chartdesign')
@@ -1832,11 +1849,13 @@ function edDrawing({ $, Hh, U, d, ed, hasGuides, mark, mounted, paintVersion, ro
       ed.bgNode = null;
     }
     if ($('e-background')) $('e-background').setAttribute('aria-pressed', String(Backdrop.has(d)));
+    if (!row && typeof LayoutTry !== 'undefined') LayoutTry.refreshWarn(ed, $('side')); // (2.4.0: the words a widget does not know)
     if ($('e-guides')) $('e-guides').setAttribute('aria-pressed', String(hasGuides()));
     drawRows();
   };
   const drawSide = () => {
     $('side').innerHTML = sideHtml();
+    if (!row && typeof LayoutTry !== 'undefined') LayoutTry.refreshWarn(ed, $('side'));
     fitPanels();
     if (typeof WidgetFonts !== 'undefined')
       for (const [role, id] of [
@@ -3181,7 +3200,7 @@ function edSideClick({ $, arrange, d, duplicateSel, ed, redraw, removeSel, side,
         });
         step();
         redraw();
-        $('e-msg').textContent = `Saved as the set "${set.name}". You can rename it under Customization > Image Settings.`;
+        $('e-msg').textContent = `Saved as the set "${set.name}". You can rename it under Customization > Picture sets.`;
       });
       return;
     }
@@ -3386,7 +3405,7 @@ function renderEditor() {
     tools
   })}
     <div class="ed-main"><aside class="ed-pal" aria-label="Widgets"><div class="pal-search"><input type="search" id="e-palsearch" placeholder="Find a widget" aria-label="Find a widget"></div>${palette()}</aside>
-      <div class="ed-stage"><div class="canvas" id="canvas"></div>${row ? '<h4>Preview: leader, normal, in the pits, penalty, out</h4><div class="rowprev" id="e-preview"></div>' : ''}</div>
+      <div class="ed-stage">${row ? '' : '<div class="lt-bar" id="e-try" role="region" aria-label="Try it with a sample race"></div>'}<div class="canvas" id="canvas"></div>${row ? '<h4>Preview: leader, normal, in the pits, penalty, out</h4><div class="rowprev" id="e-preview"></div>' : ''}</div>
       <aside class="ed-side" id="side"></aside></div>`;
   const $ = id => document.getElementById(id);
   // the steps for Undo and Redo: mark() says something changed (a drag or a typed word becomes one step after a quiet moment); step() ends the step now, for a single action
@@ -3435,6 +3454,23 @@ function renderEditor() {
     row
   }); // (fitPanels does nothing when no editor is on the page)
 
+  // (2.4.0, SlotForgeRestyle.md "Try It") the sample race above the canvas; the race setups that use the layout beside Saved
+  if (!row && typeof LayoutTry !== 'undefined') {
+    LayoutTry.mount({
+      ed,
+      refresh: () => {
+        mounted?.invalidate();
+        drawCanvas();
+      },
+      select: i => {
+        if (!d.widgets[i]) return;
+        ed.sel = [d.widgets[i]];
+        drawCanvas();
+        drawSide();
+      }
+    });
+    LayoutTry.chip(ed, $('e-msg') && $('e-msg').parentElement);
+  }
   const { duplicateSel, removeSel } = edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step });
 
   const { arrange, tidySel } = edArranging({ $, Hh, U, d, ed, mark, redraw, step });

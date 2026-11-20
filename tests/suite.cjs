@@ -324,4 +324,5 @@ module.exports = [
   ['mergedrivers.test.js', 'node-test'],
   ['findeverything.test.js', 'node-test'],
   ['helpdesk.test.js', 'node-test'],
+  ['layouttry.test.js', 'node-test'],
 ];

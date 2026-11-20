@@ -164,7 +164,7 @@ async function renderHome() {
   }
   const rivalProfiles = await api.list('virtualrivalsystems');
   const champs = (Array.isArray(champRaw) ? champRaw : []).map(c => Champ.clean(c, true)); // (1.55.0: the championships; 1.56.1: one of them is chosen in the Start a race card, and only then its card shows, inside Start a race)
-  const imageSets = Array.isArray(imagesets) ? imagesets : []; // (1.26.0: the picture sets of Customization > Image Settings, for the Weather and Tyres Available cards)
+  const imageSets = Array.isArray(imagesets) ? imagesets : []; // (1.26.0: the picture sets of Customization > Picture sets, for the Weather and Tyres Available cards)
   const saved = state.settings;
   const grid = HomeGrid.gridOf(saved),
     hc = (state.homeCustom = state.homeCustom || { open: false, sel: 0 }); // (1.25.0: the cards are a grid; hc is the Customize panel: open or not, and the card whose settings show)

@@ -220,7 +220,7 @@
     ['flags', 'Flags'],
     ['leds', 'LEDs'],
     ['text', 'Text (uses Race-state colours)'],
-    ['images', 'Image set (made under Customization > Image Settings)']
+    ['images', 'Image set (made under Customization > Picture sets)']
   ];
   // What the widget shows. A widget made before there was a choice: a picture set or pictures of its own mean "images", the old "text" choice stays text, the rest is flags.
   const flagStyleOf = o => {
@@ -417,12 +417,12 @@
   ];
   const SET_OPTION = kind => ({
     key: 'imageSet',
-    label: 'Picture set (made under Customization > Image Settings)',
+    label: 'Picture set (made under Customization > Picture sets)',
     type: 'imageset',
     kind,
     default: ''
   });
-  // Flag style: flags, LEDs, text or the pictures of a picture set (Customization > Image Settings). `when` says for which styles an option shows.
+  // Flag style: flags, LEDs, text or the pictures of a picture set (Customization > Picture sets). `when` says for which styles an option shows.
   const FLAG_OPTIONS = [
     { key: 'flagStyle', label: 'Show the race state as', type: 'select', default: 'flags', choices: FLAG_STYLES },
     {
@@ -480,7 +480,7 @@
       key: 'lightsnote',
       type: 'note',
       label:
-        'While the race counts down the lights come on one by one. For every other state of the race you can choose how many of the five lights are on, and their colour (a colour is used for round lights; a picture set shows the pictures it has for that state of the race, see Customization > Image Settings). Unset states follow the racing flags. These widget choices override the display of individual states.'
+        'While the race counts down the lights come on one by one. For every other state of the race you can choose how many of the five lights are on, and their colour (a colour is used for round lights; a picture set shows the pictures it has for that state of the race, see Customization > Picture sets). Unset states follow the racing flags. These widget choices override the display of individual states.'
     },
     ...LIGHT_STATES.flatMap(([k, label]) => [
       {
@@ -1142,7 +1142,7 @@
   ];
   const TEAMPIC_OPTIONS = [TEAM_OPTION, { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'team' }];
   const AVATAR_OPTIONS = [
-    { ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
+    { ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Picture sets)' },
     { key: 'avatarMirror', label: 'Mirror the pictures (flip them left to right)', type: 'checkbox', default: false },
     { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'avatar' }
   ];
@@ -1262,7 +1262,7 @@
     { key: 'lowColor', label: 'Warning colour', type: 'color', default: '#ffd400' },
     { key: 'critAt', label: 'Critical colour below (% of tank)', type: 'number', default: 10, min: 0, max: 100, step: 1 },
     { key: 'critColor', label: 'Critical colour', type: 'color', default: '#d62828' }
-  ]; // pictures come from a picture set (Customization > Image Settings)
+  ]; // pictures come from a picture set (Customization > Picture sets)
   const fuelOpt = (o, k) => (o && o[k] !== undefined ? o[k] : FUEL_OPTIONS.find(x => x.key === k).default);
   function fuelIsBar(o) {
     const m = fuelOpt(o, 'mode');

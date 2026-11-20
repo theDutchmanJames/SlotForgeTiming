@@ -1130,7 +1130,7 @@ body.app-shell:not(.lv-window):has(>#app-footer:not([hidden])){display:flex;flex
 @keyframes trkpulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--tc) 20%,transparent)}}
 @media (prefers-reduced-motion:reduce){.trk-call[data-active="true"]{animation:none}.trk-btn{transition:none}}
 
-/* 0.86.0: the picture grid of a Start lights set (Customization > Image Settings) */
+/* 0.86.0: the picture grid of a Start lights set (Customization > Picture sets) */
 .lgrid th{text-align:left;white-space:nowrap}
 .lgrid td.lgcell{text-align:center;padding:4px 6px;white-space:nowrap}
 .lgpick{position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border:1px dashed var(--line);border-radius:8px;background:var(--bg);cursor:pointer;vertical-align:middle}
@@ -7634,3 +7634,45 @@ html .help-tile:hover{border-color:color-mix(in srgb,var(--t) 50%,var(--line))}
 .help-tile em{font:600 11px 'SF Roboto Mono',Consolas,monospace;font-style:normal;color:var(--muted)}
 .help-tile small{grid-column:2/-1;color:var(--muted);font-size:12.5px;line-height:1.5}
 @media (max-width:900px){html .help-startcard .help-steps{grid-template-columns:1fr 1fr}.help-tiles{grid-template-columns:1fr}}
+/* ---- 2.4.0 Try It (SlotForgeRestyle.md "Try It"): the Layout Editor with a sample race, who uses a layout, the words a widget does not know ---- */
+html .lt-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);font-size:12.5px}
+html .lt-bar.on{background:color-mix(in srgb,#2fb67c 7%,var(--panel));border-color:color-mix(in srgb,#2fb67c 35%,var(--line))}
+html .lt-bar .lt-play{display:inline-flex;align-items:center;gap:6px;height:30px;margin:0;padding:0 12px;border:0;border-radius:8px;background:#2fb67c;box-shadow:none;color:#06140d;font:700 13px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+html .lt-bar .lt-play.on{background:color-mix(in srgb,#2fb67c 22%,var(--panel));color:var(--ink);border:1px solid #2fb67c}
+.lt-hint{color:var(--muted)}
+.lt-k{font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lt-clock{font:700 14px 'SF Roboto Mono',Consolas,monospace;min-width:120px}
+.lt-sep{width:1px;height:22px;background:var(--line)}
+.lt-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+html .lt-seg button{min-height:0;margin:0;padding:5px 9px;border:0;border-right:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;color:var(--ink);font:500 12.5px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+html .lt-seg button:last-child{border-right:0}
+html .lt-seg button.on{background:color-mix(in srgb,var(--accent) 18%,var(--panel))}
+html .lt-bar .lt-stop{margin-left:auto}
+/* the canvas: a lane the sample race does not have, a widget with a word it does not know */
+html #canvas .lt-off{opacity:.28}
+html #canvas .lt-bad{outline:2px dashed #e0a800;outline-offset:2px}
+.lt-warn{margin-top:10px;padding:12px;border:1px solid color-mix(in srgb,#f2b705 50%,var(--line));border-radius:10px;background:color-mix(in srgb,#f2b705 8%,var(--panel));font-size:12.5px;line-height:1.5;color:var(--ink)}
+.lt-warn>b{display:block;color:color-mix(in srgb,#f2b705 65%,var(--ink))}
+.lt-warn p{margin:6px 0 0}
+.lt-warn code{padding:0 4px;border-radius:4px;background:color-mix(in srgb,var(--ink) 8%,transparent);font:600 12px 'SF Roboto Mono',Consolas,monospace}
+html .lt-warn .lt-pick{min-height:0;margin:0;padding:0;border:0;background:none;box-shadow:none;color:var(--accent-text,var(--accent));font:600 12.5px "Segoe UI",system-ui,sans-serif;cursor:pointer;text-decoration:underline}
+/* who uses a layout: on the cards, and a chip beside Saved */
+.lt-usedline{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
+.lt-usedline:empty{display:none}
+.lt-usedline b{color:var(--ink);font-weight:600}
+.lt-pill{padding:2px 8px;border:1px solid var(--line);border-radius:999px;color:var(--ink)}
+.lt-none{font-style:italic}
+.lt-used{position:relative;margin-right:8px}
+.lt-used>summary{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid var(--line);border-radius:999px;font-size:12.5px;color:var(--ink);cursor:pointer;list-style:none}
+.lt-used>summary::-webkit-details-marker{display:none}
+.lt-used>summary::after{content:'▾';color:var(--muted)}
+.lt-usedlist{position:absolute;right:0;top:34px;z-index:60;display:grid;gap:6px;width:280px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.4)}
+.lt-usedlist p{margin:0;font-size:12.5px;color:var(--muted)}
+html .lt-usedlist button{display:flex;justify-content:space-between;gap:10px;min-height:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;box-shadow:none;color:var(--ink);font:500 13px "Segoe UI",system-ui,sans-serif;text-align:left;cursor:pointer}
+.lt-usedlist small,.lt-dellist small{font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+/* Delete: the race setups, what they use instead */
+.lt-dellist{display:grid;gap:6px;margin:8px 0 12px;padding:0;list-style:none}
+.lt-dellist li{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.lt-instead{display:grid;gap:6px;font-size:12.5px;color:var(--muted)}
+@media (max-width:900px){.lt-hint{display:none}.lt-clock{min-width:0}}
+.lt-note{display:block;margin-top:6px;color:var(--muted);font-size:12px}

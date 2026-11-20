@@ -34,7 +34,7 @@
   const OPTIONS = [
     {
       key: 'imageSet',
-      label: 'Picture set (made under Customization > Image Settings)',
+      label: 'Picture set (made under Customization > Picture sets)',
       type: 'imageset',
       kind: 'tyres',
       noneLabel: 'None (the tyres are drawn)',
@@ -334,7 +334,7 @@
   const SETS_OPTIONS = [
     {
       key: 'imageSet',
-      label: 'Picture set (made under Customization > Image Settings)',
+      label: 'Picture set (made under Customization > Picture sets)',
       type: 'imageset',
       kind: 'tyres',
       noneLabel: 'None (the tyres are drawn)',

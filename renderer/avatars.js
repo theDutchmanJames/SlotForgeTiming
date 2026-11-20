@@ -1,5 +1,5 @@
 // The standard avatars: a picture for each lane, shown by the Avatar widget for a driver who has no picture of their own (or for a lane with nobody in it),
-// so there is always something to see. A picture set of the kind "Avatars" (Customization > Image Settings) replaces them, lane by lane.
+// so there is always something to see. A picture set of the kind "Avatars" (Customization > Picture sets) replaces them, lane by lane.
 // The standard pictures are the files renderer/avatars/Lane1.png to Lane8.png (transparent PNG files, kept exactly as they were made). To change them, replace those files.
 (function (root) {
   const LANES = 8;

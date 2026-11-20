@@ -237,8 +237,8 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
     'Layout Editor',
     'Leaderboard Editor',
     'Race Results',
-    'Audio Settings',
-    'Image Settings',
+    'Audio sets',
+    'Picture sets',
     'Widget Builder',
     'Racing Records',
     'Token Records',
@@ -257,8 +257,8 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
         'Layout Editor',
         'Leaderboard Editor',
         'Race Results',
-        'Audio Settings',
-        'Image Settings',
+        'Audio sets',
+        'Picture sets',
         'Widget Builder',
         'Racing Records',
         'Token Records',
@@ -688,7 +688,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
   );
   say(
     'Image Settings, weather and audio help cover tyre/weather pictures and conditions',
-    helpHas('Image Settings', 'tyres, weather and track conditions', 'wind', 'Weather covers conditions, tyres')
+    helpHas('Picture sets', 'tyres, weather and track conditions', 'wind', 'Weather covers conditions, tyres')
   );
   say(
     'every folder is still short enough with the new lines',
@@ -1290,8 +1290,8 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
 {
   const cu = plain(Help.folders().find(f => f.id === 'custom').body); // 1.28.1
   say(
-    'Image Settings guidance explains lights and automatic fallback pictures',
-    cu.includes('Image Settings') && cu.includes('picture sets for lights') && cu.includes('anything left empty is drawn by the app')
+    'Picture sets guidance (the old Image Settings) explains lights and automatic fallback pictures',
+    cu.includes('Picture sets') && cu.includes('picture sets for lights') && cu.includes('anything left empty is drawn by the app')
   );
 }
 {

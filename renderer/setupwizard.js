@@ -272,7 +272,7 @@
           return 0;
         }
       };
-      body = `<h2>Commentary</h2><p class="muted">How much the voice says during a race. You can change everything later in Customization › Audio Settings.</p>
+      body = `<h2>Commentary</h2><p class="muted">How much the voice says during a race. You can change everything later in Customization › Audio sets.</p>
         <div class="wz-sets${A.none ? ' wz-dim' : ''}" role="radiogroup" aria-label="Commentary">${PRESETS.map(([n, t]) => {
           const sel = !A.none && !A.own && A.preset === n;
           return `<div class="wz-set${sel ? ' wz-on' : ''}"><button type="button" class="wz-setpick" role="radio" aria-checked="${sel}" data-wz="preset" data-wzpreset="${n}"><h4>${n}</h4><p>${esc(t)}</p><span class="wz-n">${count(n)} calls</span></button><button type="button" class="btn sm ghost" data-wz="hear" data-wzhear="${n}">▶ Hear it</button></div>`;

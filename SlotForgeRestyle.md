@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
+| [Try It](#try-it) | The Layout Editor with a sample race (moments, lanes, speed), who uses a layout, the words a text widget does not know, Delete with a replacement; Audio sets and Picture sets under Libraries | Customization › Layout Editor |
 | [Help Desk](#help-desk) | The "?" beside every page title and F1: the page's article in a drawer; the Help home (your first race ticked, read lately, a tile per group); counts, Before / Next, settings in the search | Every page; App Settings › Help |
 | [Find Everything](#find-everything) | Find (Ctrl K) over everything: chips, rows with facts, the best match and its links, a preview with actions, Recent and Do | Ctrl K on every page |
 | [Season Calendar](#season-calendar) | Championship rounds with real dates and the season strip, Fill the dates, the calendar file; Adjustments in the standings | Race Setup › Championships, Results › Championships |
@@ -1423,6 +1424,32 @@ html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--pane
 html .so-dot.warn{background:#f2b705}
 ```
 
+## Try It
+
+The Layout Editor tried with a race (`renderer/layouttry.js` the bar, paintFrame, chip, cards, askDelete, remove; `layoutcheck.js` unknownWords,
+problems, advice, usedBy, deletePlan; `widgetpreview.js` play and the 'play' scenario; `editor.js` the preview context, `lt-off`, `lt-bad`; styles
+`.lt-bar`, `.lt-seg`, `.lt-warn`, `.lt-usedline`, `.lt-used`, `.lt-dellist`).
+
+- **The Try it bar** (`.lt-bar`, above the canvas): at rest a green **Try it** button and a muted hint; playing, the bar takes a green tint and border:
+  **❚❚ Pause** (an outlined green button), *SAMPLE RACE · 4 CARS* in Roboto Mono caps, the lap and clock in Roboto Mono bold (*LAP 12 · 02:41*),
+  the moments as a segmented control (Lights, Racing, Yellow, Red, Pit stop, Finished; the chosen one tinted in the accent), *LANES* 2 4 6 8, 1× 4×,
+  and a ghost **Stop**. The race is the app's own engine; a frame repaints only the widgets that changed.
+- **On the canvas**: a lane widget for a lane the sample race does not have is faded (`.lt-off`, 28%); a custom text with a word it does not know has a
+  2 px amber dashed ring (`.lt-bad`).
+- **The warning** (`.lt-warn`, under the side panel): an amber card, *⚠ 1 widget shows a word it does not know* in amber, the widget's name as a link that
+  selects it, and the advice with the words in Roboto Mono chips (*{lapsleft} is a word of the whole race, not of a lane. On a lane use {lapstogo}*).
+- **Who uses it**: on a card a line under the size (*Used by 2 race setups* and a pill per setup with its screen, or *Not used by a race setup yet* in
+  italics); in the editor a pill beside *Saved* (*Used by 1 race setup ▾*) that drops a list of the setups, each opening its form.
+- **Delete** (`.lt-del`): *Delete “QA layout”?*, the setups that use it as rows with *MAIN SCREEN* / *SECOND DISPLAY* in Roboto Mono caps, *They use
+  instead* (the default layout or another layout), a safety backup first; the red button says what happens (*Delete and use “Club night TV”*).
+- **Libraries**: the Customization side list says *Audio sets* and *Picture sets* under *Libraries* (they were Audio Settings and Image Settings).
+
+```css
+html .lt-bar.on{background:color-mix(in srgb,#2fb67c 7%,var(--panel));border-color:color-mix(in srgb,#2fb67c 35%,var(--line))}
+html #canvas .lt-bad{outline:2px dashed #e0a800;outline-offset:2px}
+html .lt-seg button.on{background:color-mix(in srgb,var(--accent) 18%,var(--panel))}
+```
+
 ## Help Desk
 
 Help where you are (`renderer/helpdesk.js` open, close, decorate, topicNow, recent, progress; `helpview.js` PAGE_LIST, topicOfPage, homeHtml, the drawer
@@ -2639,3 +2666,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Season Calendar | New: round dates as dates (picker, read from text), the season strip, Fill the dates, the calendar file; Adjustments with a reason in the standings, table and PDF; drivers not raced folded away |
 | 2026-11 | Find Everything | New: Find (Ctrl K) searches every kind of thing (teams, races, championships, systems, Customization, Help), ranks by word start and typos, shows linked things, filter chips, a preview with actions (Enter, Tab), Recent and Do |
 | 2026-11 | Help Desk | New: the "?" beside every page title and F1 open the page's article in a drawer; every page has an article and every page article opens its page; the Help home (first race ticked from your data, read lately, a tile per group); counts, the page article first, Before / Next, marked search with settings; a Racing Rules article |
+| 2026-11 | Try It | New: the Layout Editor plays a sample race (moments, 2 to 8 lanes, 1× and 4×; Try it on the cards); who uses a layout on the cards and in a chip; a warning for words a text widget does not know; Delete names the setups and asks what they use instead (a backup first); Audio sets and Picture sets under Libraries |

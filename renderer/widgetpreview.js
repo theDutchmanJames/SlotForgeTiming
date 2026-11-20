@@ -10,12 +10,18 @@
   // Only the fixed scenario keys below are cached. Saved designs/assets are
   // applied to a fresh view on every render, never retained by these engines.
   const scenarios = new Map();
-  function context(scenario = 'race') {
+  // (2.4.0, SlotForgeRestyle.md "Try It") scenario 'play' is a sample race that moves: o.lanes cars (2 to 8), o.t ms of race time, o.moment
+  // ('lights', 'racing', 'yellow', 'red', 'pit', 'finished'). It is built again for every frame (a few hundred crossings), never cached.
+  function context(scenario = 'race', o = {}) {
+    const n = scenario === 'play' ? Math.max(1, Math.min(8, Math.round(Number(o.lanes) || 4))) : 8,
+      playing = scenario === 'play',
+      moment = o.moment || 'racing',
+      T = Math.max(0, Number(o.t) || 0);
     const E = dep('engine', 'RaceEngine'),
       En = dep('endurance', 'Endurance'),
       D = dep('damage', 'Damage');
     const names = ['James', 'Bjornie', 'Maria', 'Sam', 'Alex', 'Kim', 'Lee', 'Robin'];
-    const entries = names.map((name, lane) => ({
+    const entries = names.slice(0, n).map((name, lane) => ({
       lane,
       driverId: 'preview-' + lane,
       driverName: scenario === 'long' ? 'Alexandria van den Berg-Richardson' : name,
@@ -64,14 +70,36 @@
     });
     eng.start(0);
     const history = scenario === 'history';
-    for (let lap = 1; lap <= (history ? 90 : 5); lap++)
-      for (let lane = 0; lane < 8; lane++)
-        eng.cross(lane, lap * (10000 + lane * 73) + (history ? Math.round(Math.sin(lap * 2.4 + lane) * 160) : 0));
+    if (playing) {
+      // every car laps at its own pace with a little wobble; the lane in the pits loses its time there
+      const at = [];
+      for (let lane = 0; lane < n; lane++) {
+        let t = 0;
+        for (let lap = 1; lap < 400; lap++) {
+          t += 9800 + lane * 137 + Math.round(Math.sin(lap * 1.7 + lane * 2.1) * 260);
+          if (t > T || moment === 'lights') break; // (the lights are still counting: nobody has a lap yet)
+          at.push([t, lane]);
+        }
+      }
+      at.sort((a, b) => a[0] - b[0]).forEach(([t, lane]) => eng.cross(lane, t));
+    } else
+      for (let lap = 1; lap <= (history ? 90 : 5); lap++)
+        for (let lane = 0; lane < 8; lane++)
+          eng.cross(lane, lap * (10000 + lane * 73) + (history ? Math.round(Math.sin(lap * 2.4 + lane) * 160) : 0));
     eng.cars.forEach((car, lane) => {
       car.bop = [-20, 0, 15][lane % 3];
-      if (lane % 4) eng.addDamage(lane, [0, 3, 9, 10][lane % 4], history ? 949000 : 60000);
+      if (lane % 4 && !playing) eng.addDamage(lane, [0, 3, 9, 10][lane % 4], history ? 949000 : 60000);
     });
-    const now = history ? 950000 : scenario === 'swap-soon' ? 1770000 : scenario === 'swap-due' ? 1812000 : 83000;
+    const now = playing ? T : history ? 950000 : scenario === 'swap-soon' ? 1770000 : scenario === 'swap-due' ? 1812000 : 83000;
+    if (playing) {
+      if (moment === 'yellow') eng.setFlag('yellow', Math.max(0, T - 1));
+      if (moment === 'red') eng.setFlag('red', Math.max(0, T - 1));
+      if (moment === 'pit') {
+        eng.pitSensor(0, true, Math.max(0, T - 2500));
+        eng.block(0, Math.max(0, T - 2500));
+      }
+      if (moment === 'finished') eng.stop(T);
+    }
     if (scenario === 'rows') {
       eng.cars[2].blockAt = 78000;
       eng.cars[3].pending = [{ name: 'Stop and go', seconds: 5 }];
@@ -90,8 +118,10 @@
     }
     if (scenario === 'red') eng.setFlag('red', 80000);
     if (scenario === 'finished') eng.stop(80000);
-    eng.giveFailure(1, 0, history ? 949000 : 60000);
-    eng.giveFailure(2, 1, history ? 949000 : 60000);
+    if (!playing) {
+      eng.giveFailure(1, 0, history ? 949000 : 60000);
+      eng.giveFailure(2, 1, history ? 949000 : 60000);
+    }
     eng.tick(now);
     const heat = {
       idx: 1,
@@ -108,11 +138,17 @@
     return (typeof module !== 'undefined' ? require('./liveshare.js') : LiveShare).makeShared({
       eng,
       now,
-      phase: scenario === 'finished' ? 'finished' : scenario === 'red' ? 'paused' : 'running',
-      lights: 3,
+      phase: playing
+        ? { lights: 'countdown', red: 'paused', finished: 'finished' }[moment] || 'running'
+        : scenario === 'finished'
+          ? 'finished'
+          : scenario === 'red'
+            ? 'paused'
+            : 'running',
+      lights: playing && moment === 'lights' ? 1 + (Math.floor(T / 800) % 5) : 3,
       setup: { sessionType: scenario === 'laps' ? 'race' : 'timed', laps: 65, duration: 60 },
       layout: { widgets: [] },
-      track: { name: 'Preview circuit', targetLap: 10.5, length: 20, lanes: 8, laneModifier: 'none', scale: '1:32' },
+      track: { name: 'Preview circuit', targetLap: 10.5, length: 20, lanes: n, laneModifier: 'none', scale: '1:32' },
       heat,
       base: { personal: new Map(entries.map((e, i) => [e.driverId, 9800 + i * 73])), track: 9500, trackName: 'James' },
       flash: new Map(),
@@ -139,8 +175,10 @@
               : ['lastlap', 'racechart'].includes(w.type)
                 ? 'history'
                 : 'race';
-    if (!scenarios.has(scenario)) scenarios.set(scenario, context(scenario));
-    const base = scenarios.get(scenario),
+    // (2.4.0) a sample race that moves (play) comes in ready, through the options or the editor's preview context
+    const played = options.play || (w.previewContext && w.previewContext.play);
+    if (!played && !scenarios.has(scenario)) scenarios.set(scenario, context(scenario));
+    const base = played || scenarios.get(scenario),
       assets = w.previewContext || {},
       layout = options.layout || assets.layout || w.previewLayout || base.layout;
     const S = {
@@ -192,7 +230,14 @@
     if (scenario === 'missing') Object.keys(v).forEach(k => (v[k] = null));
     return v;
   }
-  const api = { TYPES, context, state, content, values };
+  // (2.4.0, "Try It") the sample race at a moment: the shared state the widgets read, and a line for the bar (lap and clock)
+  function play(o = {}) {
+    const S = context('play', o),
+      lead = Math.max(0, ...S.eng.cars.map(c => c.laps.length)),
+      sec = Math.floor((Number(o.t) || 0) / 1000);
+    return { shared: S, lap: lead, clock: `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}` };
+  }
+  const api = { TYPES, context, state, content, values, play };
   root.WidgetPreview = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,6 +1,6 @@
 // The weather widgets: Tyres (the tyre a lane's car is on), Weather Forecast (the weather now and what comes next) and Track Conditions (track and air
 // temperature, wind speed and direction). Pure: what they show is worked out from the race and the settings, and drawn as small pictures (SVG) when there is
-// no picture set (Customization > Image Settings: Tyres, Weather and Conditions sets). The register of the widgets (widgets.js) takes the options and the
+// no picture set (Customization > Picture sets: Tyres, Weather and Conditions sets). The register of the widgets (widgets.js) takes the options and the
 // samples from here, the page that draws the widgets (timing.js) takes the content.
 (function (root) {
   const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx;
@@ -19,7 +19,7 @@
   };
   const SET_OPTION = (kind, none) => ({
     key: 'imageSet',
-    label: 'Picture set (made under Customization > Image Settings)',
+    label: 'Picture set (made under Customization > Picture sets)',
     type: 'imageset',
     kind,
     noneLabel: none,

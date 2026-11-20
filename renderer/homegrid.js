@@ -127,7 +127,7 @@
   const TYRES_ON = ['H', 'M', 'S']; // (the tyres that are ticked in a new card)
   const IMAGES = (key, label, kind) => ({
     key,
-    label: label + ' (a picture set made under Customization > Image Settings; none: they are drawn)',
+    label: label + ' (a picture set made under Customization > Picture sets; none: they are drawn)',
     type: 'imageset',
     kind,
     default: ''

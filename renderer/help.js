@@ -65,7 +65,7 @@ const Help = (() => {
           id: 'resources',
           title: 'Resource Systems',
           note: 'Tyre sets, repair credits and spare components',
-          body: `<ul><li>Create a profile in <b>Race Setup › Resource Systems</b>, then select it under <b>Race systems</b>. Choose a driver, slotcar or team as owner. Every entry needs that database assignment.</li><li>Choose one race (each heat), the whole event (including finals), or a whole championship. For championship supplies, load the session from its championship on Home. Accounts follow their owner through lane changes; team accounts stay shared through driver swaps.</li><li>The starting tyre set counts. Completed tyre changes use a new set. Resource tyre limits replace Tyre Wear’s set limits when enabled; wear, weather, service time and mandatory stops still apply.</li><li>A completed damage repair uses one repair credit. A completed failure repair uses one repair credit and one component, when those limits are enabled. Components are a generic allowance. Insufficient stock leaves the affected work undone.</li><li>Enable the optional Resource shortage call in Audio Settings. During a race, open <b>Resources</b> for balances, history and signed director adjustments with a reason. After an exhausted tyre stop, grant stock and make another stop. Repair work can continue in the current stop after a grant.</li></ul>`
+          body: `<ul><li>Create a profile in <b>Race Setup › Resource Systems</b>, then select it under <b>Race systems</b>. Choose a driver, slotcar or team as owner. Every entry needs that database assignment.</li><li>Choose one race (each heat), the whole event (including finals), or a whole championship. For championship supplies, load the session from its championship on Home. Accounts follow their owner through lane changes; team accounts stay shared through driver swaps.</li><li>The starting tyre set counts. Completed tyre changes use a new set. Resource tyre limits replace Tyre Wear’s set limits when enabled; wear, weather, service time and mandatory stops still apply.</li><li>A completed damage repair uses one repair credit. A completed failure repair uses one repair credit and one component, when those limits are enabled. Components are a generic allowance. Insufficient stock leaves the affected work undone.</li><li>Enable the optional Resource shortage call in Audio sets. During a race, open <b>Resources</b> for balances, history and signed director adjustments with a reason. After an exhausted tyre stop, grant stock and make another stop. Repair work can continue in the current stop after a grant.</li></ul>`
         },
         {
           id: 'resourcerecovery',
@@ -681,7 +681,7 @@ const Help = (() => {
         <ul>
           <li>Every weather has its <b>conditions</b>: track temperature, air temperature, wind speed and the direction the wind comes from (Weather Systems, folder Track conditions; Celsius and km/h, or Fahrenheit and mph). They change when the weather does. The audio says them at lights out and after every change, and custom text has them as {variables}.</li>
           <li>In the Layout Editor, folder <b>Tyres</b>: <b>Current Tyres</b> (the tyre of a lane's car; amber with "Change tyres" when it has to change). Folder <b>Weather</b>: <b>Weather Forecast</b> (the weather now and what comes next, "Rain in 3 laps") and <b>Track Conditions</b> (temperatures, wind speed and an arrow for the wind).</li>
-          <li>They are drawn, or you make <b>picture sets</b> for them in Image Settings (Tyres, Weather, Track conditions). Track Conditions can show your own numbers instead of those of a weather system.</li>
+          <li>They are drawn, or you make <b>picture sets</b> for them in Picture sets (Tyres, Weather, Track conditions). Track Conditions can show your own numbers instead of those of a weather system.</li>
         </ul>`
         },
         {
@@ -804,7 +804,7 @@ const Help = (() => {
           <li><b>Layout Editor</b> makes the Timing Page/Race Screen and a separate Second Display. Drag, resize, align, layer, copy, Undo and Redo widgets for lap times, flags, fuel, speed and more.</li>
           <li><b>Leaderboard Editor</b> arranges row designs used by widgets and the Live Race Leaderboard grid.</li>
           <li><b>Race Results</b> configures the finished-race <b>Victory Spotlight</b>: choose the large featured fact, optional supporting facts and a TV-size comparison chart. Laps, Total time driven, Gap to leader, Heat points and live Championship points are available when the race has them. For five or more results, choose either cards or <b>Victory Spotlight + leaderboard rows</b>, then choose a design made in the Leaderboard Editor. The winner stays featured and the complete classification—including first place—uses that row design. If the design is deleted, results safely return to cards.</li>
-          <li><b>Audio Settings</b> chooses what the race says. <b>Image Settings</b> stores picture sets for lights, flags, fuel, avatars, tyres, weather and track conditions; anything left empty is drawn by the app.</li>
+          <li><b>Audio sets</b> chooses what the race says. <b>Picture sets</b> stores picture sets for lights, flags, fuel, avatars, tyres, weather and track conditions; anything left empty is drawn by the app.</li>
           <li>An Avatar widget uses the driver's picture, then its lane avatar. Widget titles and values can align left, centre or right; the widget content scales to fit the available space.</li>
           <li><b>Widget Builder</b> composes values, icons, meters and standard widgets. Simple text and image widgets remain available.</li>
         </ul>`
@@ -1088,6 +1088,8 @@ const Help = (() => {
           <li>Hold <b>Ctrl</b> (Cmd on a Mac) while you drag or resize to snap to the grid only, without the magnets. Untick <b>Snap to grid, widgets and guidelines</b> to move freely.</li>
           <li><b>Arrange</b> (side panel): <b>Tidy to grid</b> moves every edge of the selected widgets to the nearest grid line, so widgets that touch keep touching. With nothing selected the button is <b>Tidy all widgets to the grid</b>. Undo puts them back.</li>
           <li>Select several widgets with Shift-click or a rectangle, or all with Ctrl+A. <b>Duplicate</b> makes copies for the next lane.</li>
+          <li><b>Try it</b> (above the canvas, or on a layout's card) plays a sample race: the lights, laps, a yellow or red flag, a pit stop, the finish, with 2 to 8 cars, at 1× or 4×. Lanes the race does not have fade. Nothing is saved.</li>
+          <li>A custom text with a word it does not know (<b>{lapsleft}</b> on a lane) is ringed in amber; the side panel says which word to use. The chip beside <b>Saved</b> lists the race setups that use the layout, and <b>Delete</b> asks what they use instead.</li>
         </ul>`
         },
         {
@@ -1150,7 +1152,7 @@ const Help = (() => {
           note: 'Choose, preview and tune race commentary',
           body: `
         <ul>
-          <li>Create an <b>audio set</b> in Customization, Audio Settings, then select it in Race Setup, Race UI and Audio. No audio keeps the race silent. Sound plays on the computer running the race.</li>
+          <li>Create an <b>audio set</b> in Customization, Audio sets, then select it in Race Setup, Race UI and Audio. No audio keeps the race silent. Sound plays on the computer running the race.</li>
           <li>The side rail separates <b>Race Calls</b>, <b>Ambient Sounds</b> and <b>Voice &amp; Playback</b>. Race Calls has search, category and call selectors, plus Enabled, Disabled, Modified and New filters. Disabled calls remain editable.</li>
           <li><b>When to announce</b> contains thresholds. Low fuel has a warning level and a higher reset level. Push &amp; Save waits for consecutive laps outside the normal pace band. Selected lap times and summaries can be spaced out to avoid constant chatter.</li>
           <li><b>Message &amp; sound</b> offers Spoken message, Sound file or Sound, then speech. Choose a variation to edit its message, recording and conditions. Attach recordings up to 10 MB each. Existing recordings remain file-only unless changed. Eligible variations are chosen at random.</li>
