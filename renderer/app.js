@@ -404,38 +404,82 @@ function unusedTimingConnected(settings = state.settings) {
 const hwPortUse = { trackmate: p => tmUsePort(p), arduino: p => abUsePort(p), ds: p => dscUsePort(p) };
 function mountHwDetect() {
   if (typeof HwDetect === 'undefined' || state.tab !== 'home') return;
+  // (2.4.0, SlotForgeRestyle.md "Plugged In") the card says why it asks, keeps a failed connect on the card, takes the DS model, and can undo "Not timing hardware"
   HwDetect.mountHome(document.getElementById('hm-detect'), {
-    async use(id, offer) {
-      if (raceKept()) return Dialog.alert('Finish or leave the race before changing its timing hardware.');
-      const patch = { [HwDetect.KEYS[id]]: { vid: offer.info.usbVendorId, pid: offer.info.usbProductId } };
+    context: () => {
+      const chosen = Hardware.timingChosen(state.settings);
+      return { chosen, chosenOn: !!timingConnectedNow()[chosen], names: TIMING_NAMES, lastUsed: hwLastUsed };
+    },
+    async use(id, offer, o = {}) {
+      if (raceKept()) {
+        await Dialog.alert('Finish or leave the race before changing its timing hardware.');
+        return { ok: true };
+      }
+      const patch = { [HwDetect.KEYS[id]]: { vid: offer.info.usbVendorId, pid: offer.info.usbProductId, at: new Date().toISOString() } };
       if (id === 'arduino') patch.abVirtual = false;
+      if (id === 'ds') patch.dsType = o.ds === 'ds200' ? 'ds200' : 'ds300'; // (the model, chosen on the card)
       try {
         state.settings = await api.setSettings(patch);
-        if ((await setTimingHw(id)) === false) return;
+        if ((await setTimingHw(id)) === false) return { ok: true };
       } catch (e) {
-        return Dialog.alert(String(e && e.message ? e.message : e).replace(/^.*Error: /, ''));
+        return { ok: false, error: String(e && e.message ? e.message : e).replace(/^.*Error: /, '') };
       }
-      if (id === 'ds' && !DsTiming.supported(state.settings.dsType)) {
-        // (the model decides how the box is read: it is chosen on the DS page, then Connect)
-        dsc.dev = offer.port;
-        dsc.info = offer.port.getInfo ? offer.port.getInfo() : {};
-        state.tab = 'settings';
-        state.settingsSub = 'hardware';
-        state.hwSub = 'ds';
-        await render();
-        return dscMsg('Choose the model of the DS unit (DS-200 or DS-300), then press Connect.');
+      let ok = false,
+        error = '';
+      try {
+        ok = await hwPortUse[id](offer.port);
+      } catch (e) {
+        error = e && e.message ? e.message : String(e);
       }
-      const ok = await hwPortUse[id](offer.port);
+      if (!ok) return { ok: false, error };
       await render();
-      if (!ok)
-        await Dialog.alert(
-          TIMING_NAMES[id] + ' could not be connected. Open App Settings, Timing Hardware, ' + TIMING_NAMES[id] + ', to see why.'
-        );
+      return { ok: true };
     },
+    confirmIgnore: offer =>
+      Dialog.confirm(
+        `Set ${HwDetect.describe(offer.info).name} aside?
+
+Timing will not ask about it again. You can bring it back under App Settings, Timing Hardware, Forgotten devices.`,
+        {
+          title: 'Not timing hardware',
+          ok: 'Set it aside',
+          cancel: 'Keep asking'
+        }
+      ),
     async ignore(offer) {
-      state.settings = await api.setSettings({ hwIgnored: [...(state.settings.hwIgnored || []), offer.key] });
+      state.settings = await api.setSettings({ hwIgnored: [...new Set([...(state.settings.hwIgnored || []), offer.key])] });
+    },
+    async unignore(offer) {
+      state.settings = await api.setSettings({ hwIgnored: (state.settings.hwIgnored || []).filter(k => k !== offer.key) });
+    },
+    open(id) {
+      state.tab = 'settings';
+      state.settingsSub = 'hardware';
+      state.hwSub = id;
+      render();
+    },
+    forgotten() {
+      state.tab = 'settings';
+      state.settingsSub = 'hardware';
+      state.hwSub = 'forgotten';
+      render();
     }
   });
+}
+// (2.4.0) when a remembered device was last connected, as "12 Nov" ('' when not known)
+function hwLastUsed(id) {
+  const d = HwDetect.KEYS[id] && state.settings[HwDetect.KEYS[id]];
+  const t = d && d.at ? new Date(d.at) : null;
+  return t && !isNaN(t) ? t.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+}
+// (2.4.0) a remembered device that connects: the day is noted (once a day at most)
+async function hwNoteUsed(id) {
+  const k = HwDetect.KEYS[id],
+    d = k && state.settings[k];
+  if (!d || typeof d !== 'object') return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (String(d.at || '').slice(0, 10) === today) return;
+  state.settings = await api.setSettings({ [k]: { ...d, at: new Date().toISOString() } });
 }
 function startHwDetect() {
   if (typeof HwDetect === 'undefined') return;
@@ -445,7 +489,10 @@ function startHwDetect() {
       return { settings: state.settings, chosen, open: !!timingConnectedNow()[chosen], racing: raceKept() };
     },
     connect: async (id, port) => {
-      if (hwPortUse[id] && (await hwPortUse[id](port)) && ['home', 'settings'].includes(state.tab) && !state.editing) render();
+      if (hwPortUse[id] && (await hwPortUse[id](port))) {
+        hwNoteUsed(id).catch(() => {});
+        if (['home', 'settings'].includes(state.tab) && !state.editing) render();
+      }
     },
     changed: () => mountHwDetect()
   });

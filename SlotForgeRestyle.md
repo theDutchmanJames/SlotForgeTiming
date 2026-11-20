@@ -43,6 +43,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket; connect inside, cars from the library, Commentary, Back to the guide | The setup guide on Home |
+| [Plugged In](#plugged-in) | The Home cards for a USB device that was plugged in: why they ask, a failed connect on the card, the DS model, Undo | Home |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1300,6 +1301,24 @@ html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:c
 .mb-strip{display:flex;align-items:center;gap:18px;height:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%)}
 ```
 
+## Plugged In
+
+The Home cards for a USB device that was plugged in (`renderer/hwdetect.js`, glue in `app.js` mountHwDetect; styles under `#hm-detect .dx`). Each card has
+an icon tile in its colour, a kicker in Roboto Mono caps, a Barlow italic title and chips with why it asks; a 3 px left edge and a soft glow in its colour.
+
+- **A new device** (blue): *Plugged in · new to Timing*, *What is this device?*, chips with the chip name, the USB number and a hint; the three answers as
+  tiles (*Likely* on the likely one, outlined in the accent), the DS tile with *DS-300 / DS-200*; *Not now* and *Not timing hardware…* (it asks first).
+- **A remembered device** (amber): *The Arduino box is here*, chips *Races use: Trackmate Interface (not connected)* and *last used 12 Nov*; *Use … for races*
+  and *Keep the Trackmate*.
+- **A failed connect** (red): *Could not connect the Trackmate* with the reason in plain words; *Try again*, *It is something else*, *Open its page*.
+- **Set aside**: a thin dashed line *… is set aside: Timing will not ask about it again* with *Undo* and *Forgotten devices*.
+
+```css
+html #hm-detect .dx{border-radius:16px;background:radial-gradient(130% 140% at 0% 0%,color-mix(in srgb,var(--c) 11%,var(--panel)),var(--panel) 62%);box-shadow:inset 3px 0 0 var(--c)}
+html #hm-detect .dx-opt.dx-like{border-color:var(--accent)}
+html #hm-detect .dx-thin{border:1px dashed var(--line);border-radius:12px}
+```
+
 ## Start Lights
 
 The setup guide on Home (`renderer/setupwizard.js`) as **one card**. On top a band with an eyebrow (Setup guide · step 2 of 6) and a **gantry of
@@ -2350,3 +2369,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Engineer's Bench | New: Calculations as Try it beside Your rules with one save bar and Undo; each topic as a question; laps of a real race as bars with a slider; compare with another system; the formulas with your numbers; find a calculation; the formula sheet |
 | 2026-11 | Lane Check (rework) | The sensor test asks for the lanes one at a time and offers to swap a lane that lit another's sensor; pit lane, Track call and track power as checks; Connect in the window |
 | 2026-11 | Start Lights (rework) | The setup guide connects inside the guide, picks cars from the shared library, has Lanes & sensors (the Lane Check) and a Commentary step, and a Back to the guide pill |
+| 2026-11 | Plugged In | New: the detected hardware cards on Home say why they ask, keep a failed connect on the card, take the DS model, and can undo Not timing hardware |

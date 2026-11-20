@@ -202,7 +202,7 @@ test('the Home card asks what a new device is, or offers the remembered one for 
     x => assert(ask.includes(x), x)
   );
   const sw = HD.homeHtml([{ key: '0403:6001', info: { usbVendorId: 0x0403, usbProductId: 0x6001 }, action: 'switch', hw: 'trackmate' }]);
-  assert.match(sw, /Trackmate Interface is plugged in/);
+  assert.match(sw, /Trackmate Interface is plugged in/); // (2.4.0: "The Trackmate is here", with why it asks)
   assert(sw.includes('Use Trackmate Interface for races'));
 });
 
