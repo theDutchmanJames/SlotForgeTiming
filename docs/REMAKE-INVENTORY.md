@@ -106,7 +106,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 | Balance of Power, Time Tokens · **Done (2.4.0, "Profile Cards")** | One global setting each, unlike every other system (named, per setup). No "discard changes?" when leaving. | Named profiles chosen in the setup |
 | Multi-Class, Virtual Rival · **Done (2.4.0, "Entry Classes")** | Who is in which class is saved inside the reusable system. Virtual Rival is chosen on the driver, and errors show only at Start. | Classes from the entry list of the race |
 | Rotation Setups · **Done (2.4.0, "Rotation Board")** | Built on a typed lane count, not the track's. | Lane fairness per driver; build from the entry list |
-| Finalize review | In a heat race "Delete all data" deletes every earlier heat too (review.js:517). No summary of the changes before Finalize. | Discard or re-run only this heat; a changes summary |
+| Finalize review · **Done (2.4.0, "Finalize Review")** | In a heat race "Delete all data" deletes every earlier heat too (review.js:517). No summary of the changes before Finalize. | Discard or re-run only this heat; a changes summary |
 | Database lists and forms | Deleting a driver also takes them out of past results, with no undo. Lane lengths and points tables are typed as comma lists. | Retire instead of delete, merge duplicate drivers, import a club roster (CSV) |
 | Import and Export | Three backup systems on one page. You can't pick an automatic backup to restore. Import always adds a copy. | A list of backups with dates and Restore; "replace existing" on import |
 | App Settings structure | Database storage under General but backups under Import and Export; Director password apart from the Director page. | Group by task |

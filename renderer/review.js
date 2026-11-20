@@ -380,8 +380,43 @@ const Review = (() => {
       pick === undefined
         ? '<p class="rx-hint">Pick a driver, or the little chart of their laps, to go through every lap: a chart of all laps, filters for marked and suspect laps, and several laps marked at once.</p>'
         : explorerHtml(eng, pick, { color });
-    return `<section class="rfinish"><header class="rfinish-head"><div><p class="eyebrow">DIRECTOR'S FINAL CHECK</p><h2>Finalize race results</h2><p class="muted">Review the classification, laps and penalties. Nothing is saved until you finalize.</p></div><div class="rfinish-headactions"><span class="rfinish-check">${invalid ? `${invalid} lap${invalid === 1 ? '' : 's'} marked` : 'All laps checked'}${pending ? ` · ${pending} penalty${pending === 1 ? '' : 'ies'} waiting` : ''}</span><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></div></header>
-      <div class="rfinish-grid rf-list" role="list" aria-label="Classification">${st.map(row).join('')}</div>${explorer}<footer class="rfinish-foot"><button class="btn primary" data-rv="finalize">Finalize results</button><button class="btn danger" data-rv="discard">Delete all data</button></footer></section>`;
+    // (2.4.0, SlotForgeRestyle.md "Finalize Review") a heat race names the heat, says what comes after it, can run it again and deletes the whole race
+    const h = o.heat || null,
+      lname = h ? lc(h.name) : '',
+      local = o.local !== false; // (the Race Director page on a phone: no Delete, that stays on the computer of the race)
+    const fin = `<button class="btn primary" data-rv="finalize">${h ? 'Finalize ' + esc(lname) : 'Finalize results'}</button>`,
+      del = !local
+        ? ''
+        : h
+          ? `<button class="btn danger" data-rv="discard" data-heats="${h.done || 0}">Delete the whole race…</button>`
+          : '<button class="btn danger" data-rv="discard">Delete all data</button>',
+      again =
+        h && o.canRerun !== false ? `<button class="btn" data-rv="rerun" data-name="${esc(lname)}">Run ${esc(lname)} again</button>` : '';
+    const eyebrow = h
+        ? `DIRECTOR'S FINAL CHECK · ${esc((h.final ? h.name : `${h.name} of ${h.total}`).toUpperCase())}`
+        : "DIRECTOR'S FINAL CHECK",
+      leadText = h
+        ? `Check the result of this ${h.final ? 'final' : 'heat'}. Nothing of it is saved until you finalize${h.done ? '; the races before it are already saved' : ''}.${h.rerun ? ` This is run ${h.rerun + 1} of it: ${h.rerun === 1 ? 'the first was' : 'the runs before were'} set aside.` : ''}`
+        : 'Review the classification, laps and penalties. Nothing is saved until you finalize.',
+      after = h ? `<small class="rf-after">${h.next ? esc(h.next) + ' is next' : 'Then the result of the event is saved'}</small>` : '';
+    return `<section class="rfinish"><header class="rfinish-head"><div><p class="eyebrow">${eyebrow}</p><h2>${h ? 'Finalize ' + esc(lname) : 'Finalize race results'}</h2><p class="muted">${leadText}</p></div><div class="rfinish-headactions"><span class="rfinish-check">${invalid ? `${invalid} lap${invalid === 1 ? '' : 's'} marked` : 'All laps checked'}${pending ? ` · ${pending} penalty${pending === 1 ? '' : 'ies'} waiting` : ''}</span>${fin}${h ? '' : del}</div></header>
+      ${changesHtml(o.changes)}<div class="rfinish-grid rf-list" role="list" aria-label="Classification">${st.map(row).join('')}</div>${explorer}<footer class="rfinish-foot${h ? ' rf-heatfoot' : ''}">${fin}${after}${h ? '<span class="rf-grow"></span>' + again : ''}${del}</footer></section>`;
+  }
+  // (2.4.0) "Heat 1" -> "heat 1", "Final A" -> "final A" (inside a sentence)
+  const lc = n =>
+    String(n || '')
+      .replace(/^Heat/, 'heat')
+      .replace(/^Final/, 'final');
+  const ord = n => (Number.isInteger(n) ? n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th') : 'DQ');
+  // the changes made in the review, newest last: what finalizing saves differently from the race as it was driven, with the place before and after
+  function changesHtml(list) {
+    if (!Array.isArray(list) || !list.length) return '';
+    const last = list[list.length - 1];
+    const li = c => {
+      const move = c.from === c.to ? '' : !Number.isInteger(c.to) ? ' dn' : !Number.isInteger(c.from) || c.to < c.from ? ' up' : ' dn';
+      return `<li><i>${esc(c.kind)}</i><span><b>${esc(c.name)}</b> · ${esc(c.text)}</span><em class="rf-mv${move}">${ord(c.from)} → ${ord(c.to)}</em></li>`;
+    };
+    return `<section class="rf-changes" aria-label="Your changes"><div class="rf-chh"><div><span class="rf-chk">Your changes · ${list.length}</span><h3>What finalizing saves differently</h3></div>${last.undo ? `<button type="button" class="btn sm ghost" data-rv="undo" title="Undo: ${esc(last.name)} · ${esc(last.text)}">Undo the last change</button>` : ''}</div><ul>${list.map(li).join('')}</ul></section>`;
   }
   // (2.4.0) During the race, on the Race Director page: every driver with the little chart of their laps, and the lap explorer for the one that is picked.
   // The same commands as the review laps of the race window (a lap marked invalid, taken out of the records, or back in them).
@@ -509,19 +544,35 @@ const Review = (() => {
         car = d.car === undefined ? undefined : Number(d.car),
         sid = d.sid === undefined ? undefined : Number(d.sid);
       if (op === 'discard') {
-        const session = d.what === 'session';
+        const session = d.what === 'session',
+          heatsDone = d.heats === undefined ? null : Number(d.heats) || 0;
         if (
           !(await Dialog.confirm(
             session
               ? "Delete all data of this session?\n\nNo stint is recorded in the database: no laps, no results, no Token Records.\n\nThis can't be undone."
-              : "Delete all data of this race?\n\nNothing is recorded in the database: no laps, no results, no records. In a heat race this includes the earlier heats.\n\nThis can't be undone.",
-            { ok: 'Delete all data', cancel: 'Keep reviewing', danger: true }
+              : heatsDone !== null
+                ? `Delete the whole race?\n\nNothing is recorded in the database: no laps, no results, no records.${heatsDone ? ` The ${heatsDone === 1 ? 'race that is' : heatsDone + ' races that are'} already finalized ${heatsDone === 1 ? 'is' : 'are'} deleted too.` : ''}\n\nTo race only this heat again, choose Run again instead. This can't be undone.`
+                : "Delete all data of this race?\n\nNothing is recorded in the database: no laps, no results, no records.\n\nThis can't be undone.",
+            { ok: heatsDone !== null ? 'Delete the whole race' : 'Delete all data', cancel: 'Keep reviewing', danger: true }
           ))
         )
           return;
         // (the review may have ended while the question was open: only delete while it still offers this; the race checks its phase as well)
         if (root.isConnected === false || (root.querySelector && !root.querySelector('[data-rv="discard"]'))) return;
       }
+      if (op === 'rerun') {
+        const name = d.name || 'this heat';
+        if (
+          !(await Dialog.confirm(
+            `Run ${name} again?\n\nThe laps of this run of ${name} are set aside and not saved, and the grid of ${name} comes back with the same drivers in the same lanes.\n\nThe races that were already finalized stay saved.`,
+            { ok: `Run ${name} again`, cancel: 'Keep reviewing' }
+          ))
+        )
+          return;
+        if (root.isConnected === false || (root.querySelector && !root.querySelector('[data-rv="rerun"]'))) return;
+        return send({ op: 'rerun' });
+      }
+      if (op === 'undo') return send({ op: 'undo' });
       if (op === 'adjopen') {
         if (ui.adjust.has(car)) ui.adjust.delete(car);
         else ui.adjust.add(car);
@@ -660,6 +711,145 @@ const Review = (() => {
     }
     return false;
   }
-  return { html, finishHtml, lapsHtml, lapDeskHtml, stintsHtml, bind, apply, reset, render, boughtText, ui, lapFacts, median };
+  // (2.4.0) What a correction is, in words, before it is made: the kind, the driver, the text and the command that undoes it (none when there is no way back:
+  // time added for a penalty, a penalty forgiven, a lap taken out of the race).
+  function describe(eng, c) {
+    const car = eng && eng.cars ? eng.cars[c.car] : null;
+    if (!car) return null;
+    const lap = Number.isInteger(c.lap) ? `lap ${c.lap + 1}` : '',
+      lt = Number.isInteger(c.lap) && car.laps[c.lap] > 0 ? ` (${fmt(car.laps[c.lap])})` : '',
+      d = (kind, text, undo) => ({ kind, name: car.driverName || `Lane ${car.lane + 1}`, text, undo: undo || null });
+    switch (c.op) {
+      case 'invalid':
+        return c.on
+          ? d('Lap', `${lap} marked invalid${lt}`, { op: 'invalid', car: c.car, lap: c.lap, on: false })
+          : d('Lap', `${lap} valid again`, { op: 'invalid', car: c.car, lap: c.lap, on: true });
+      case 'removelap':
+        return c.recalc
+          ? d('Lap', `${lap} taken out of the race${lt}`)
+          : d('Lap', `${lap} taken out of the records${lt}`, { op: 'restorelap', car: c.car, lap: c.lap });
+      case 'restorelap':
+        return d('Lap', `${lap} back in the records`, { op: 'removelap', car: c.car, lap: c.lap, recalc: false });
+      case 'dq':
+        return d('Result', 'disqualified', { op: 'undq', car: c.car });
+      case 'undq':
+        return d('Result', 'reinstated', { op: 'dq', car: c.car });
+      case 'adjust': {
+        const bits = [];
+        if (c.ms) bits.push((c.ms > 0 ? '+' : '−') + secs(Math.abs(c.ms)));
+        if (c.laps) bits.push(`${c.laps > 0 ? '+' : '−'}${Math.abs(c.laps)} ${Math.abs(c.laps) === 1 ? 'lap' : 'laps'}`);
+        if (c.points) bits.push(`${c.points > 0 ? '+' : '−'}${Math.abs(c.points)} ${Math.abs(c.points) === 1 ? 'point' : 'points'}`);
+        return d(c.ms ? 'Time' : c.laps ? 'Laps' : 'Points', bits.join(', ') || 'adjusted', {
+          op: 'adjust',
+          car: c.car,
+          ms: c.ms ? -c.ms : undefined,
+          laps: c.laps ? -c.laps : undefined,
+          points: c.points ? -c.points : undefined
+        });
+      }
+      case 'adjustreset': {
+        const was =
+          typeof Stats === 'undefined' ? '' : Stats.adjustedText({ adjMs: car.adjMs, adjLaps: car.adjLaps, adjPoints: car.adjPoints });
+        return d('Result', `adjustment taken away${was ? ` (${was})` : ''}`, {
+          op: 'adjust',
+          car: c.car,
+          ms: car.adjMs || undefined,
+          laps: car.adjLaps || undefined,
+          points: car.adjPoints || undefined
+        });
+      }
+      case 'addtime':
+        return d('Penalty', `+${secs(c.ms)} penalty`);
+      case 'forgive': {
+        const p = car.pending[c.k];
+        return d('Penalty', `${p ? p.name : 'a penalty'} forgiven`);
+      }
+      case 'nullify':
+        return d('Penalty', `penalty points cleared (${car.points})`, { op: 'restorepoints', car: c.car });
+      case 'restorepoints':
+        return d('Penalty', 'penalty points back', { op: 'nullify', car: c.car });
+      case 'sector':
+        return d('Place', c.sector ? `last seen in sector ${c.sector}` : 'no sector', {
+          op: 'sector',
+          car: c.car,
+          sector: car.sector || null
+        });
+      case 'sectormove':
+        return d('Place', c.dir < 0 ? 'one place up in its sector' : 'one place down in its sector', {
+          op: 'sectormove',
+          car: c.car,
+          dir: -c.dir
+        });
+    }
+    return null;
+  }
+  // the place of every car (null: disqualified)
+  const placesOf = eng => {
+    const m = new Map();
+    (eng.standings ? eng.standings() : []).forEach(x => m.set(x.index, x.car.dq ? null : x.pos));
+    return m;
+  };
+  // One correction on the engine that is also written in the list of changes (log): what it is, the place before and after, how to undo it.
+  // Time added for a penalty and then the penalty settled is one change: "+5 s penalty for Jump start".
+  function record(eng, c, log) {
+    const what = describe(eng, c),
+      before = placesOf(eng);
+    if (c.op === 'forgive' && what) {
+      const prev = log[log.length - 1],
+        p = eng.cars[c.car].pending[c.k];
+      if (prev && prev.car === c.car && prev.op === 'addtime' && !prev.merged && p) {
+        const ok = apply(eng, c);
+        if (ok) {
+          prev.text += ` for ${p.name}`;
+          prev.merged = true;
+        }
+        return ok;
+      }
+    }
+    const ok = apply(eng, c);
+    if (!ok || !what) return ok;
+    const after = placesOf(eng);
+    log.push({
+      op: c.op,
+      car: c.car,
+      kind: what.kind,
+      name: what.name,
+      text: what.text,
+      from: before.has(c.car) ? before.get(c.car) : null,
+      to: after.has(c.car) ? after.get(c.car) : null,
+      undo: what.undo
+    });
+    return ok;
+  }
+  // the last change undone (only one that has a way back); true when it was
+  function undo(eng, log) {
+    const last = log[log.length - 1];
+    if (!last || !last.undo) return false;
+    apply(eng, last.undo);
+    log.pop();
+    return true;
+  }
+  // what is kept of the changes with the result: no commands
+  const keepChanges = log => (log || []).map(x => ({ kind: x.kind, name: x.name, text: x.text, from: x.from, to: x.to }));
+  return {
+    html,
+    finishHtml,
+    changesHtml,
+    describe,
+    record,
+    undo,
+    keepChanges,
+    lapsHtml,
+    lapDeskHtml,
+    stintsHtml,
+    bind,
+    apply,
+    reset,
+    render,
+    boughtText,
+    ui,
+    lapFacts,
+    median
+  };
 })();
 if (typeof module !== 'undefined') module.exports = Review;

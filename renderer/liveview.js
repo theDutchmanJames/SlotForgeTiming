@@ -897,7 +897,14 @@ const LiveView = (() => {
       // (drawn again only when it changed, so what you type in the field of a pad stays)
       const h = st.tokenUi
         ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>'
-        : Review.finishHtml(eng, { champ: d.champ, settings: padSettings(), color: l => HomeStats.laneColor(st.layout, l) }); // (2.4.0: the same finishing desk as the race window)
+        : Review.finishHtml(eng, {
+            champ: d.champ,
+            settings: padSettings(),
+            color: l => HomeStats.laneColor(st.layout, l),
+            heat: d.review ? d.review.heat : null,
+            changes: d.review ? d.review.changes : [],
+            local: false // (2.4.0: the changes and Run again as on the computer; deleting the race is done there)
+          }); // (2.4.0: the same finishing desk as the race window)
       rv.hidden = false;
       if (h !== rvShown) {
         rvShown = h;

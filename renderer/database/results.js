@@ -452,9 +452,15 @@ async function renderResultsPool(box, pool, supplied = null) {
         fin ? Heats.finalsSaid(s.finals) : '',
         Stats.weatherText(s),
         Stats.resumeText(s),
-        Stats.compareText(s),
-        typeof RecordBook !== 'undefined' ? RecordBook.correctionText(s) : ''
+        Stats.compareText(s)
       ].filter(Boolean);
+      // (2.4.0, SlotForgeRestyle.md "Finalize Review") what was changed before saving (the director's final check) and after it (Correct), in one block
+      const checkedLines = Stats.checkedLines(s),
+        corrected = typeof RecordBook !== 'undefined' ? RecordBook.correctionText(s) : '';
+      const checkedBlock =
+        checkedLines.length || corrected
+          ? `<div class="rr-checked">${checkedLines.length ? `<span class="k">Changed before saving · director's final check</span>${checkedLines.map(l => `<p>${esc(l)}</p>`).join('')}` : ''}${corrected ? `<span class="k">Corrected after saving</span><p>${esc(corrected)}</p>` : ''}</div>`
+          : '';
       const podium =
         Stats.WINNER_TYPES.includes(s.sessionType) && s.standings.length > 1
           ? `<div class="rr-podium">${s.standings
@@ -523,6 +529,7 @@ async function renderResultsPool(box, pool, supplied = null) {
         (typeof MultiClass !== 'undefined' ? MultiClass.resultsHtml(s.classStandings || [], s.multiclass) : '') +
         statNote(cols.map(c => c.key)) +
         (notes.length ? `<div class="rr-notes">${notes.map(n => `<p class="muted">${esc(n)}</p>`).join('')}</div>` : '') +
+        checkedBlock +
         (Stats.stintLines(s, dUnit()).length
           ? '<h4>Driver swaps</h4>' +
             Stats.stintLines(s, dUnit())
@@ -537,7 +544,7 @@ async function renderResultsPool(box, pool, supplied = null) {
             s.heatResults
               .map(
                 h =>
-                  `<div class="rr-heat"><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<ol>${h.rows.map(r => `<li>${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})</li>`).join('')}</ol></div>`
+                  `<div class="rr-heat"><strong>${esc(Heats.raceName(h))}${h.checked && h.checked.reruns ? ` <span class="rr-tag">${h.checked.reruns === 1 ? 'Run twice' : 'Run ' + (h.checked.reruns + 1) + ' times'}</span>` : ''}${h.checked && (h.checked.changes || []).length ? ` <span class="rr-tag">${h.checked.changes.length} ${h.checked.changes.length === 1 ? 'change' : 'changes'}</span>` : ''}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<ol>${h.rows.map(r => `<li>${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})</li>`).join('')}</ol></div>`
               )
               .join('') +
             '</div>'

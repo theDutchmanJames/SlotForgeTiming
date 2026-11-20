@@ -47,6 +47,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Profile Cards](#profile-cards) | Balance of Power and Time Tokens as named profiles: the Club default and profile cards with Used by; the editor of a profile as its window | Race Setup › Balance of Power, Time Tokens |
 | [Entry Classes](#entry-classes) | The class of an entry picked in its lane on Home, the class counts, a virtual rival added in a lane | Home (Start a race) |
 | [Rotation Board](#rotation-board) | The rotation editor's lanes from a track, participants from an entry list, and Lane fairness | Race Setup › Rotation Setups |
+| [Finalize Review](#finalize-review) | The director's final check: the heat named, Your changes with Undo, Run this heat again, Delete the whole race; the changes kept with the result | Race › after a race or heat, Race Over, Results and Records |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1322,6 +1323,33 @@ html .rohow td.num.ro-zero{color:#f2b705}
 html .rohow td.num.ro-over{color:#ff8a8d}
 ```
 
+## Finalize Review
+
+The director's final check after a race or heat (`renderer/review.js` finishHtml, `race.js` rerunHeat, `raceover.js` checkedHtml/asideHtml, `stats.js`
+checkedLines; styles `.rf-changes`, `.rf-mv`, `.rf-heatfoot`, `.hl-again`, `.ro-tag`, `.ro-checked`, `.ro-aside`, `.rr-checked`, `.rr-tag`). Amber is
+`--rv-amber` (#f2b705) for borders and tints and `--rv-amber-text` (amber mixed with the ink) for words, so it reads in light and dark themes.
+
+- **The head of a heat**: the eyebrow *DIRECTOR'S FINAL CHECK · HEAT 1 OF 2* (a final: *· FINAL A*), the title *Finalize heat 1*, a lead that says the races
+  before it are already saved and, after Run again, *This is run 2 of it*. A single race keeps *Finalize race results*.
+- **Your changes · N** (`.rf-changes`): an amber card above the drivers, *What finalizing saves differently* in Barlow, a row per change with its kind as a
+  small Roboto Mono pill (*Lap*, *Time*, *Penalty*, *Result*, *Place*), the driver and the words, and the place before and after (`.rf-mv`: green when it went
+  up, red when it went down, grey when it stayed). *Undo the last change* (ghost button) only when the last change has a way back.
+- **The foot of a heat** (`.rf-heatfoot`): *Finalize heat 1* and *Heat 2 is next* on the left, *Run heat 1 again* and *Delete the whole race…* on the right.
+  The phone's Race Director page has no Delete.
+- **The break before a run again**: *Heat 1 run again* in the hero, *↻ Heat 1 runs again · nothing of it saved yet* in amber in the bar, the card of the run
+  set aside (`.ro-aside`, a dashed amber box with the result struck through); the Heat Board says *Next up · run again* and tags the heat *Run again*.
+- **Saved with the result**: the heat track and the Record Book's heat cards tag *Run twice* and *N changes* (`.ro-tag`, `.rr-tag`); under a heat result a
+  *Result checked · N changes* box (`.ro-checked`); after Saved *· Result checked · 2 changes · 1 race run again*; in the Record Book a block
+  *Changed before saving · director's final check* with *Corrected after saving* under it (`.rr-checked`, an amber left border); a line in the Race Report.
+
+```css
+html .rf-changes{border:1px solid color-mix(in srgb,var(--rv-amber) 45%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--rv-amber) 6%,var(--panel))}
+html .rf-mv.up{color:#2fae74}
+html .rf-mv.dn{color:#e5484d}
+html .ro-aside{border:1px dashed color-mix(in srgb,var(--rv-amber) 45%,var(--line));border-radius:12px}
+html .rr-checked{border-left:3px solid var(--rv-amber);border-radius:0 10px 10px 0}
+```
+
 ## Entry Classes
 
 Home's lanes with a Multi-Class System (`renderer/landing.js`, `multiclass.js`; styles `.hs-cpick`, `.hs-classnote`, `.hs-classchip`). The class of every
@@ -2431,3 +2459,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Profile Cards | New: Balance of Power and Time Tokens as named profiles a race setup chooses; the Club default keeps the settings of before |
 | 2026-11 | Entry Classes | New: the Multi-Class class of an entry picked in its lane on Home, class counts, copy to the system; a virtual rival added in a lane with its reason there |
 | 2026-11 | Rotation Board | New: rotation lanes from a track, participants from an entry list or picked drivers, Lane fairness with the words and Even out, a lane warning on the card |
+| 2026-11 | Finalize Review | New: the heat named in the final check, Your changes with the place before and after and Undo, Run this heat again, Delete the whole race with the heats saved; the changes kept with the result on the break, Race Over, the Record Book and the Race Report |

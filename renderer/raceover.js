@@ -274,7 +274,11 @@
     });
     const left = o.event
       ? o.standingsCard
-      : card(ch ? 'This race' : 'Classification', esc(o.note || ''), tower(f.rows, { ...o, fastest: f.fastest, compact: !!ch }));
+      : card(
+          ch ? 'This race' : 'Classification',
+          esc(o.note || ''),
+          tower(f.rows, { ...o, fastest: f.fastest, compact: !!ch }) + checkedHtml(o.checked)
+        );
     const right = ch
       ? champCard(ch.view, ch)
       : o.event
@@ -291,7 +295,7 @@
     return `<section class="ro-card ro-heats"><ul class="ro-trk" aria-label="The heats">${list
       .map(
         h =>
-          `<li class="${h.state === 'done' ? 'done' : h.state === 'next' || h.state === 'current' ? 'next' : 'later'}"${h.state === 'next' ? ' aria-current="step"' : ''}><b>${esc(h.name)}</b><span>${h.state === 'done' && h.winner ? esc(h.winner.name) + ' won' : h.state === 'next' ? 'next' : '&nbsp;'}</span></li>`
+          `<li class="${h.state === 'done' ? 'done' : h.state === 'next' || h.state === 'current' ? 'next' : 'later'}"${h.state === 'next' ? ' aria-current="step"' : ''}><b>${esc(h.name)}</b><span>${h.state === 'done' && h.winner ? esc(h.winner.name) + ' won' : h.again ? 'run again' : h.state === 'next' ? 'next' : '&nbsp;'}${h.state === 'done' && h.reruns ? ` <i class="ro-tag">${h.reruns === 1 ? 'Run twice' : 'Run ' + (h.reruns + 1) + ' times'}</i>` : ''}${h.state === 'done' && h.changes ? ` <i class="ro-tag">${h.changes} ${h.changes === 1 ? 'change' : 'changes'}</i>` : ''}</span></li>`
       )
       .join('')}</ul></section>`;
   }
@@ -335,6 +339,30 @@
       })
       .join('')}</div>`;
   }
+  // (2.4.0, SlotForgeRestyle.md "Finalize Review") what the review changed in a race before it was saved, under its result: ck = { reruns, changes: [{ kind, name, text, from, to }] }
+  const ord = n => (Number.isInteger(n) ? n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th') : 'DQ');
+  function checkedHtml(ck) {
+    const list = (ck && ck.changes) || [];
+    if (!list.length && !(ck && ck.reruns)) return '';
+    const n = list.length;
+    return `<div class="ro-checked"><span class="k">Result checked${n ? ` · ${n} ${n === 1 ? 'change' : 'changes'}` : ''}</span><ul>${ck.reruns ? `<li>Run again ${ck.reruns === 1 ? 'once' : ck.reruns + ' times'}: only the run that was finalized counts</li>` : ''}${list
+      .map(c => `<li><b>${esc(c.name)}</b> · ${esc(c.text)}${c.from !== c.to ? ` <em>${ord(c.from)} → ${ord(c.to)}</em>` : ''}</li>`)
+      .join('')}</ul></div>`;
+  }
+  // the runs of a race that were set aside with Run again (the break before it is run again)
+  function asideHtml(a) {
+    const runs = (a && a.runs) || [];
+    return `<div class="ro-aside">${runs
+      .map(
+        (r, i) =>
+          `<p>${runs.length > 1 ? `Run ${i + 1}` : 'The first run'} is set aside: <s>${esc(r.result)}</s>${r.changes ? ` <small>(with ${r.changes} ${r.changes === 1 ? 'change' : 'changes'} made in its review)</small>` : ''}</p>`
+      )
+      .join('')}<p>When ${esc(
+      String(a.name || '')
+        .replace(/^Heat/, 'heat')
+        .replace(/^Final/, 'final')
+    )} is run again, only that run counts in the standings.</p></div>`;
+  }
   // the break between two heats: the next heat big with its line-up as lane tiles and Start; the heats; the standings; the heat that was just driven
   // o = { kicker, next: { name, line, drivers: [{ name, car, lane, avatar, total }] }, startable, startNote, track (heat list), standings, last, byPoints, saved }
   function breakHtml(o) {
@@ -355,9 +383,9 @@
       : o.startable
         ? `<div class="ro-go"><button type="button" class="btn primary ro-start" data-ro="start">Start ${esc(nx.name.replace(/^Heat/, 'heat').replace(/^Final/, 'final'))}</button><kbd>Space</kbd><span>starts it too</span></div>`
         : `<div class="ro-go"><p class="ro-sub">${esc(o.startNote || 'Choose the lanes of the final first.')}</p></div>`;
-    const top = `<div class="ro-hero brk"><div class="ro-chq" aria-hidden="true"></div><div class="ro-hin"><div class="ro-words"><div class="ro-k">${esc(o.kicker || '')}</div><h2 class="ro-big">${esc(nx.name)} <em>next up</em></h2>${nx.line ? `<p class="ro-sub">${esc(nx.line)}</p>` : ''}${go}</div>${tiles}</div><div class="ro-bar" role="group" aria-label="The break">${btn('screen', 'Show the race screen')}${btn('heatprint', 'Print the heat list')}<span class="ro-grow"></span><button type="button" class="btn ro-quietdanger" data-ro="endevent">End the event…</button>${o.saved ? `<span class="ro-saved" role="status">${o.saved}</span>` : ''}</div></div>`;
+    const top = `<div class="ro-hero brk"><div class="ro-chq" aria-hidden="true"></div><div class="ro-hin"><div class="ro-words"><div class="ro-k">${esc(o.kicker || '')}</div><h2 class="ro-big">${esc(nx.name)} <em>${o.again ? 'run again' : 'next up'}</em></h2>${nx.line ? `<p class="ro-sub">${esc(nx.line)}</p>` : ''}${go}</div>${tiles}</div><div class="ro-bar" role="group" aria-label="The break">${btn('screen', 'Show the race screen')}${btn('heatprint', 'Print the heat list')}<span class="ro-grow"></span><button type="button" class="btn ro-quietdanger" data-ro="endevent">End the event…</button>${o.saved ? `<span class="ro-saved" role="status">${o.saved}</span>` : ''}</div></div>`;
     const picks = o.picks && !o.tv ? `<div class="ro-picks" id="ro-picks"></div>` : '';
-    return `<div class="ro-screen">${top}${picks}${heatTrack(o.track || [])}<div class="ro-main">${card('Standings', esc(o.standingsNote || ''), o.standings)}${o.last ? card(o.last.name, esc(o.last.note || ''), heatResult(o.last, o) + (o.last.fastest ? `<div class="ro-chips">${chip('Fastest lap', `${esc(s3(o.last.fastest.time))} · ${esc(o.last.fastest.name)}`, 'fl')}</div>` : '')) : ''}</div>${o.tv ? tvFoot(o.foot) : ''}</div>`;
+    return `<div class="ro-screen">${top}${picks}${heatTrack(o.track || [])}<div class="ro-main">${card('Standings', esc(o.standingsNote || ''), o.standings)}${o.aside ? card(o.aside.name, 'set aside · not counted', asideHtml(o.aside), 'ro-againcard') : o.last ? card(o.last.name, esc(o.last.note || ''), heatResult(o.last, o) + (o.last.fastest ? `<div class="ro-chips">${chip('Fastest lap', `${esc(s3(o.last.fastest.time))} · ${esc(o.last.fastest.name)}`, 'fl')}</div>` : '') + checkedHtml(o.last.checked)) : ''}</div>${o.tv ? tvFoot(o.foot) : ''}</div>`;
   }
 
   // (the second screen) the line along the bottom: a small kicker, what comes next in Barlow, and the name of the app on the right
@@ -379,6 +407,8 @@
     heatStandings,
     heatResult,
     heatTrack,
+    checkedHtml,
+    asideHtml,
     champCard,
     nextRound,
     tower,

@@ -502,7 +502,34 @@
     session && session.compareBy === 'distance'
       ? 'The places go to the car that drove the furthest (the laps times the length of its lane). With the same distance, the shortest time wins.'
       : '';
+  // (2.4.0, SlotForgeRestyle.md "Finalize Review") what the director's final check changed before the result was saved, a line per race:
+  // ["Heat 1: run again once; only the run that was finalized counts.", "Heat 2: Anna lap 2 taken out of the records (6.840); Bjorn +1 s, 1st → 2nd."]
+  const ordinal = n =>
+    Number.isInteger(n) ? n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th') : 'DQ';
+  const changeLine = list =>
+    (list || []).map(c => `${c.name} ${c.text}${c.from !== c.to ? `, ${ordinal(c.from)} → ${ordinal(c.to)}` : ''}`).join('; ');
+  function checkedLines(session) {
+    if (!session) return [];
+    if (!Array.isArray(session.heatResults)) {
+      const l = changeLine(session.checked && session.checked.changes);
+      return l ? [l + '.'] : [];
+    }
+    return session.heatResults
+      .filter(h => h.checked && (h.checked.reruns || (h.checked.changes || []).length))
+      .map(h => {
+        const ck = h.checked,
+          name = h.final ? `Final ${h.final}` : `Heat ${h.heat}`,
+          bits = [
+            ck.reruns ? `run again ${ck.reruns === 1 ? 'once' : ck.reruns + ' times'}; only the run that was finalized counts` : '',
+            changeLine(ck.changes)
+          ].filter(Boolean);
+        return `${name}: ${bits.join('; ')}.`;
+      });
+  }
+  const checkedText = session => (checkedLines(session).length ? 'Changed before saving: ' + checkedLines(session).join(' ') : '');
   const api = {
+    checkedLines,
+    checkedText,
     consistency,
     sectorText,
     failureText,

@@ -118,6 +118,7 @@
           (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '') +
           (ST.weatherText(session) ? `<p class="sub">${esc(ST.weatherText(session))}</p>` : '') +
           (ST.resumeText(session) ? `<p class="sub">${esc(ST.resumeText(session))}</p>` : '') +
+          (ST.checkedText && ST.checkedText(session) ? `<p class="sub">${esc(ST.checkedText(session))}</p>` : '') +
           (ST.compareText(session) ? `<p class="sub">${esc(ST.compareText(session))}</p>` : '');
     const heatSummary =
       !opt.heats || !session.heatResults

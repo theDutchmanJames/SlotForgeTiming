@@ -149,6 +149,9 @@ function raceLetGoAndBase() {
 function raceLiveState({ base, lanes, r, tokenSession, tokenSource }) {
   if (typeof abCancelTests === 'function') abCancelTests();
   live = {
+    rvChanges: [], // (2.4.0, SlotForgeRestyle.md "Finalize Review") the changes made in the review of the race (or heat) that is reviewed now
+    reruns: {}, // a heat race: the runs of a race that were set aside with Run again, by race index: [{ at, result, changes }]
+    rerunAt: -1, // the race that is run again next (while the race waits for it)
     trkCards: [],
     phase: 'ready',
     calling: false,
@@ -1350,6 +1353,7 @@ async function renderRace() {
         calling: live.calling,
         lights: live.lights,
         heat: heatInfo(),
+        review: live.phase === 'review' && !tokens ? { heat: rvHeat(), changes: live.rvChanges } : null,
         season: seasonInfo(),
         flash: live.flash,
         bestAll: live.bestAll,
@@ -1971,7 +1975,13 @@ async function renderRace() {
               tokens.closedList().filter(x => x.laps.length),
               { failed: live.tkFailed }
             )
-          : Review.finishHtml(eng, { champ: champOf(), settings: state.settings, color: l => HomeStats.laneColor(layout, l) }) +
+          : Review.finishHtml(eng, {
+              champ: champOf(),
+              settings: state.settings,
+              color: l => HomeStats.laneColor(layout, l),
+              heat: rvHeat(),
+              changes: live.rvChanges
+            }) +
             (mc ? MultiClass.resultsHtml(eng.classStandings(), mc) : '') +
             (eng.rivals?.length ? VirtualRival.historyHtml({ virtualRivals: VirtualRival.summary(eng, false) }) : '');
         if (h !== live.rvHtml) {
@@ -2163,13 +2173,30 @@ async function renderRace() {
 
   // the heat list: every heat with its drivers by lane, how it went and what it gave. The heat that is racing (or is next) is marked. Only drawn again when something in it changed.
   const heatListOf = () =>
-    Heats.listOf(heat, people, { live: ['countdown', 'running', 'paused', 'review'].includes(live.phase), labels: r.labels });
+    Heats.listOf(heat, people, { live: ['countdown', 'running', 'paused', 'review'].includes(live.phase), labels: r.labels }).map(
+      (x, k) => {
+        const ck = (heat.results[k] || {}).checked;
+        return {
+          ...x,
+          reruns: ck ? ck.reruns || 0 : (live.reruns[k] || []).length,
+          changes: ck ? (ck.changes || []).length : 0,
+          again: live.rerunAt === k && x.state === 'next'
+        };
+      }
+    ); // (2.4.0: how often a race was run again, the changes of its review, and the race that is run again next)
   const drawHeatList = () => {
     if (!heats || !ui('heatlist')) return;
     drawHeatNext();
     const list = heatListOf(),
       sig = JSON.stringify(
-        list.map(x => [x.state, x.drivers.map(d => [d.p, d.lane]), x.rows.map(y => [y.participant, y.pos, y.points, y.tm, y.fin, y.laps])])
+        list.map(x => [
+          x.state,
+          x.reruns,
+          x.again,
+          x.changes,
+          x.drivers.map(d => [d.p, d.lane]),
+          x.rows.map(y => [y.participant, y.pos, y.points, y.tm, y.fin, y.laps])
+        ])
       );
     if (sig === live.heatListSig) return;
     live.heatListSig = sig;
@@ -2191,7 +2218,7 @@ async function renderRace() {
                 `${esc(y.pos)}. ${esc(y.name)} ${esc(byPts ? y.points || 0 : tmOn ? Heats.rowFigure(y, { time: true }) || y.laps + ' laps' : y.laps + (y.laps === 1 ? ' lap' : ' laps'))}`
             )
             .join(' · ');
-          return `<tr class="hl-${x.state}"${x.state === 'current' || x.state === 'next' ? ' aria-current="step"' : ''}><td>${esc(x.name)}${x.label ? ` <span class="muted">${esc(x.label)}</span>` : ''}${STATE[x.state] ? ` <span class="hl-tag">${STATE[x.state]}</span>` : ''}</td><td>${lanes}</td><td>${x.winner ? esc(x.winner.name) : ''}</td><td>${res}</td>${byPts || tmOn ? `<td>${x.rows.map(y => esc(y.laps)).join(' · ')}</td>` : ''}</tr>`;
+          return `<tr class="hl-${x.state}"${x.state === 'current' || x.state === 'next' ? ' aria-current="step"' : ''}><td>${esc(x.name)}${x.label ? ` <span class="muted">${esc(x.label)}</span>` : ''}${x.again ? ' <span class="hl-tag hl-again">Run again</span>' : STATE[x.state] ? ` <span class="hl-tag">${STATE[x.state]}</span>` : ''}${x.state === 'done' && x.reruns ? ` <span class="hl-tag hl-again">${x.reruns === 1 ? 'Run twice' : 'Run ' + (x.reruns + 1) + ' times'}</span>` : ''}</td><td>${lanes}</td><td>${x.winner ? esc(x.winner.name) : ''}</td><td>${res}</td>${byPts || tmOn ? `<td>${x.rows.map(y => esc(y.laps)).join(' · ')}</td>` : ''}</tr>`;
         })
         .join('')}</tbody></table>`;
   };
@@ -2201,7 +2228,13 @@ async function renderRace() {
     if (!heats || !box) return;
     const nx = ['ready', 'between'].includes(live.phase) ? heatListOf().find(x => x.state === 'next') : null,
       key = nx
-        ? JSON.stringify([live.phase, nx.name, nx.drivers.map(d => [d.p, d.lane, d.name]), live.phase === 'between' && !heat.picksDone()])
+        ? JSON.stringify([
+            live.phase,
+            nx.name,
+            nx.again,
+            nx.drivers.map(d => [d.p, d.lane, d.name]),
+            live.phase === 'between' && !heat.picksDone()
+          ])
         : '';
     if (key === live.heatNextKey) return;
     live.heatNextKey = key;
@@ -2212,7 +2245,7 @@ async function renderRace() {
     }
     const done = heatListOf().filter(x => x.state === 'done').length,
       total = heatListOf().length;
-    box.innerHTML = `<div class="hn-head"><span class="hn-k">${live.phase === 'ready' ? 'First up' : 'Next up'} · ${done} of ${total} done</span><b>${esc(nx.name)}${nx.label ? ` <small>${esc(nx.label)}</small>` : ''}</b></div><div class="hn-lanes">${
+    box.innerHTML = `<div class="hn-head"><span class="hn-k">${live.phase === 'ready' ? 'First up' : 'Next up'}${nx.again ? ' · run again' : ''} · ${done} of ${total} done</span><b>${esc(nx.name)}${nx.label ? ` <small>${esc(nx.label)}</small>` : ''}</b></div><div class="hn-lanes">${
       nx.drivers
         .map(
           d =>
@@ -2382,12 +2415,29 @@ async function renderRace() {
     (eng.events || []).filter(e => e.type === 'systemtoggle').map(e => ({ system: e.system, enabled: !!e.enabled, at: e.at }));
   const { bestByOf, driversOf, enDist, lapRows, stintsOf } = raceSavedRows({ drivers, enduCfg, nameOf, r });
 
+  // (2.4.0) the race that is reviewed, for the review: its name, which one of how many, what comes after it, how many races are saved, how often it was run before
+  const rvHeat = () => {
+    if (!heats) return null;
+    const list = heatListOf(),
+      k = heat.idx;
+    return {
+      name: heat.raceName(k),
+      no: k + 1,
+      total: list.length,
+      final: heat.isFinal(),
+      next: !live.stopping && list[k + 1] ? list[k + 1].name : null,
+      done: heat.results.length,
+      rerun: (live.reruns[k] || []).length
+    };
+  };
   // a heat (or the single race) has ended: the Race Director reviews the result before it is saved
   function engineFinished() {
     if (live.phase !== 'running' && live.phase !== 'paused') return;
     clearInterval(live.timers);
     live.sim.forEach(clearTimeout);
     if (tokens) return finishTokens(); // (the stints are checked in their own review)
+    live.rvChanges = Array.isArray(live.rvRestore) ? live.rvRestore : []; // (a race that came back in its review keeps the changes made before)
+    live.rvRestore = null;
     live.phase = 'review';
     ui('msg').textContent = 'The race is over. Check the final results, then press Finalize.';
     update();
@@ -2403,8 +2453,11 @@ async function renderRace() {
     if (c.op === 'finalize') return tokens ? finalizeTokens() : finalize();
     if (c.op === 'discard') return tokens ? discardTokens() : discardAll();
     if (tokens) return tokenReview(c);
-    Review.apply(eng, c);
+    if (c.op === 'rerun') return heats ? rerunHeat() : undefined;
+    if (c.op === 'undo') Review.undo(eng, live.rvChanges);
+    else Review.record(eng, c, live.rvChanges); // (2.4.0: every change is listed in the review, with what it did to the place)
     recomputeBests();
+    checkpoint();
     update();
   };
   // The break between two races: a countdown (when the race setup has a break), and then either the lights start by themselves or the race waits for Start.
@@ -2412,6 +2465,11 @@ async function renderRace() {
   const lc = n => n.replace(/^Heat/, 'heat').replace(/^Final/, 'final'); // "Heat 2" -> "heat 2", "Final A" -> "final A" (inside a sentence)
   const picking = () => live.phase === 'between' && !heat.picksDone();
   const betweenMsg = () => {
+    if (live.rerunAt === heat.idx) {
+      const again = heat.raceName(heat.idx);
+      if (!brk.seconds || live.breakLeft <= 0) return `${again} runs again. Press Space to start it.`;
+      return `${again} runs again. It starts ${brk.auto ? 'by itself' : 'when you press Space'} in ${Heats.clock(live.breakLeft)}${brk.auto ? ' (Space starts it now)' : ' or after the break'}.`;
+    }
     const done = heat.raceName(heat.idx - 1),
       next = heat.raceName(heat.idx),
       isFinal = heat.isFinal(),
@@ -2591,6 +2649,10 @@ async function renderRace() {
       if (eng.rivals?.length) (live.rivalHeats || (live.rivalHeats = [])).push({ heat: heat.idx + 1, rivals: VirtualRival.summary(eng) });
       live.roBefore = heat.results.length ? new Map(heat.overall().map(o => [o.participant, o.pos])) : null; // (the places before this heat: the arrows of the break)
       const res = heat.record(eng);
+      const reruns = (live.reruns[raceNo - 1] || []).length;
+      if (live.rvChanges.length || reruns) res.checked = { ...(reruns ? { reruns } : {}), changes: Review.keepChanges(live.rvChanges) }; // (2.4.0: what the review changed, and how often it was run again)
+      live.rvChanges = [];
+      live.rerunAt = -1;
       try {
         (res.rows || []).forEach(row => {
           if (Number.isFinite(row.points)) {
@@ -2711,6 +2773,41 @@ async function renderRace() {
     finishAll();
   }
 
+  // (2.4.0, SlotForgeRestyle.md "Finalize Review") Run this heat again: nothing of this run is saved, the same grid comes back and the race waits for it as in a break.
+  // The races already finalized stay; the result counts only the run that is finalized. The run that was set aside is remembered in words, for the break and the result.
+  function rerunHeat() {
+    if (!heats || live.phase !== 'review') return;
+    const k = heat.idx,
+      st = eng.standings(),
+      lead = st[0],
+      gapOf = x => {
+        const behind = eng.lapsOf(lead.car) - eng.lapsOf(x.car);
+        return behind > 0
+          ? `+${behind} ${behind === 1 ? 'lap' : 'laps'}`
+          : '+' + RaceEngine.fmtTime(Math.max(0, eng.timeOf(x.car) - eng.timeOf(lead.car))) + ' s';
+      };
+    const result = lead
+      ? [`${lead.car.driverName} won`, ...st.slice(1, 3).map(x => `${x.car.driverName} ${x.car.dq ? 'DQ' : gapOf(x)}`)].join(' · ')
+      : 'no laps';
+    (live.reruns[k] || (live.reruns[k] = [])).push({ at: new Date().toISOString(), result, changes: live.rvChanges.length });
+    live.rvChanges = [];
+    live.rerunAt = k;
+    closeReview();
+    Review.reset();
+    live.phase = 'between';
+    eng = mk(heat.entries());
+    live.ann = mkAnn();
+    live.flash = new Map();
+    live.cpAt = undefined;
+    startBreak();
+    shareStatic();
+    checkpoint(true);
+    update();
+    if (typeof RaceOver !== 'undefined') {
+      roBreak(true);
+      roShow('break');
+    }
+  }
   // "Delete all data": the race ends and nothing is saved (in a heat race that includes the earlier heats)
   async function discardAll() {
     if (live.phase !== 'review') return;
@@ -2937,6 +3034,11 @@ async function renderRace() {
     });
   }
   // a heat (or final) that is done, as the result board wants it
+  // (2.4.0) the changes the review made to a race that is saved, for the card of that race on the break and Race Over screens
+  const roChecked = k => {
+    const ck = (heat.results[k] || {}).checked;
+    return ck && ((ck.changes || []).length || ck.reruns) ? ck : null;
+  };
   function roHeatOf(h) {
     const rows = h.rows.map((y, i, all) => ({
       pos: y.pos,
@@ -2967,7 +3069,13 @@ async function renderRace() {
     if (!heats || !ui('racebreak')) return;
     const list = heatListOf(),
       nx = list.find(x => x.state === 'next'),
-      key = JSON.stringify([heat.idx, heat.picksDone(), nx ? nx.drivers.map(d => [d.p, d.lane]) : 0]);
+      key = JSON.stringify([
+        heat.idx,
+        heat.picksDone(),
+        live.rerunAt,
+        (live.reruns[heat.idx] || []).length,
+        nx ? nx.drivers.map(d => [d.p, d.lane]) : 0
+      ]);
     if (!force && key === live.roBreakKey) return;
     live.roBreakKey = key;
     const done = list.filter(x => x.state === 'done'),
@@ -3000,11 +3108,26 @@ async function renderRace() {
         laneColor: roColor
       }),
       standingsNote: `after ${last ? last.name.toLowerCase() : 'the first heat'} of ${list.length}${scoreNote ? ' · ' + scoreNote : ''}`,
-      last: last ? roHeatOf(last) : null,
+      last: last ? { ...roHeatOf(last), checked: roChecked(list.indexOf(last)) } : null,
       byPoints: byPts,
-      saved: last ? `✓ ${esc(last.name)} saved` : '',
+      saved: last
+        ? `✓ ${esc(last.name)} saved${last.changes ? ` · ${last.changes} ${last.changes === 1 ? 'change' : 'changes'}` : ''}`
+        : '',
       laneColor: roColor
     };
+    if (nx && nx.again) {
+      // (2.4.0) the race that is run again: said on top, its run that was set aside in a card of its own
+      const runs = live.reruns[heat.idx] || [],
+        lastRun = runs[runs.length - 1];
+      bo.again = true;
+      bo.next.line = `${runs.length === 1 ? 'Its first run is' : 'Its runs before are'} not counted · same drivers, same lanes`;
+      bo.saved = `<span class="ro-againtxt">↻ ${esc(nx.name)} runs again · nothing of it saved yet</span>`;
+      bo.aside = {
+        name: nx.name,
+        runs: runs.map(x => ({ result: x.result, at: x.at, changes: x.changes }))
+      };
+      if (!last) bo.standingsNote = 'no race saved yet';
+    }
     ui('racebreak').innerHTML = RaceOver.breakHtml(bo);
     // (the second screen) the break without the buttons, the time left of the break (filled in there), the heats along the bottom
     roTv(
@@ -3105,7 +3228,8 @@ async function renderRace() {
           ? RaceOver.card(
               finalH.name,
               esc(roHeatOf(finalH).note),
-              RaceOver.heatResult(roHeatOf(finalH), { byPoints: byPts && !finalH.final, laneColor: roColor })
+              RaceOver.heatResult(roHeatOf(finalH), { byPoints: byPts && !finalH.final, laneColor: roColor }) +
+                RaceOver.checkedHtml(roChecked(list.indexOf(finalH)))
             )
           : ''
       };
@@ -3117,7 +3241,8 @@ async function renderRace() {
       champ,
       again: true,
       announce: !!audioSet && !tokens,
-      saved: `✓ Saved · ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}`,
+      saved: `✓ Saved · ${o.laps} ${o.laps === 1 ? 'lap' : 'laps'}${roCheckedLine(o.session)}`,
+      checked: !heats && o.session.checked ? o.session.checked : null,
       laneColor: roColor,
       ...extra
     };
@@ -3144,6 +3269,14 @@ async function renderRace() {
             }
       })
     );
+  }
+  // (2.4.0) "· Result checked · 2 changes · 1 race run again" after Saved, when the review changed something
+  function roCheckedLine(session) {
+    const all = heats ? (session.heatResults || []).map(h => h.checked).filter(Boolean) : session.checked ? [session.checked] : [],
+      n = all.reduce((a, x) => a + (x.changes || []).length, 0),
+      again = all.filter(x => x.reruns).length;
+    if (!n && !again) return '';
+    return ` <i class="ro-checkedtxt">· Result checked${n ? ` · ${n} ${n === 1 ? 'change' : 'changes'}` : ''}${again ? ` · ${again} ${again === 1 ? 'race' : 'races'} run again` : ''}</i>`;
   }
   // what the second screen shows after a race (or in a break): sent with the live messages, until the next heat starts
   function roTv(kind, html) {
@@ -3491,7 +3624,8 @@ async function renderRace() {
       ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}),
       ...(changes && changes.length ? { systemChanges: changes } : {}),
       standings,
-      ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {})
+      ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}),
+      ...(!heats && live.rvChanges.length ? { checked: { changes: Review.keepChanges(live.rvChanges) } } : {}) // (2.4.0: what the review changed before saving)
     };
     if (mc) {
       session.multiclass = mc;
@@ -3550,6 +3684,7 @@ async function renderRace() {
         ...(h.final ? { final: h.final } : {}),
         ...(h.weatherNote && !wxAll ? { weatherNote: h.weatherNote } : {}),
         ...(h.systemChanges && h.systemChanges.length ? { systemChanges: h.systemChanges } : {}),
+        ...(h.checked ? { checked: h.checked } : {}),
         rows: h.rows
       }));
       if (scoreNote) session.scoring = heat.scoring;
@@ -4320,7 +4455,8 @@ async function renderRace() {
       else if (cmd.type === 'pitrelease' || cmd.type === 'pitreleaseearly')
         actions.pitRelease(Number(cmd.lane), cmd.type === 'pitreleaseearly');
       else if (cmd.type === 'pad') actions.pad(cmd.group, Number(cmd.lane), Number(cmd.amount));
-      else if (cmd.type === 'review') reviewCommand(cmd);
+      else if (cmd.type === 'review' && cmd.op !== 'discard')
+        reviewCommand(cmd); // (2.4.0: deleting the race is done on this computer)
       else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
     });
   live.engine = () => eng; // for automated tests
@@ -4874,6 +5010,8 @@ async function renderRace() {
     priorAll: Number.isFinite(live.priorAll) ? live.priorAll : null,
     priorAllName: live.priorAllName,
     resumes: live.resumeCount || 0,
+    reruns: live.reruns,
+    rerunAt: live.rerunAt,
     ...(byTeam ? { drivers: people.map(p => p.driverId) } : {}),
     teamHist: teamHist.map(l => l.slice())
   });
@@ -4905,7 +5043,9 @@ async function renderRace() {
     const where = !heats
       ? ''
       : waiting
-        ? `between ${lc(heat.raceName(heat.idx - 1))} and ${lc(heat.raceName(heat.idx))}`
+        ? live.rerunAt === heat.idx
+          ? `before ${lc(heat.raceName(heat.idx))} is run again`
+          : `between ${lc(heat.raceName(heat.idx - 1))} and ${lc(heat.raceName(heat.idx))}`
         : `${Endurance.clock(eng.elapsed(t))} into ${lc(heat.raceName(heat.idx))}${heat.idx < heat.count ? ' of ' + heat.count : ''}`; // (for the note on the Home tab)
     if (resourceState) live.resourceSent = resourceState.revision;
     try {
@@ -4920,6 +5060,7 @@ async function renderRace() {
           wxHeat: wxLast,
           elapsed: waiting ? 0 : eng.elapsed(t),
           phase: live.phase,
+          ...(live.phase === 'review' && live.rvChanges.length ? { rvChanges: live.rvChanges } : {}),
           ...(heats ? { where, heat: heatState(), ...(finalizedHeats ? { stopNow: true } : {}) } : {}),
           race: {
             storageRunId,
@@ -4998,6 +5139,8 @@ async function renderRace() {
         }
       });
     live.rivalHeats = Array.isArray(hs.rivalHeats) ? hs.rivalHeats : [];
+    live.reruns = hs.reruns && typeof hs.reruns === 'object' && !Array.isArray(hs.reruns) ? hs.reruns : {};
+    live.rerunAt = Number.isInteger(hs.rerunAt) ? hs.rerunAt : -1;
     live.laps = Array.isArray(hs.laps) ? hs.laps : [];
     live.extraBy = mapOf(hs.extraBy);
     live.tyreBy = mapOf(hs.tyreBy);
@@ -5032,6 +5175,7 @@ async function renderRace() {
     return false;
   }
   function resumeRace(snap) {
+    live.rvRestore = Array.isArray(snap.rvChanges) ? snap.rvChanges : null; // (2.4.0: the changes of a review that was going on)
     if (heats && !resumeHeats(snap)) return;
     if (!eng.restore(snap.eng)) {
       live.cpOff = true;
