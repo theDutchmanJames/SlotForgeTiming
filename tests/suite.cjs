@@ -266,6 +266,7 @@ module.exports = [
   ['pitlane.test.js', 'node-test'],
   ['calcbench.test.js', 'node-test'],
   ['lanecheck.test.js', 'node-test'],
+  ['setupguide.test.js', 'node-test'],
   ['finishingtouches.test.js', 'node-test'],
   ['cuecard.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],

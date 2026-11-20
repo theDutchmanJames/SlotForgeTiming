@@ -529,6 +529,7 @@ const Help = (() => {
           note: 'Lights, flags and the first lap',
           body: `
         <ul>
+          <li>A fresh install shows the <b>setup guide</b> on Home: track, drivers, cars (from the shared library too), timing hardware (connect it right there), lanes and sensors, commentary, and a 3-lap test race. A page it sends you to has <b>Back to the guide</b>; App Settings, General starts it again.</li>
           <li>Press <b>Space</b> (or Start). The five lights come on one by one, then go out after a random time between the shortest and longest <b>Start Lights Off Timer</b> values. The race starts as the lights go out.</li>
           <li>Lights follow the racing flags: green while racing, yellow under yellow and red under a red flag.</li>
           <li><b>After a red flag</b> is either Start immediately or Countdown Timer. A red-flag interruption marks the affected lap invalid, so it cannot make a fastest lap or record.</li>

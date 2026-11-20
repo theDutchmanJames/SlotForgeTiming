@@ -1224,6 +1224,7 @@ async function render() {
   view.onclick = null;
   view.onchange = null; // each screen sets up its own handlers
   if (typeof SetupWizard !== 'undefined') SetupWizard.stop(); // (the sensor test of the setup guide stops listening)
+  if (typeof SetupWizard !== 'undefined' && SetupWizard.pill) SetupWizard.pill(); // (2.4.0: Back to the guide, on the page the guide sent you to)
   LiveView.unmount();
   if (state.tab !== 'race' && typeof live !== 'undefined' && live && live.alive && !raceActive()) {
     // a race that is not on (not started, or over): the race screen is gone, no more keys, Trackmate or Race Director buttons

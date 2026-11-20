@@ -42,7 +42,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
-| [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket | The setup guide on Home |
+| [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket; connect inside, cars from the library, Commentary, Back to the guide | The setup guide on Home |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
@@ -1310,6 +1310,13 @@ light turns green. Under it a big Barlow title, the words, and the step itself:
 - **Names per lane**: every box has the lane's number in its colour in front (`.wz-lane`, the colours of the race screen, else one of eight);
   drivers that were already added are chips with their lane.
 - **Timing hardware**: choice tiles with a picture each; the chosen one is outlined in the accent with a tick, its picture filled.
+- **2.4.0 rework**: eight steps (Lanes & sensors and Commentary are new), the gantry on one line. **Timing hardware** shows the chosen interface as a
+  big card (`.wz-hwcard`: its picture in an accent tile, the name in Roboto Mono caps, *Plug it in, then connect* in Barlow, a pill, and *Choose its port…*,
+  *Connect* for a remembered device, the virtual one), three dashed how-to tiles (`.wz-how`) and *Choose another interface* for the tiles of before.
+  **Cars** from the shared library: a green line with the number of cars (`.wz-src`) and a row per driver with a car picker (`.wz-carpick`). **Lanes &
+  sensors** is the Lane Check. **Commentary**: Essential, Club and Broadcast as cards (`.wz-set`, the chosen one with the accent ring), *▶ Hear it*, one of
+  your own sets, the voice and a sentence, *No commentary for now*. A page the guide sends you to has a floating pill at the bottom (`#wz-back`: *Setup
+  guide · step 4 · Timing hardware* and *← Back to the guide*).
 - **Test race**: a ticket (track, laps, lanes, drivers) with dashed lines between the parts.
 - A **foot bar**: Back left, Skip the guide quiet, the next step as the primary button.
 - **Narrow** (below 860px): the lights stay, only the open step says its name under its light; the welcome plan moves under the words; the
@@ -2342,3 +2349,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Paddock Pit Lane | New: Dealership Mode and Shared Library as one Paddock page: a headline with Fix it, three equal cards, the results in plain words, Dealerships found as cards, the connection check step by step, the password remembered; the Dealership Sheet folded under Older connections and repair |
 | 2026-11 | Engineer's Bench | New: Calculations as Try it beside Your rules with one save bar and Undo; each topic as a question; laps of a real race as bars with a slider; compare with another system; the formulas with your numbers; find a calculation; the formula sheet |
 | 2026-11 | Lane Check (rework) | The sensor test asks for the lanes one at a time and offers to swap a lane that lit another's sensor; pit lane, Track call and track power as checks; Connect in the window |
+| 2026-11 | Start Lights (rework) | The setup guide connects inside the guide, picks cars from the shared library, has Lanes & sensors (the Lane Check) and a Commentary step, and a Back to the guide pill |

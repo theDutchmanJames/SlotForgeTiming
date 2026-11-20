@@ -12,9 +12,20 @@
     ['drivers', 'Drivers'],
     ['cars', 'Cars'],
     ['hardware', 'Timing hardware'],
-    ['sensors', 'Test the sensors'],
+    ['sensors', 'Lanes & sensors'],
+    ['audio', 'Commentary'], // (2.4.0)
     ['finish', 'Test race']
   ];
+  // (2.4.0) the steps of a guide that was started before the Commentary step came: the test race moved one on
+  const VERSION = 2;
+  // (2.4.0) the commentary presets of the step (as in the Commentary Booth), with a sentence that shows how much each one says
+  const PRESETS = [
+    ['Essential', 'The start, the flags and the finish. Quiet for practice nights.', 'Anna wins the race!'],
+    ['Club', 'Positions, fastest laps, records, pit stops and the last lap.', 'Anna takes the lead on lap 12!'],
+    ['Broadcast', 'Everything, like TV: gaps, battles, pit stops and records.', 'Chris is three tenths behind Anna, and closing!']
+  ];
+  // (2.4.0) connect a port chosen in the guide: as the hardware page does
+  const USE_PORT = { trackmate: p => tmUsePort(p), arduino: p => abUsePort(p), ds: p => dscUsePort(p) };
   const TEST_LAPS = 3;
   const HW_WORDS = {
     none: 'No hardware: you count laps with the keyboard, or let simulated cars drive.',
@@ -36,14 +47,27 @@
   const progressOf = settings => {
     const g = settings && settings.setupGuide;
     const ids = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string' && x) : []);
-    return g && typeof g === 'object'
-      ? {
-          step: Math.max(0, Math.min(STEPS.length - 1, Math.floor(Number(g.step)) || 0)),
-          trackId: typeof g.trackId === 'string' ? g.trackId : '',
-          driverIds: ids(g.driverIds),
-          carIds: ids(g.carIds)
-        }
-      : { step: 0, trackId: '', driverIds: [], carIds: [] };
+    if (!(g && typeof g === 'object')) return { step: 0, trackId: '', driverIds: [], carIds: [] };
+    let step = Math.floor(Number(g.step)) || 0;
+    if (g.v !== VERSION && step >= 6) step++; // (a guide from before 2.4.0 that was at its test race)
+    const a = g.audio && typeof g.audio === 'object' ? g.audio : null;
+    return {
+      step: Math.max(0, Math.min(STEPS.length - 1, step)),
+      trackId: typeof g.trackId === 'string' ? g.trackId : '',
+      driverIds: ids(g.driverIds),
+      carIds: Array.isArray(g.carIds) ? g.carIds.map(x => (typeof x === 'string' ? x : '')) : [],
+      ...(a
+        ? {
+            audio: {
+              preset: PRESETS.some(x => x[0] === a.preset) ? a.preset : 'Club',
+              voice: typeof a.voice === 'string' ? a.voice : '',
+              setId: typeof a.setId === 'string' ? a.setId : '',
+              own: typeof a.own === 'string' ? a.own : '',
+              none: !!a.none
+            }
+          }
+        : {})
+    };
   };
   // the 3-lap test race: every setting at the value a new race setup starts with, a race over 3 laps on the track
   function setupRecord(schema, trackId) {
@@ -82,7 +106,8 @@
   async function save(patch) {
     state.settings = await api.setSettings(patch);
   }
-  const keep = (p, more = {}) => save({ setupGuide: { ...p, ...more } });
+  const keep = (p, more = {}) => save({ setupGuide: { ...p, ...more, v: VERSION } });
+  let showHwCards = false; // (2.4.0) the hardware step: all interfaces as cards, or the big card of the chosen one
   async function finish(how) {
     stopSensors();
     await save({ setupGuide: how });
@@ -107,7 +132,7 @@
     const laneTile = i => `<i class="wz-lane" style="--c:${esc(hue(i))}" aria-hidden="true">${i + 1}</i>`;
     const ico = (id, size = 18) => (typeof Icons !== 'undefined' && Icons.has && Icons.has(id) ? Icons.svg(id, { size }) : '');
     const HW_ICON = { none: 'car', trackmate: 'timing', arduino: 'bolt', parallel: 'parallel', ds: 'gauge', plugin: 'layers' };
-    const STEP_ICON = ['', 'pin', 'users', 'car', 'bolt', 'check', 'flag'];
+    const STEP_ICON = ['', 'pin', 'users', 'car', 'bolt', 'check', '', 'flag'];
     let body = '';
     if (step === 'welcome')
       body = `<div class="wz-welcome"><div><h2>Let’s set up your first race</h2><p class="wz-lead">A few short steps: your track, the drivers and cars, the timing hardware, a check of every lane sensor, and a ${TEST_LAPS}-lap test race. It takes about five minutes.</p>
@@ -138,28 +163,81 @@
     } else if (step === 'cars') {
       const drivers = p.driverIds.map(id => (o.drivers || []).find(d => d.id === id)).filter(Boolean);
       const library = api.libraryStatus ? await api.libraryStatus().catch(() => null) : null;
-      body =
-        library && library.available
-          ? `<h2>Cars</h2><p class="muted">Your cars are kept in the shared library (SlotForge Paddock), which has its own car editor: add them in Database, Slotcars. On Home you choose a car for every lane before the race.</p>${nav('Next')}`
-          : `<h2>Cars</h2><p class="muted">Optional: give each driver a car, so the results and the statistics know which car drove. A name is enough, such as “Scalextric Porsche 911”. Pictures, motors and tyres can follow in Database, Slotcars.</p>
-        ${drivers.length ? `<div class="wz-names">${drivers.map((d, i) => `<label class="wz-carrow">${laneTile(i)}<span>${esc(d.name)}</span><input type="text" maxlength="60" data-wzcar="${i}" placeholder="No car" value="${esc(((o.cars || []).find(c => c.id === p.carIds[i]) || {}).model || '')}"${p.carIds[i] ? ' disabled' : ''}></label>`).join('')}</div>` : '<p class="muted">No drivers were added, so there is nothing to give a car to.</p>'}
+      if (library && library.available) {
+        // (2.4.0) the cars of the shared library, chosen here for every driver
+        const all = (await api.list('slotcars').catch(() => [])).filter(c => !c.retired && !(c.paddock && c.paddock.archived));
+        const nameOf = c => [c.make || c.brand, c.model || c.name].filter(Boolean).join(' ') || c.name || 'Car';
+        const opts = cur =>
+          `<option value="">No car yet</option>${all
+            .slice()
+            .sort((x, y) => nameOf(x).localeCompare(nameOf(y)))
+            .map(
+              c =>
+                `<option value="${esc(c.id)}"${c.id === cur ? ' selected' : ''}>${esc(nameOf(c))}${c.number ? ' · #' + esc(c.number) : ''}</option>`
+            )
+            .join('')}`;
+        body = `<h2>Cars</h2><p class="muted">Choose a car for every driver from your shared library (SlotForge Paddock). You can change it on Home before every race.</p>
+        <div class="wz-src"><i aria-hidden="true"></i>Shared library on this computer · <b>${all.length} ${all.length === 1 ? 'car' : 'cars'}</b><span>New cars are added in Paddock or Database › Slotcars</span></div>
+        ${
+          drivers.length
+            ? `<div class="wz-carlist">${drivers.map((d, i) => `<label class="wz-carpick">${laneTile(i)}<b>${esc(d.name)}</b><select data-wzcarpick="${i}" aria-label="Car for ${esc(d.name)}">${opts(p.carIds[i] || '')}</select></label>`).join('')}</div>`
+            : '<p class="muted">Add drivers first (step 2), then choose their cars here.</p>'
+        }
+        <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
+      } else
+        body = `<h2>Cars</h2><p class="muted">Optional: give each driver a car, so the results and the statistics know which car drove. A name is enough, such as “Scalextric Porsche 911”. Pictures, motors and tyres can follow in Database, Slotcars.</p>
+        ${drivers.length ? `<div class="wz-names">${drivers.map((d, i) => `<label class="wz-carrow">${laneTile(i)}<span>${esc(d.name)}</span><input type="text" maxlength="60" data-wzcar="${i}" placeholder="No car" value="${esc(((o.cars || []).find(c => c.id === p.carIds[i]) || {}).model || '')}"${p.carIds[i] ? ' disabled' : ''} aria-label="Car for ${esc(d.name)}"></label>`).join('')}</div>` : '<p class="muted">Add drivers first (step 2), then give them cars here.</p>'}
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
     } else if (step === 'hardware') {
       const chosen = Hardware.timingChosen(S.settings),
-        on = typeof timingConnectedNow === 'function' ? timingConnectedNow()[chosen] : false;
-      body = `<h2>Timing hardware</h2><p class="muted">What counts the laps? Choose one; you can change it at any time in App Settings, Timing Hardware.</p>
-        <div class="wz-hw" role="radiogroup" aria-label="Timing hardware">${Hardware.TIMING.map(([id, name]) => `<label class="wz-hwopt${id === chosen ? ' wz-on' : ''}"><input type="radio" name="wzhw" value="${id}"${id === chosen ? ' checked' : ''}><span class="wz-hwico">${ico(HW_ICON[id] || 'cog', 20)}</span><span><b>${esc(name)}</b><small class="muted">${esc(HW_WORDS[id] || '')}</small></span></label>`).join('')}</div>
-        ${
-          chosen === 'none'
-            ? ''
-            : `<p class="wz-hwstate">${on ? `<b class="st-okword">${esc(TIMING_NAMES[chosen])} is connected.</b>` : `<b class="st-off">${esc(TIMING_NAMES[chosen])} is not connected yet.</b>`}</p>
-          <div class="row">${on ? '' : `<button type="button" class="btn" data-wz="connect">Open its page to connect it</button>`}${VIRTUAL[chosen] && !on ? '<button type="button" class="btn" data-wz="virtual">No hardware at hand: use a virtual one</button>' : ''}</div>
-          <p class="muted">${on ? '' : 'The guide waits here: after connecting, come back to Home and it carries on.'}</p>`
-        }
+        on = typeof timingConnectedNow === 'function' ? !!timingConnectedNow()[chosen] : false,
+        name = TIMING_NAMES[chosen] || chosen;
+      const cards = `<div class="wz-hw" role="radiogroup" aria-label="Timing hardware">${Hardware.TIMING.map(
+        ([id, nm]) =>
+          `<label class="wz-hwopt${id === chosen ? ' wz-on' : ''}"><input type="radio" name="wzhw" value="${id}"${id === chosen ? ' checked' : ''}><span class="wz-hwico">${ico(HW_ICON[id] || 'timing', 20)}</span><span><b>${esc(nm)}</b><small>${esc(HW_WORDS[id] || '')}</small></span></label>`
+      ).join('')}</div>`;
+      const remembered = { trackmate: 'tmDevice', arduino: 'abDevice', ds: 'dsDevice' }[chosen];
+      const port = !!USE_PORT[chosen] && typeof navigator !== 'undefined' && !!navigator.serial;
+      const how =
+        chosen === 'trackmate'
+          ? [
+              'Plug the Trackmate into a USB port and switch it on.',
+              'Choose its port: Windows lists it as USB Serial (COM3, COM4…).',
+              'The guide sees it connect and goes on to the lanes.'
+            ]
+          : chosen === 'arduino'
+            ? [
+                'Plug the Arduino into a USB port (the SlotForge sketch on it).',
+                'Choose its port: Windows lists it as USB Serial or Arduino (COM…).',
+                'The guide sees it connect and goes on to the lanes.'
+              ]
+            : chosen === 'ds'
+              ? [
+                  'Connect the DS lap counter by its serial or USB cable.',
+                  'Choose its port: Windows lists it as a COM port.',
+                  'The guide sees it connect and goes on to the lanes.'
+                ]
+              : [
+                  'Its pins, pit inputs and relays are set on its own page.',
+                  'The pill at the bottom of that page brings you back here.',
+                  'Then the guide goes on to the lanes.'
+                ];
+      body =
+        chosen === 'none' || showHwCards
+          ? `<h2>Timing hardware</h2><p class="muted">What counts the laps? Choose one; you can change it at any time in App Settings, Timing Hardware.</p>${cards}
+        <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`
+          : `<h2>Timing hardware</h2><p class="muted">What counts the laps? Connect it here; the guide goes on when it is connected.</p>
+        <div class="wz-hwcard${on ? ' wz-hwon' : ''}"><span class="wz-hwdev">${ico(HW_ICON[chosen] || 'timing', 30)}</span><div><span class="wz-k">${esc(name)}</span><h3>${on ? 'Connected' : remembered && S.settings[remembered] ? 'Connect it again' : 'Plug it in, then connect'}</h3><span class="wz-pill ${on ? 'wz-pon' : 'wz-poff'}"><i aria-hidden="true"></i>${on ? 'Connected' : 'Not connected'}</span></div><div class="wz-hwacts">${
+          on
+            ? '<button type="button" class="btn primary" data-wz="next">Next: the lanes</button>'
+            : `${remembered && S.settings[remembered] ? '<button type="button" class="btn primary" data-wz="reconnect">Connect</button>' : ''}${port ? `<button type="button" class="btn${remembered && S.settings[remembered] ? '' : ' primary'}" data-wz="port">Choose its port…</button>` : `<button type="button" class="btn primary" data-wz="connect">Open its page</button>`}${VIRTUAL[chosen] ? '<button type="button" class="btn" data-wz="virtual">No hardware at hand: a virtual one</button>' : ''}`
+        }</div></div>
+        ${on ? '' : `<div class="wz-how">${how.map((t, i) => `<div><b>${i + 1}</b>${esc(t)}</div>`).join('')}</div>`}
+        <p class="wz-other">Not a ${esc(name)}? <button type="button" class="wz-link" data-wz="pickhw">Choose another interface</button>${port ? ' · <button type="button" class="wz-link" data-wz="connect">Open its page</button> for more settings (the pill at the bottom brings you back).' : ''}</p>
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
     } else if (step === 'sensors') {
       const hw = Hardware.timingChosen(S.settings);
-      body = `<h2>Test the sensors</h2><p class="muted">Drive a car over the line in every lane. Each lane lights up when its sensor sees the car. Home has this test too, under Start a race (Test sensors).</p>
+      body = `<h2>Lanes &amp; sensors</h2><p class="muted">Drive a car over the line in lane 1, then lane 2, and so on. A lane that lights another lane's sensor is swapped in one click. Then the pit lane, the Track call button and the track power, if your hardware has them. Home has this test too (Test sensors).</p>
         <div id="wz-sensors"></div>${nav('Next')}`;
       view.innerHTML = `<section class="card wz-card">${head}${body}</section>`;
       sensors = SensorTest.mount(document.getElementById('wz-sensors'), {
@@ -170,10 +248,43 @@
       });
       bind(view, o, p, lanes);
       return;
+    } else if (step === 'audio') {
+      // (2.4.0) how much the voice says: a preset as an audio set for the test race, the voice, Hear it; or a set of your own; or none
+      const A = p.audio || { preset: 'Club', voice: '', setId: '', own: '', none: false };
+      const own = (await api.list('audiosets').catch(() => [])).filter(x => !(A.setId && x.id === A.setId));
+      const voices = typeof speechSynthesis !== 'undefined' ? speechSynthesis.getVoices() : [];
+      if (!voices.length && typeof speechSynthesis !== 'undefined' && !draw.waitVoices) {
+        // (Windows gives the voices a moment after the start: the step is drawn again when they come)
+        draw.waitVoices = true;
+        speechSynthesis.addEventListener(
+          'voiceschanged',
+          () => {
+            if (STEPS[progressOf(state.settings).step][0] === 'audio' && state.tab === 'home') render();
+          },
+          { once: true }
+        );
+      }
+      const count = name => {
+        try {
+          const set = Sound.profile(Sound.defaultSet(), name);
+          return Object.values(set.calls || {}).filter(c => c && c.on).length;
+        } catch (e) {
+          return 0;
+        }
+      };
+      body = `<h2>Commentary</h2><p class="muted">How much the voice says during a race. You can change everything later in Customization › Audio Settings.</p>
+        <div class="wz-sets${A.none ? ' wz-dim' : ''}" role="radiogroup" aria-label="Commentary">${PRESETS.map(([n, t]) => {
+          const sel = !A.none && !A.own && A.preset === n;
+          return `<div class="wz-set${sel ? ' wz-on' : ''}"><button type="button" class="wz-setpick" role="radio" aria-checked="${sel}" data-wz="preset" data-wzpreset="${n}"><h4>${n}</h4><p>${esc(t)}</p><span class="wz-n">${count(n)} calls</span></button><button type="button" class="btn sm ghost" data-wz="hear" data-wzhear="${n}">▶ Hear it</button></div>`;
+        }).join('')}</div>
+        ${own.length ? `<label class="wz-own">Or one of your audio sets<select id="wz-ownset"><option value="">—</option>${own.map(x => `<option value="${esc(x.id)}"${A.own === x.id ? ' selected' : ''}>${esc(x.name || 'Audio set')}</option>`).join('')}</select></label>` : ''}
+        <div class="wz-voice${A.none ? ' wz-dim' : ''}"><label>Voice<select id="wz-voice"><option value="">The voice Windows uses</option>${voices.map(v => `<option value="${esc(v.name)}"${A.voice === v.name ? ' selected' : ''}>${esc(v.name)}${v.lang ? ' · ' + esc(v.lang) : ''}</option>`).join('')}</select></label><label>A sentence<input id="wz-say" type="text" maxlength="200" value="Anna takes the lead on lap 12!"></label><button type="button" class="btn" data-wz="hear" data-wzhear="">▶ Hear it</button></div>
+        <label class="wz-none"><input type="checkbox" id="wz-nocomm"${A.none ? ' checked' : ''}> No commentary for now</label>
+        <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
     } else if (step === 'finish')
       body = `<h2>Your test race</h2>${
         track
-          ? `<div class="wz-ticket"><div><small>Track</small><b>${esc(track.name || 'My track')}</b></div><div><small>Laps</small><b>${TEST_LAPS}</b></div><div><small>Lanes</small><b>${lanes}</b></div><div><small>Drivers</small><b>${p.driverIds.length || '–'}</b></div></div>`
+          ? `<div class="wz-ticket"><div><small>Track</small><b>${esc(track.name || 'My track')}</b></div><div><small>Laps</small><b>${TEST_LAPS}</b></div><div><small>Lanes</small><b>${lanes}</b></div><div><small>Commentary</small><b>${esc(p.audio ? (p.audio.none ? 'None' : p.audio.own ? 'Your set' : p.audio.preset) : 'None')}</b></div><div><small>Drivers</small><b>${p.driverIds.length || '–'}</b></div></div>`
           : ''
       }<p>The guide makes a race setup <b>Test race (${TEST_LAPS} laps)</b>${track ? ` on <b>${esc(track.name)}</b>` : ''} and puts ${p.driverIds.length ? 'the drivers on their lanes' : 'it on Home'}. Then press <b>Start race</b> on Home.</p>
         <p class="muted">Race setups (Race Setup tab) hold everything else: heats, fuel, pit stops, penalties, weather and more. Copy the test race there to make your own.</p>
@@ -186,6 +297,8 @@
     if (first && step !== 'hardware') first.focus();
   }
 
+  const A_list = e => api.list(e).catch(() => []);
+  const A_upd = (e, id, patch) => api.update(e, id, patch);
   function bind(view, o, p, lanes) {
     const S = state,
       A = api,
@@ -201,8 +314,24 @@
       };
     const pick = $('wz-trackpick');
     if (pick) pick.onchange = () => ($('wz-newtrack').hidden = !!pick.value);
+    const audioNow = () => ({ ...(p.audio || { preset: 'Club', voice: '', setId: '', own: '', none: false }) });
+    const keepAudio = async patch => {
+      p.audio = { ...audioNow(), ...patch };
+      await keep(p);
+    };
     view.onchange = async ev => {
+      const t = ev.target || {};
+      if (t.id === 'wz-voice') return keepAudio({ voice: t.value });
+      if (t.id === 'wz-ownset') {
+        await keepAudio({ own: t.value, none: false });
+        return render();
+      }
+      if (t.id === 'wz-nocomm') {
+        await keepAudio({ none: !!t.checked });
+        return render();
+      }
       if (ev.target && ev.target.name === 'wzhw') {
+        showHwCards = false;
         try {
           if ((await setTimingHw(ev.target.value)) === false) return;
         } catch (e) {
@@ -227,8 +356,57 @@
         return render();
       }
       if (what === 'back') return go(p.step - 1);
+      if (what === 'pickhw') {
+        showHwCards = true;
+        return render();
+      }
+      // (2.4.0) connect inside the guide: the remembered device, or a port chosen now; then on to the lanes
+      if (what === 'reconnect' || what === 'port') {
+        const hw = Hardware.timingChosen(S.settings);
+        b.disabled = true;
+        let ok = false;
+        try {
+          if (what === 'port') {
+            const port = await navigator.serial.requestPort();
+            ok = await USE_PORT[hw](port);
+          } else if (typeof DESK_CONNECT !== 'undefined' && DESK_CONNECT[hw]) ok = await DESK_CONNECT[hw]();
+        } catch (e) {
+          if (!/No port selected|NotFoundError/i.test(String(e && (e.name || '') + ' ' + (e.message || ''))))
+            msg('Could not connect: ' + (e && e.message ? e.message : e));
+          if (b.isConnected) b.disabled = false;
+          return;
+        }
+        await new Promise(r => setTimeout(r, 400));
+        const on = typeof timingConnectedNow === 'function' && !!timingConnectedNow()[hw];
+        if (on) return go(5);
+        if (b.isConnected) b.disabled = false;
+        msg(
+          ok === false
+            ? 'It did not answer on that port. Is it switched on? Choose its port again, or open its page.'
+            : 'Not connected yet: choose its port, or open its page.'
+        );
+        return;
+      }
+      if (b.dataset.wzpreset) {
+        await keepAudio({ preset: b.dataset.wzpreset, own: '', none: false });
+        return render();
+      }
+      if (b.dataset.wzhear !== undefined) {
+        const name = b.dataset.wzhear,
+          A = audioNow(),
+          text = name ? (PRESETS.find(x => x[0] === name) || [])[2] : ($('wz-say') || {}).value || 'Welcome to SlotForge.';
+        try {
+          const set = { ...Sound.profile(Sound.defaultSet(), name || A.preset), voice: ($('wz-voice') || {}).value || A.voice };
+          Sound.stop();
+          Sound.say({ ...set, calls: { prerace: { on: true, lines: [{ text, mode: 'text' }] } } }, 'prerace', {});
+        } catch (e) {
+          msg('The voice could not speak: ' + (e && e.message ? e.message : e));
+        }
+        return;
+      }
       if (what === 'connect') {
         stopSensors();
+        S.guideBack = { step: p.step, title: STEPS[p.step][1] }; // (2.4.0: the pill that brings you back)
         S.tab = 'settings';
         S.settingsSub = 'hardware';
         S.hwSub = Hardware.timingChosen(S.settings);
@@ -273,6 +451,7 @@
         }
         if (step === 'cars') {
           const carIds = p.carIds.slice();
+          for (const sel of view.querySelectorAll('[data-wzcarpick]')) carIds[Number(sel.dataset.wzcarpick)] = sel.value; // (2.4.0: from the shared library)
           for (const input of view.querySelectorAll('[data-wzcar]')) {
             const i = Number(input.dataset.wzcar),
               name = input.value.trim();
@@ -281,7 +460,27 @@
           }
           return await go(4, { carIds });
         }
-        if (step === 'hardware') return await go(Hardware.timingChosen(S.settings) === 'none' ? 6 : 5);
+        if (step === 'hardware') {
+          showHwCards = false;
+          return await go(Hardware.timingChosen(S.settings) === 'none' ? 6 : 5);
+        }
+        if (step === 'audio') {
+          // (2.4.0) the commentary of the test race: a set of your own, a new set made from the preset (once), or none
+          const A = audioNow();
+          A.voice = ($('wz-voice') || {}).value ?? A.voice;
+          if (!A.none && !A.own) {
+            const sets = await A_list('audiosets');
+            const made = A.setId && sets.find(x => x.id === A.setId);
+            const want = {
+              ...Sound.profile(Sound.defaultSet(`Commentary · ${A.preset}`), A.preset),
+              name: `Commentary · ${A.preset}`,
+              voice: A.voice
+            };
+            if (made) await A_upd('audiosets', made.id, want);
+            else A.setId = (await api.add('audiosets', want)).id;
+          }
+          return await go(7, { audio: A });
+        }
         if (step === 'sensors') {
           const s = sensors ? SensorTest.summary(sensors.tally) : { ok: true };
           if (
@@ -298,7 +497,8 @@
         if (step === 'finish') {
           const track = (o.tracks || []).find(t => t.id === p.trackId);
           if (track) {
-            const setup = await A.add('racesetups', setupRecord(S.schema, track.id));
+            const au = p.audio && !p.audio.none ? p.audio.own || p.audio.setId : '';
+            const setup = await A.add('racesetups', { ...setupRecord(S.schema, track.id), ...(au ? { audioSet: au } : {}) });
             const rows = assignmentRows(lanes, p.driverIds, p.carIds);
             await save({ lastSetupId: setup.id, assignments: { ...(S.settings.assignments || {}), [setup.id]: rows } });
           }
@@ -313,7 +513,47 @@
     };
   }
 
-  const guide = { STEPS, TEST_LAPS, shouldShow, progressOf, setupRecord, assignmentRows, namesOf, render: draw, stop: stopSensors };
+  // (2.4.0) "Back to the guide": while the guide sent you to another page, a pill at the bottom of the window brings you back to its step
+  function pill() {
+    if (typeof document === 'undefined') return;
+    const S = typeof state !== 'undefined' ? state : null,
+      g = S && S.settings && S.settings.setupGuide,
+      show = !!(S && S.guideBack && S.tab !== 'home' && g && typeof g === 'object');
+    let el = document.getElementById('wz-back');
+    if (!show) {
+      if (el) el.remove();
+      if (S && S.tab === 'home') S.guideBack = null;
+      return;
+    }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'wz-back';
+      el.setAttribute('role', 'region');
+      el.setAttribute('aria-label', 'Setup guide');
+      document.body.appendChild(el);
+      el.onclick = ev => {
+        if (!(ev.target && ev.target.closest && ev.target.closest('[data-wzback]'))) return;
+        S.guideBack = null;
+        S.tab = 'home';
+        render();
+      };
+    }
+    el.innerHTML = `<b>Setup guide</b><span>step ${S.guideBack.step} · ${esc(S.guideBack.title)}</span><button type="button" class="btn primary sm" data-wzback>← Back to the guide</button>`;
+  }
+  const guide = {
+    STEPS,
+    TEST_LAPS,
+    PRESETS,
+    VERSION,
+    shouldShow,
+    progressOf,
+    setupRecord,
+    assignmentRows,
+    namesOf,
+    render: draw,
+    stop: stopSensors,
+    pill
+  };
   root.SetupWizard = guide;
   if (typeof module !== 'undefined') module.exports = guide;
 })(typeof window !== 'undefined' ? window : globalThis);
