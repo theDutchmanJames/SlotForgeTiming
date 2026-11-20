@@ -827,5 +827,5 @@ const MainBar = (() => {
     strip();
     fit();
   }, 500);
-  return { decorate, lights, strip, fit, Find, openStatus: () => toggleStatus(true) };
+  return { decorate, lights, strip, fit, Find, leave, openStatus: () => toggleStatus(true) };
 })();

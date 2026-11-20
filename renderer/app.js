@@ -361,6 +361,13 @@ async function renderSettings() {
       onNavigate: destination => {
         Object.assign(state, destination);
         return render();
+      },
+      // (2.4.0, "Help Desk") the first race ticked from your data; a setting found by the search opens where it is
+      progress: typeof HelpDesk !== 'undefined' ? HelpDesk.progress() : null,
+      onSetting: async e => {
+        state.tab = 'settings';
+        await render();
+        if (typeof settingsGo === 'function') settingsGo(e);
       }
     });
   const sbox = document.getElementById('settingsbox');

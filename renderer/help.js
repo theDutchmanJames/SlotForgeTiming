@@ -247,6 +247,17 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'racingrules',
+          title: 'Racing Rules',
+          note: 'Your club’s rules, written once, shown everywhere',
+          body: `<ul>
+          <li><b>Racing Rules</b> is a tab of its own: one text for the whole club, such as your code of conduct or how a deslot is put back.</li>
+          <li>Write with a little formatting: headings, bold, colours, highlights, lists and alignment. It is saved as you type.</li>
+          <li>The rules show on the <b>Racing rules</b> tile of the Live Race tab, and on phones and tablets.</li>
+          <li><b>Export to PDF</b> makes a page to print or hang by the track.</li>
+        </ul>`
+        },
+        {
           id: 'find',
           title: 'Find (Ctrl K)',
           note: 'Every driver, car, track, race, setting and Help topic',
@@ -255,6 +266,7 @@ const Help = (() => {
           <li>The best match comes first, with what belongs to it: the races on a track, the team and races of a driver. The chips show one kind (Drivers, Races, Help…).</li>
           <li>On the right: a preview with figures and the actions. <b>Enter</b> does the first, <b>Tab</b> picks another (<b>Its races</b>, <b>Race with it: Home</b>, <b>The standings</b>).</li>
           <li>With nothing typed: <b>Recent</b> and <b>Do</b> (Start the race, Back up now, Add a driver…). Type <b>&gt;</b> to see only the things to do.</li>
+          <li>Help for the page you are on: the <b>?</b> beside its title, or <b>F1</b>, opens its article beside the page.</li>
         </ul>`
         },
         {
@@ -1420,10 +1432,19 @@ const Help = (() => {
 
   const folders = () => SECTIONS.reduce((all, [, list]) => all.concat(list), []);
   let guide;
+  // (2.4.0, "Help Desk") what you read lately and the settings that match a search come from the app (HelpDesk, SettingsIndex) when it runs
+  const desk = () => (typeof HelpDesk !== 'undefined' ? HelpDesk : null);
   const view = () =>
-    (guide ||= (typeof module !== 'undefined' ? require('./helpview.js') : HelpView).create({ folders, WELCOME, tones: SYSTEM_TONE }));
+    (guide ||= (typeof module !== 'undefined' ? require('./helpview.js') : HelpView).create({
+      folders,
+      WELCOME,
+      tones: SYSTEM_TONE,
+      recent: () => (desk() ? desk().recent() : []),
+      read: id => desk() && desk().read(id),
+      settings: q => (desk() ? desk().settings(q) : [])
+    }));
   const html = () => view().html();
   const render = (box, options) => view().render(box, options);
-  return { html, render, folders, SECTIONS, WELCOME, view };
+  return { html, render, folders, SECTIONS, WELCOME, view, tones: SYSTEM_TONE };
 })();
 if (typeof module !== 'undefined') module.exports = Help;

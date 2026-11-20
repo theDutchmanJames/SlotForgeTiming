@@ -323,4 +323,5 @@ module.exports = [
   ['library-move.test.js', 'node-test'],
   ['mergedrivers.test.js', 'node-test'],
   ['findeverything.test.js', 'node-test'],
+  ['helpdesk.test.js', 'node-test'],
 ];

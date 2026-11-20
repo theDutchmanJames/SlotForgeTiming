@@ -7546,3 +7546,91 @@ html .fd-act.on{border-color:var(--accent);background:color-mix(in srgb,var(--ac
 .fd-msg:empty{display:none}
 .fd-any{margin-left:auto}
 @media (max-width:860px){.fd-body{grid-template-columns:minmax(0,1fr)}.fd-pv{display:none}.mb-fpanel.fd .mb-flist{border-right:0}.fd-foot span:nth-child(3),.fd-any{display:none}}
+/* ---- 2.4.0 Help Desk (SlotForgeRestyle.md "Help Desk"): the "?" beside every page title, the Help drawer (F1), the Help home, counts, Before / Next ---- */
+html #view h2 .hlp-q{display:inline-flex;align-items:center;gap:6px;height:26px;margin:0 0 0 14px;padding:0 9px 0 5px;border:1px solid var(--line);border-radius:999px;background:transparent;box-shadow:none;color:var(--muted);font:500 12px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:0;text-transform:none;vertical-align:middle;cursor:pointer}
+html #view h2 .hlp-q:hover{color:var(--ink);border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+html #view h2 .hlp-q b{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font:700 11.5px "Segoe UI",system-ui,sans-serif}
+html #view h2 .hlp-q kbd{padding:0 5px;border:1px solid var(--line);border-radius:4px;background:transparent;font:600 10px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html #view .sn-use .hlp-more{margin:0 0 0 10px;padding:0;border:0;background:none;box-shadow:none;min-height:0;color:var(--accent-text,var(--accent));font:500 12.5px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+html #view .sn-use .hlp-more:hover{text-decoration:underline}
+/* the drawer: a non-modal dialog on the right under the menu (over a form it is modal, so it shows above it) */
+dialog.hlp-drawer{position:fixed;inset:61px 0 0 auto;width:min(460px,100vw);height:auto;max-height:none;max-width:none;margin:0;padding:0;border:0;border-left:1px solid var(--line);border-radius:0;background:var(--panel);color:var(--ink);box-shadow:-30px 0 60px rgba(0,0,0,.45);z-index:900;overflow:hidden}
+dialog.hlp-drawer::backdrop{background:transparent}
+dialog.hlp-drawer[open]{display:flex;flex-direction:column}
+.hlp-drawer .help-hub{--help-tone:var(--accent);display:flex;flex-direction:column;height:100%;width:100%;border:0;border-radius:0;background:none}
+.hlp-drawer .help-dhead{display:flex;align-items:flex-end;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.hlp-drawer .help-dsearch{flex:1;display:grid;gap:5px;margin:0}
+.hlp-drawer .help-dsearch input{width:100%;min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:400 13px "Segoe UI",system-ui,sans-serif}
+.hlp-drawer .help-dhead .btn{font:600 10.5px 'SF Roboto Mono',Consolas,monospace}
+.hlp-drawer .help-reader{flex:1;overflow:auto;padding:18px 20px 28px}
+.hlp-drawer .help-crumb{margin:0 0 8px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hlp-drawer .help-article>h3,.hlp-drawer .help-reader>h3{margin:0 0 10px;font:800 italic 30px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:0}
+.hlp-drawer .help-lead:has(+.help-plain){display:none}
+.hlp-drawer .help-lead{margin:0 0 14px;color:var(--muted);font-size:14px}
+.hlp-drawer .help-plain{margin:0 0 16px;padding:10px 14px;border-left:3px solid var(--help-tone);border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+.hlp-drawer .help-plain>b{display:block;margin:0 0 4px;font:600 10px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hlp-drawer .help-plain>p{margin:0;font-size:14px;line-height:1.55}
+.hlp-drawer .help-article-body{font-size:13.5px;line-height:1.6;color:color-mix(in srgb,var(--ink) 88%,var(--muted))}
+.hlp-drawer .help-article-body :is(ul,ol){margin:0 0 14px;padding-left:18px}
+.hlp-drawer .help-article-body li{margin:0 0 7px}
+.hlp-drawer .help-article>h4,.hlp-drawer .help-reader h4{margin:22px 0 10px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hlp-drawer .help-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hlp-drawer .help-related,.hlp-drawer .help-actions{display:flex;flex-wrap:wrap;gap:6px}
+.hlp-drawer .help-related .btn{min-height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:transparent;box-shadow:none;font:400 12.5px "Segoe UI",system-ui,sans-serif;color:var(--ink)}
+.hlp-drawer .help-hit{display:grid;gap:3px;width:100%;margin:0 0 6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.hlp-drawer .help-hit small,.hlp-drawer .help-hit span{color:var(--muted);font-size:12.5px}
+.hlp-drawer .help-dfoot{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.hlp-drawer .help-dfoot kbd{padding:1px 6px;border:1px solid var(--line);border-radius:5px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace}
+.hlp-drawer .help-dfoot .btn{margin-left:auto;border-color:var(--accent)}
+.hlp-drawer .help-home{gap:14px}
+.hlp-drawer .help-tiles{grid-template-columns:1fr}
+html .hlp-drawer .help-startcard .help-steps{grid-template-columns:1fr 1fr}
+@media (max-width:700px){dialog.hlp-drawer{width:100vw}}
+/* the parts the page and the drawer share */
+.help-k{font:600 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.help-count{margin-left:auto;padding-left:8px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .help-rail details>summary{display:flex;align-items:center}
+.help-here{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,#3ecf8e 16%,var(--panel));color:color-mix(in srgb,#3ecf8e 75%,var(--ink));font:600 11px 'SF Roboto Mono',Consolas,monospace}
+.help-reader mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--ink);border-radius:3px;padding:0 1px}
+.help-sets .help-go{color:var(--accent-text,var(--accent))!important;font-size:12.5px}
+html .help-pager{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:22px 0 0}
+html .help-pager .help-step{display:grid;gap:2px;min-height:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:transparent;box-shadow:none;color:var(--ink);font:500 13px "Segoe UI",system-ui,sans-serif;text-align:left;cursor:pointer}
+html .help-pager .help-step.next{text-align:right}
+html .help-pager .help-step small{font:600 10px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+html .help-pager .help-step:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+/* the Help home */
+.help-home{display:grid;gap:20px}
+html .help-startcard{display:grid;gap:12px;padding:18px;border:1px solid var(--line);border-radius:14px;background:radial-gradient(80% 140% at 0% 0%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%),var(--panel)}
+html .help-startcard>h3{margin:0!important;font:800 italic 28px/1 'SF Barlow Condensed','Bahnschrift',sans-serif!important;text-transform:uppercase;letter-spacing:0!important}
+.help-progress{height:4px;border-radius:4px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden}
+.help-progress>span{display:block;height:100%;border-radius:4px;background:#2fb67c}
+html .help-startcard .help-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+html .help-startcard .help-steps li{display:block;margin:0;padding:0;border:0;background:none}
+html .help-startcard .help-steps li::before{display:none}
+html .help-startcard .help-steps button{display:grid;align-content:start;gap:4px;width:100%;height:100%;min-height:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--panel) 85%,transparent);box-shadow:none;color:var(--ink);font:500 13px "Segoe UI",system-ui,sans-serif;text-align:left;cursor:pointer}
+html .help-startcard .help-steps i{font:700 10.5px 'SF Roboto Mono',Consolas,monospace;font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+html .help-startcard .help-steps small{color:var(--muted);font-size:11.5px}
+html .help-startcard .help-steps li.done i{color:#2fb67c}
+html .help-startcard .help-steps li.next button{border-color:var(--accent)}
+html .help-startcard .help-steps li.next i{color:var(--accent-text,var(--accent))}
+html .help-startcard>.btn{justify-self:start}
+.help-home .help-related{margin-top:8px}
+.help-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+html .help-tile{--t:#94a3b8;display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:3px 12px;align-items:start;min-height:0;padding:14px;border:1px solid var(--line);border-radius:12px;background:transparent;box-shadow:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+html .help-tile:hover{border-color:color-mix(in srgb,var(--t) 50%,var(--line))}
+.help-tile[data-tone=blue]{--t:#3b82f6}
+.help-tile[data-tone=green]{--t:#2fb67c}
+.help-tile[data-tone=yellow]{--t:#e0a800}
+.help-tile[data-tone=purple]{--t:#9b6bff}
+.help-tile[data-tone=red]{--t:#e5484d}
+.help-tile[data-tone=orange]{--t:#f07a2a}
+.help-tile[data-tone=teal]{--t:#14b8a6}
+[data-theme="light"] .help-tile[data-tone=yellow]{--t:#a77a00}
+[data-theme="light"] .help-tile[data-tone=green]{--t:#1e8a4c}
+[data-theme="light"] .help-tile[data-tone=teal]{--t:#0e8a84}
+[data-theme="light"] .help-tile[data-tone=grey]{--t:#5b6470}
+.help-tileico{grid-row:span 2;display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:color-mix(in srgb,var(--t) 16%,var(--panel));color:var(--t)}
+.help-tile b{font-size:14.5px}
+.help-tile em{font:600 11px 'SF Roboto Mono',Consolas,monospace;font-style:normal;color:var(--muted)}
+.help-tile small{grid-column:2/-1;color:var(--muted);font-size:12.5px;line-height:1.5}
+@media (max-width:900px){html .help-startcard .help-steps{grid-template-columns:1fr 1fr}.help-tiles{grid-template-columns:1fr}}

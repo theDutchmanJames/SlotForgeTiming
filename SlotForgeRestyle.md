@@ -53,6 +53,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Team Sheet](#team-sheet) | The team editor: the drivers as numbered chips, On the record | Database › Teams › Edit |
 | [Backup Vault](#backup-vault) | Import and Export: Backups (how safe, every backup with Restore, the schedule), the Export picker with Your file, the Import preview | App Settings › Import and Export |
 | [Settings Hub](#settings-hub) | App Settings grouped by task, with an Overview of tiles that say how every part stands | App Settings |
+| [Help Desk](#help-desk) | The "?" beside every page title and F1: the page's article in a drawer; the Help home (your first race ticked, read lately, a tile per group); counts, Before / Next, settings in the search | Every page; App Settings › Help |
 | [Find Everything](#find-everything) | Find (Ctrl K) over everything: chips, rows with facts, the best match and its links, a preview with actions, Recent and Do | Ctrl K on every page |
 | [Season Calendar](#season-calendar) | Championship rounds with real dates and the season strip, Fill the dates, the calendar file; Adjustments in the standings | Race Setup › Championships, Results › Championships |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
@@ -1422,6 +1423,32 @@ html .so-t{border:1px solid var(--line);border-radius:14px;background:var(--pane
 html .so-dot.warn{background:#f2b705}
 ```
 
+## Help Desk
+
+Help where you are (`renderer/helpdesk.js` open, close, decorate, topicNow, recent, progress; `helpview.js` PAGE_LIST, topicOfPage, homeHtml, the drawer
+mode, the pager, `marked`; `help.js` the Racing Rules article; styles `.hlp-q`, `.hlp-more`, `dialog.hlp-drawer`, `.help-home`, `.help-startcard`,
+`.help-tiles`, `.help-pager`, `.help-count`, `.help-here`).
+
+- **The "?" beside the page title** (`.hlp-q`): a small pill after the h2 of every page (not Home, not the Live Race) with a red **?** disc, *Help* and an
+  **F1** keycap. Under a Page Note, *Read more in Help →* in the accent (`.hlp-more`).
+- **The drawer** (`dialog.hlp-drawer`, 460 px on the right under the menu, the full width on a small window): *Search Help* on top with *Esc*; the
+  article set small (the trail in Roboto Mono caps, the title in Barlow italic caps, *About this page* as a green pill when it is the page you are on,
+  the plain words with an accent bar, the body at 13.5 px), its example, *Open <page> ↗* (not for the page you are on), related guides as chips,
+  Before / Next; the foot says *F1 help for this page* and has *Open in Help ↗*. Over a form it opens in the top layer and offers no page buttons.
+- **F1**: the article of the page, or of the dialog that is open; F1 again closes it.
+- **The Help home** (`.help-home`): *Start here · 3 of 4 done* in Roboto Mono caps, *Your first race, step by step* in Barlow italic caps, a 4 px green
+  progress bar, four step cards (*✓ Done* in green, *Next* ringed in the accent) that open their page; *You read lately* as chips; *Browse by task ·
+  123 articles*: a tile per group with its icon in a tinted square of its colour, the title, the count in Roboto Mono, what is in it.
+- **The side list**: *Help home* and *Start here*, a count beside every group (`.help-count`); in a group the article of a page comes first.
+- **Search**: the words marked in the title and the snippet (`mark`, an accent tint); the settings that match under *Settings* with *Go to setting →*.
+- **Before / Next** (`.help-pager`): two cards at the end of an article, the kind in Roboto Mono caps.
+
+```css
+html #view h2 .hlp-q b{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--accent);color:var(--on-accent,#fff)}
+dialog.hlp-drawer{position:fixed;inset:61px 0 0 auto;width:min(460px,100vw);border-left:1px solid var(--line);box-shadow:-30px 0 60px rgba(0,0,0,.45)}
+html .help-startcard .help-steps li.next button{border-color:var(--accent)}
+```
+
 ## Find Everything
 
 Find (Ctrl K) (`renderer/findindex.js` build, score, search, actionsOf, remember; `mainbar.js` Find; styles `.mb-fpanel.fd`, `.fd-chips`, `.fd-body`,
@@ -2611,3 +2638,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Settings Hub | New: App Settings by task (Look and feel, Race night, Your data, This computer), an Overview of tiles with each part's state, General split, Database storage on Backups and storage, Phones and tablets on Race Director, Paddock and Content Packs pages |
 | 2026-11 | Season Calendar | New: round dates as dates (picker, read from text), the season strip, Fill the dates, the calendar file; Adjustments with a reason in the standings, table and PDF; drivers not raced folded away |
 | 2026-11 | Find Everything | New: Find (Ctrl K) searches every kind of thing (teams, races, championships, systems, Customization, Help), ranks by word start and typos, shows linked things, filter chips, a preview with actions (Enter, Tab), Recent and Do |
+| 2026-11 | Help Desk | New: the "?" beside every page title and F1 open the page's article in a drawer; every page has an article and every page article opens its page; the Help home (first race ticked from your data, read lately, a tile per group); counts, the page article first, Before / Next, marked search with settings; a Racing Rules article |
