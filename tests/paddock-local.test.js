@@ -124,9 +124,13 @@ test('failed JSON receipt save does not undo an unrelated concurrent car edit',a
  f.p.storage.commit=async()=>{f.db.data.slotcars[0].model='Concurrent user edit';throw Error('Disk full');};
  try{await assert.rejects(f.p.storage.localChange({action:'receipt',transferId:s.id,receipt:f.receipts.get(s.id)}),/Disk full/);assert.equal((await f.get('car-a')).model,'Concurrent user edit');}finally{f.p.storage.commit=old;}
 });
-test('SQLite revision changes remain conflicts even if the visible fields are changed back',async t=>{
+test('SQLite: an edit that was changed back leaves the same details, so it is no conflict, as with JSON storage (2.4.0 review)',async t=>{
  const f=await fixture(t,'sqlite'),[s]=await f.p.createLocalTransfers([{localId:'car-a'}]),original=(await f.get('car-a')).model;
- await f.edit('car-a',{model:'Temporary edit'});await f.edit('car-a',{model:original});f.approve(s.id);await f.p.refreshLocalTransfer(s.id);assert.equal((await f.p.localTransfers())[0].state,'conflict');
+ await f.edit('car-a',{model:'Temporary edit'});await f.edit('car-a',{model:original});f.approve(s.id);await f.p.refreshLocalTransfer(s.id);assert.notEqual((await f.p.localTransfers())[0].state,'conflict');
+});
+test('SQLite: a real change to the details is still a conflict',async t=>{
+ const f=await fixture(t,'sqlite'),[s]=await f.p.createLocalTransfers([{localId:'car-a'}]);
+ await f.edit('car-a',{model:'Changed for good'});f.approve(s.id);await f.p.refreshLocalTransfer(s.id);assert.equal((await f.p.localTransfers())[0].state,'conflict');
 });
 test('SQLite stores each transfer separately and receipt updates leave request pictures untouched',async t=>{
  const f=await fixture(t,'sqlite');await f.edit('car-a',{picture:'data:image/png;base64,YWJjZA=='});const entries=await f.p.createLocalTransfers([{localId:'car-a'},{localId:'car-b'}]);const a=entries.find(x=>x.localId==='car-a');

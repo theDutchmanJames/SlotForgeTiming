@@ -91,11 +91,12 @@ test('conflicting packets from unused, virtual and completed lanes cannot pause 
  for(const lane of [2,8]){const h=harness();h.r.cars[1].virtualRival=true;h.start();h.send(100,{lane,n:1});h.send(200,{lane,n:1,ticks:60000});assert.equal(h.r.status,'running');}
  const h=harness();h.start();h.r.cars[1].done=true;h.send(100,{lane:2,n:1});h.send(200,{lane:2,n:1,ticks:60000});assert.equal(h.r.status,'running');
 });
-test('partial serial packets cannot straddle a pause or new heat',()=>{
+test('a partial serial packet is finished across a pause, and cannot straddle a new heat',()=>{
  for(const transition of ['pause','heat']){
   const h=harness();h.start();h.send(100,{marker:true});const b=packet({n:2});h.sendRaw(2100,b.subarray(0,12));
   if(transition==='pause'){h.pause(2100);h.resume(6100);}else{h.replace();h.start(6100);}
-  h.sendRaw(6200,b.subarray(12));assert.equal(h.r.cars[0].laps.length,0);
+  // (2.4.0 review) across a pause the packet is finished and its lap counts; a new heat still throws the half packet away
+  h.sendRaw(6200,b.subarray(12));assert.equal(h.r.cars[0].laps.length,transition==='pause'?1:0);
  }
 });
 test('one failed status observer cannot prevent remaining observers or disconnect cleanup',()=>{
@@ -106,11 +107,11 @@ test('one failed status observer cannot prevent remaining observers or disconnec
 });
 
 
-test('phase changes are synchronised before completing a fragmented packet',()=>{
+test('a packet split across a pause and a resume is finished, so its lap counts and the race goes on',()=>{
  const h=harness();h.start();h.send(100,{marker:true});const b=packet({n:2});h.sendRaw(2100,b.subarray(0,12));
  h.r.pause(2100);h.r.resume(6100); // No UI update/sync in between.
- h.sendRaw(6200,b.subarray(12));assert.equal(h.r.cars[0].laps.length,0);
- h.send(11100,{n:3});assert.equal(h.r.status,'paused','a missing crossing must be reviewed');
+ h.sendRaw(6200,b.subarray(12));assert.equal(h.r.cars[0].laps.length,1,'the lap of the split packet counts (2.4.0 review)');
+ h.send(11100,{n:3});assert.equal(h.r.status,'running','no crossing is missing, so no review');assert.equal(h.r.cars[0].laps.length,2);
 });
 test('a failed crossing callback pauses the race and reports the error',()=>{
  let phase='running';const errors=[],faults=[],link=DS.createLink({onError:e=>errors.push(e.message)});

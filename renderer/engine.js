@@ -665,6 +665,7 @@
       if (R.resourceStart && !R.resourceStart()) return false;
       R.status = 'running';
       R.t0 = t;
+      R.starts = (R.starts || 0) + 1; // (2.4.0 review: how often this race was started; a resume moves t0 but is not a start)
       R.cars.forEach(c => {
         c.last = t;
         tempReset(c, t);

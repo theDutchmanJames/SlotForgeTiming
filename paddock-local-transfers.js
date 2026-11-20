@@ -22,10 +22,16 @@ const FIELDS = [
   'picture'
 ];
 const terminal = new Set(['linked', 'rejected', 'cancelled']);
-// (2.4.0 review) only what the transfer sends (and its class name) counts as a change: racing the car (its laps driven) while Paddock
-// reviews it no longer makes a conflict with nothing to compare. A SQLite record revision still counts, as before (an edit that was
-// changed back stays a conflict). The old hash still matches older transfers.
-const carRevision = (a, car, version = a.revision(car.id)) =>
+// (2.4.0 review) only what the transfer sends (and its class name) counts as a change, with JSON and with SQLite storage alike: racing the car
+// (its laps driven, which move a SQLite record's revision) while Paddock reviews it is not a conflict, and an edit that was changed back leaves
+// the same details, so it is none either. The older hashes still match transfers made with them.
+const carRevision = (a, car) =>
+  hash([
+    'transfer-v3',
+    Object.fromEntries(FIELDS.filter(k => Object.hasOwn(car, k) && car[k] != null).map(k => [k, car[k]])),
+    a.className(car.raceClass)
+  ]);
+const v2Revision = (a, car, version = a.revision(car.id)) =>
   hash([
     'transfer-v2',
     Object.fromEntries(FIELDS.filter(k => Object.hasOwn(car, k) && car[k] != null).map(k => [k, car[k]])),
@@ -239,7 +245,10 @@ function change(a, input) {
         error: 'The approved Paddock car is deleted or archived. Restore it in Paddock before linking.'
       });
     const car = a.car(x.summary.localId);
-    if (!car || ![carRevision, legacyRevision].some(f => f(a, car, x.versioned ? a.revision(car.id) : null) === x.localRevision))
+    if (
+      !car ||
+      ![carRevision, v2Revision, legacyRevision].some(f => f(a, car, x.versioned ? a.revision(car.id) : null) === x.localRevision)
+    )
       return writeSummary(a, x, {
         state: 'conflict',
         error: 'This Timing car changed after transfer. Review the saved and current details before using the approved Paddock car.'

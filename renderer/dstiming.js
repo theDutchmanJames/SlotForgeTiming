@@ -70,6 +70,7 @@
     let engine = null,
       phase = null,
       previousStart = null,
+      previousStarts = null,
       stopped = false;
     // A pause, a new heat or a recovered race invalidates the measured interval.
     // The first resumed crossing uses Timing's pause-adjusted clock; subsequent
@@ -83,10 +84,13 @@
         engine = next;
       }
       if (changedEngine || state !== phase || next.t0 !== previousStart) {
-        link.discardPartial();
+        // (2.4.0 review) a packet the box was still sending when the race paused or resumed is kept and finished, so its lap counts and the lap
+        // counter does not skip (which paused the race for a review); only a new race or heat throws a half packet away
+        if (changedEngine || next.starts !== previousStarts) link.discardPartial();
         for (const v of seen.values()) v.last = null;
         phase = state;
         previousStart = next.t0;
+        previousStarts = next.starts;
       }
     }
     sync();

@@ -355,7 +355,9 @@
         cols.push({ ri, label: 'R' + (ri + 1), name: C.roundLabel(c, ri), decided });
     });
     const decidedN = cols.filter(x => x.decided).length,
-      keep = c.drops > 0 ? Math.max(1, decidedN - c.drops) : Infinity;
+      // (2.4.0 review: "Best N of total": the N best results of the season count, so the points tally as the season goes and a result is only dropped
+      // once a driver has more than N; before, the drops were taken from the rounds raced so far and points vanished mid-season)
+      keep = c.drops > 0 ? Math.max(1, cols.length - c.drops) : Infinity;
     const names = new Map(),
       tnames = new Map();
     roundRes.forEach(rs =>
