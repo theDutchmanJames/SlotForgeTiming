@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),Help=require('../renderer/help'),V=require('../renderer/helpview');
 const v=V.create({folders:Help.folders,WELCOME:Help.WELCOME}),topics=Help.folders(),ids=v.groups.flatMap(g=>g.ids);
-assert.equal(topics.length,123,'all current topics after retiring Phidget support, with Database lists, Record Book, Timing Desk, Commentary Booth and Widget Workshop (2.4.0)');assert(!ids.includes('phidget'));assert(ids.includes('paddock'));assert(ids.includes('dscapture'));assert(ids.includes('sqlitestorage'));assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
+assert.equal(topics.length,121,'all current topics after retiring Phidget support, with Database lists, Record Book, Timing Desk, Commentary Booth and Widget Workshop, and the Paddock recovery topics in one Paddock article (2.4.0)');assert(!ids.includes('phidget'));assert(ids.includes('paddock'));assert(ids.includes('dscapture'));assert(ids.includes('sqlitestorage'));assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
 for(const t of topics){assert(v.search(t.title).some(x=>x.id===t.id),'search reaches '+t.id);assert(v.select(t.id));assert(v.html().includes(t.body),'full article is available: '+t.id);}
 assert.equal(v.select('not-a-topic'),false);assert(v.select('start-guide'));assert(v.html().includes('Your first race'));
 assert.equal(v.search('Lap Highlights')[0].id,'laphighlights');assert(v.search('flash').some(t=>t.id==='laphighlights'));
@@ -17,7 +17,7 @@ box.onclick({target:{closest:()=>({dataset:{helpRoute:'unknown'}})}});assert.equ
 box.onclick({target:{closest:()=>({dataset:{helpRoute:'fuel'}})}});
 Promise.resolve().then(()=>{assert.deepEqual(dest,V.ROUTES.fuel);dest.setupSub='wrong';assert.equal(V.ROUTES.fuel.setupSub,'fuel');console.log('Help view: all 118 topics, grouping, full-content search, escaping, example validation, state and navigation passed.');});
 
-for(const id of ['paddock','paddockcatalogue','paddockpasswords','paddockfiles','paddockwarnings'])assert(v.groups.find(g=>g.id==='settings').ids.includes(id));
-assert(v.search('cooldown').some(t=>t.id==='paddockpasswords'));assert(v.search('independent copies').some(t=>t.id==='paddockfiles'));
+for(const id of ['paddock','paddockcatalogue','paddockfiles'])assert(v.groups.find(g=>g.id==='settings').ids.includes(id));
+assert(v.search('cooldown').some(t=>t.id==='paddock'));assert(v.search('independent copies').some(t=>t.id==='paddockfiles'));
 
 for(const id of ['paddockhistory','paddockhistorical','paddockhistoryuploads'])assert(v.groups.find(g=>g.id==='results').ids.includes(id));

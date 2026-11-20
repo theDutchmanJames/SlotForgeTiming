@@ -1595,7 +1595,7 @@ function openForm(e, item, preset) {
     const note = document.createElement('p');
     note.className = 'muted';
     note.textContent =
-      'Linked to Paddock. Edit catalogue details there, then use App Settings → Connections → Dealership Mode → Available cars → Refresh linked cars. Simulation settings and service history remain local.';
+      'Linked to Paddock. Edit catalogue details there, then use App Settings → Connections → Paddock → Older connections and repair → Refresh linked cars. Simulation settings and service history remain local.';
     byId('frm').prepend(note);
   }
   if (e === 'slotcars' && item?.paddock && typeof PaddockSpecs !== 'undefined') {

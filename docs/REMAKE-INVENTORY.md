@@ -90,7 +90,7 @@ start per row), six kinds, the tracks as cards; the check before the start is th
 - No way to correct a result after Finalize, only delete.
 - **Ideas:** a filter bar, a driver's history across races, the history of a track record, correct a finalized result.
 
-### 9. Paddock connection screens · Remake
+### 9. Paddock connection screens · Remake · **Done (2.4.0, "Paddock Pit Lane")**
 - Plumbing shown as buttons: Find local services, Retry, Forget service connection, Refresh transfers, Check/retry.
 - The way in is in three places (Database › Slotcars, App Settings › Connections, Import and Export). Help has about 14
   recovery articles for it.

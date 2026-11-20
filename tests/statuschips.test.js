@@ -20,9 +20,9 @@ test('connected timing hardware that is not in use is a warning chip that opens 
 
 test('races that could not reach the shared library are counted in a chip that opens Connections', () => {
   const one = HS.chips({ ...base, libraryWaiting: 1 }).find(x => x.key === 'library');
-  assert.equal(one.text, '1 result waiting for the shared library');
+  assert.equal(one.text, '1 result waiting in Paddock');
   assert.equal(one.go, 'connections');
-  assert.equal(HS.chips({ ...base, libraryWaiting: 3 }).find(x => x.key === 'library').text, '3 results waiting for the shared library');
+  assert.equal(HS.chips({ ...base, libraryWaiting: 3 }).find(x => x.key === 'library').text, '3 results waiting in Paddock');
   assert.equal(HS.chips({ ...base, libraryWaiting: 0 }).find(x => x.key === 'library'), undefined);
 });
 
@@ -33,11 +33,11 @@ test('the status lights pass both and make such chips buttons that open the page
     RC = require('../renderer/racecheck.js');
   assert(has(mainbar, "libraryWaiting: typeof homeLibraryWaiting !== 'undefined' ? homeLibraryWaiting : 0"));
   assert(has(mainbar, 'unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id)'));
-  assert(has(mainbar, "if (go === 'connections' && typeof connectionsTab !== 'undefined') connectionsTab = 'library';"));
+  assert(has(mainbar, "if (go === 'connections' && typeof connectionsTab !== 'undefined') connectionsTab = 'paddock';"));
   const c = RC.build({ chips: HS.chips({ ...base, unused: ['DS Electronics'], libraryWaiting: 2 }) }),
     html = RC.panelHtml(c);
   assert(html.includes('DS Electronics is connected but not counting laps'));
-  assert(html.includes('2 results waiting for the shared library'));
+  assert(html.includes('2 results waiting in Paddock'));
   assert(html.includes('data-st-go="hardware"'));
   assert(html.includes('data-st-go="connections"'));
 });

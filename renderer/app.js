@@ -899,19 +899,21 @@ async function renderConnectionsSettings(box) {
   if (box.nodeType !== 1) return renderNetworkSettings(box);
   box.innerHTML = '<div class="sub connections-tabs" role="tablist" aria-label="Connections"></div><div data-connections-body></div>';
   const body = box.querySelector('[data-connections-body]');
-  const library = api.libraryResults && api.libraryStatus ? !!(await api.libraryStatus().catch(() => null))?.available : false; // (the Shared Library tab: only with the shared slotcar library)
-  if (!library && connectionsTab === 'library') connectionsTab = 'race';
+  // (2.4.0, "Paddock Pit Lane") Dealership Mode and Shared Library are one page: Paddock
+  if (['dealership', 'library'].includes(connectionsTab)) connectionsTab = 'paddock';
   renderTabs(
     box.querySelector('.connections-tabs'),
-    [['race', 'Race Sharing'], ['dealership', 'Dealership Mode'], ...(library ? [['library', 'Shared Library']] : [])],
+    [
+      ['race', 'Race Sharing'],
+      ['paddock', 'Paddock']
+    ],
     connectionsTab,
     id => {
       connectionsTab = id;
       renderConnectionsSettings(box);
     }
   );
-  if (connectionsTab === 'dealership') return PaddockUI.mount(api, body);
-  if (connectionsTab === 'library') return renderSharedLibraryResults(body);
+  if (connectionsTab === 'paddock') return typeof renderPitLane === 'function' ? renderPitLane(body) : PaddockUI.mount(api, body);
   return renderNetworkSettings(body);
 }
 

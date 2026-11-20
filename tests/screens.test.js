@@ -4682,11 +4682,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   // ---------- 2.2.5 (audit #14): App Settings > Connections > Shared Library ----------
   { const keepStatus = api.libraryStatus; let results = { deliveryError: '', results: [] }, retried = 0;
     api.libraryResults = async () => JSON.parse(JSON.stringify(results)); api.libraryResultsRetry = async () => { retried++; results = { deliveryError: '', results: [] }; return { offered: 1, sent: 1 }; };
-    run("var __keepTabs = renderTabs; var __tabsSeen = null; renderTabs = (el, tabs, cur, cb) => { if (tabs.some(t => t[0] === 'dealership')) { __tabsSeen = tabs.map(t => t[1]); return; } return __keepTabs(el, tabs, cur, cb); }");
+    run("var __keepTabs = renderTabs; var __tabsSeen = null; renderTabs = (el, tabs, cur, cb) => { if (tabs.some(t => t[0] === 'paddock')) { __tabsSeen = tabs.map(t => t[1]); return; } return __keepTabs(el, tabs, cur, cb); }");
     ctx.__conn = { nodeType: 1, innerHTML: '', querySelector: () => document.createElement('div') };
     const tabsFor = async available => { api.libraryStatus = async () => ({ available }); run("__tabsSeen = null; connectionsTab = 'race'"); await run('renderConnectionsSettings(__conn)'); return run('__tabsSeen'); };
-    say('without the shared slotcar library, Connections has no Shared Library tab', JSON.stringify(await tabsFor(false)) === JSON.stringify(['Race Sharing', 'Dealership Mode']));
-    say('...with it, Connections has a Shared Library tab', JSON.stringify(await tabsFor(true)) === JSON.stringify(['Race Sharing', 'Dealership Mode', 'Shared Library']));
+    say('without the shared slotcar library, Connections has Race Sharing and Paddock (2.4.0: the Paddock Pit Lane)', JSON.stringify(await tabsFor(false)) === JSON.stringify(['Race Sharing', 'Paddock']));
+    say('...with it too: the shared library is part of the Paddock page', JSON.stringify(await tabsFor(true)) === JSON.stringify(['Race Sharing', 'Paddock']));
     run('renderTabs = __keepTabs');
     const button = { disabled: false, onclick: null }; const removeBtn = { disabled: false, onclick: null, dataset: {} }; ctx.__box = { innerHTML: '', isConnected: true, querySelector: sel => sel === '[data-library-retry]' ? button : null, querySelectorAll: sel => { const m = sel === '[data-library-remove]' && ctx.__box.innerHTML.match(/data-library-remove="([^"]+)"/); if (!m) return []; removeBtn.dataset.libraryRemove = m[1]; return [removeBtn]; } };
     results = { deliveryError: 'The library was restored. Retain this result for deliberate recovery.', results: [{ name: 'Club <b>Race</b>', sessionId: 's1', status: 'attention', error: 'The library was restored and holds another version of this race.' }, { name: 'Sprint', sessionId: 's2', status: 'pending', error: 'Shared library busy.' }] };

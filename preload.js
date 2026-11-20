@@ -132,6 +132,7 @@ contextBridge.exposeInMainWorld('api', {
   thumbnailReady: () => ipcRenderer.send('library:thumbnail-ready'),
   thumbnailResult: (id, data) => ipcRenderer.send('library:thumbnail-result', id, data),
   paddockStatus: () => call('paddock:status'),
+  paddockKeep: action => call('paddock:keep', action),
   libraryStatus: () => call('library:status'),
   libraryCar: id => call('library:car', id),
   librarySave: input => call('library:save', input),

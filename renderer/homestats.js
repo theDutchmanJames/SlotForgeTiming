@@ -501,11 +501,10 @@
     if (ctx.libraryWaiting > 0)
       out.push({
         key: 'library',
-        text: plural(ctx.libraryWaiting, 'result', 'results') + ' waiting for the shared library',
+        text: plural(ctx.libraryWaiting, 'result', 'results') + ' waiting in Paddock',
         state: 'warn',
         go: 'connections',
-        title:
-          'These finished races have not reached the shared library yet, so their records are missing there. Open Connections to see why and retry.'
+        title: 'These finished races have not reached Paddock yet. Open Connections › Paddock to see why, and Fix it.'
       });
     out.push(
       ctx.netError

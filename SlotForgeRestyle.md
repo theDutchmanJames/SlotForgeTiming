@@ -66,7 +66,8 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Token Desk](#token-desk) | The time tokens of a Time Token Session: a card for every lane with the clock large, the buttons as a grid, the state as the edge | Race tab and Live Race › Tokens (Time Token Sessions) |
 | [Live Pages](#live-pages) | The Live Race pages that follow the race: a Page Bar with the phase as a pill, Customize as a button, the classic leaderboard as a Race Sheet in the lane colours, Driver stats as tiles | Live Race (second screen, tablets, phones) |
 | [Plugin Desk](#plugin-desk) | The open page or tool of a plugin: a head with the plugin as a status pill, the inputs and the output in boxes, the figures as tiles | Customization › Plugin Pages & Tools |
-| [Dealership Sheet](#dealership-sheet) | Dealership Mode: the connection as a status pill, rows with several controls stacked, the long words folded | App Settings › Connections › Dealership Mode |
+| [Dealership Sheet](#dealership-sheet) | Dealership Mode: the connection as a status pill, rows with several controls stacked, the long words folded | App Settings › Connections › Paddock › Older connections and repair (since the Paddock Pit Lane) |
+| [Paddock Pit Lane](#paddock-pit-lane) | Paddock on one page: a headline that says how things stand with Fix it, three equal cards (shared library, Dealership, results), the results in plain words, Dealerships found as cards | App Settings › Connections › Paddock |
 | [Review Sheet](#review-sheet) | Historical Review: the race as a head, the notice as a callout, the drivers tagged, Submit in the foot, the decisions as pills | Results and Records (a Paddock race) |
 | [Performance Gauges](#performance-gauges) | The Performance line as a row of small gauges, each with a health colour | Race tab (App Settings › General, Performance line) |
 | [Race Report PDF](#race-report-pdf) | The race on paper: page one as clubs post a race, then a page for every driver with the lap chart of Scrutineering; Colour or Monochrome | Results and Records › Export to PDF |
@@ -1900,6 +1901,37 @@ html .ab-tr.now{background:color-mix(in srgb,#e5484d 9%,var(--panel));box-shadow
 
 ---
 
+## Paddock Pit Lane
+
+App Settings › Connections › **Paddock** (`renderer/pitlane.js` says what the page says, `renderer/pitlaneview.js` draws it and does what its buttons do; styles
+under `.pl-`). Dealership Mode and Shared Library are one tab. The Dealership Sheet of before (paddockui.js) is folded under *Older connections and repair*.
+The Dealership password can be remembered (encrypted by Windows, `paddock-keep.js`), and Timing reconnects by itself every minute while it is offline.
+
+- **The headline** (`.pl-hero`): *Paddock · results and cars* in Roboto Mono caps; a 40 px Barlow italic headline that says how things stand (*2 results need
+  you*, *The Dealership is offline*, *All results are in Paddock*, *Paddock is not connected*); one line under it; two pills (*This computer · on*,
+  *Dealership · connected / offline / not set up*) with a glowing dot. A green glow in the corner when all is well, amber when something needs you. On the
+  right one action: **Fix it** (red, with a wrench) and the steps it will take under it; *Browse Paddock cars* when all is well.
+- **Three equal cards** (`.pl-card`, a 3 px top edge in its state colour): *Shared library* (on this computer), *Dealership* (on the network) and *Results*
+  (after each race). Each: an icon tile, the kicker and a Barlow title, the state in Roboto Mono in its colour, two big figures, one line, its buttons.
+- **Results** (`.pl-panel`): a row per race, newest first: the date in Roboto Mono, the race and the reason in plain words, a state pill (*Delivered* green,
+  *Waiting* amber, *Needs a look* red, *Stays here* grey) and its buttons (*Open the race*, *Try again* / *Send now*, *Leave out*). A row that needs a look is
+  tinted red with a red left edge; a waiting row has an amber edge. Chips *All / Open / Delivered*.
+- **Connect to a Dealership**: the Dealerships found on the network as cards (`.pl-host`: name, address in Roboto Mono, *yours* in green, the chosen one with
+  the accent edge), *Type an address instead…*; the password, *Remember it on this computer*, *Connect to CLUB-PC*, and the check step by step (`.pl-steps`:
+  ✓ green, ! red, … amber).
+- **Older connections and repair** (`.pl-older`): a dashed fold at the bottom.
+
+```css
+html .pl-hero{padding:22px 24px;border-radius:18px;background:radial-gradient(130% 140% at 0% 0%,color-mix(in srgb,#3ecf8e 11%,var(--panel)),var(--panel) 62%)}
+html .pl-hero h1{font:800 italic 40px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .pl-pill{border-radius:999px;font:600 12px 'SF Roboto Mono',Consolas,monospace;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}
+html .pl-card{border-radius:14px;box-shadow:inset 0 3px 0 var(--c)}
+html .pl-tr.att{background:color-mix(in srgb,#e5484d 6%,var(--panel));box-shadow:inset 3px 0 0 #e5484d}
+html .pl-host.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+```
+
+---
+
 ## Widget Workshop
 
 The Widget Builder (`renderer/widgetworkshop.js` makes the list, the Add to a layout window and the Simple / Canvas switch; `renderer/widgetlinks.js` works out
@@ -2262,3 +2294,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Timing Desk | New: Timing Hardware as a desk (big card, live lanes, interface cards, Connect & use, parts as tabs, Diagnostics, Find the lane order, Forgotten devices); the dropdown, the banner, Other and the oXigen page are gone |
 | 2026-11 | Commentary Booth | New: the audio set editor opens on the voice (On air, Plays on, Hear it) and the presets as cards; Driver names; Play a sample race; the editor keeps its place |
 | 2026-11 | Widget Workshop | New: the Widget Builder list as cards on a race screen with Used in and Add to a layout; saving updates the layouts that use it; Simple / Canvas switch; eight lanes and Play a race; "and" conditions; the Fuel Strip |
+| 2026-11 | Paddock Pit Lane | New: Dealership Mode and Shared Library as one Paddock page: a headline with Fix it, three equal cards, the results in plain words, Dealerships found as cards, the connection check step by step, the password remembered; the Dealership Sheet folded under Older connections and repair |

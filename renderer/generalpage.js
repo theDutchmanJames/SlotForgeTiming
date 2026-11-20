@@ -588,6 +588,7 @@ const SettingsRail = (() => {
             );
         parts.forEach(p => {
           if (p.closest && p.closest('.pp-frame')) return; // (the Parallel Port page keeps its own controls)
+          if (p.matches && (p.matches('.pl') || p.querySelector(':scope > .pl'))) return; // (2.4.0: the Paddock Pit Lane is drawn as it is)
           if (SettingsSheet.fresh(p)) SettingsSheet.convert(p);
           SettingsSheet.folds(p);
           // the short words that open a section become its Page Note: the section's picture and those words

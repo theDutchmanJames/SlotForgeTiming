@@ -6864,3 +6864,74 @@ html .wk-mini{position:relative;width:100%;border-radius:6px;background:#0b0e14;
 html .wk-mini i{position:absolute;border-radius:2px;background:rgba(255,255,255,.22)}
 html .wk-mini i.me{background:var(--accent)}
 html .wk-note{margin:10px 0 0;font-size:12.5px}
+/* Paddock Pit Lane (2.4.0, SlotForgeRestyle.md "Paddock Pit Lane"): App Settings › Connections › Paddock on one page */
+html .pl{display:grid;gap:16px;color:var(--ink)}
+html .pl-k{font:600 11px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .pl-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:22px 24px;border:1px solid var(--line);border-radius:18px;background:radial-gradient(130% 140% at 0% 0%,color-mix(in srgb,#3ecf8e 11%,var(--panel)),var(--panel) 62%)}
+html .pl-hero.fix{background:radial-gradient(130% 140% at 0% 0%,color-mix(in srgb,#f2b705 11%,var(--panel)),var(--panel) 62%)}
+html .pl-hero.off{background:var(--panel)}
+html .pl-hero h1{margin:4px 0 6px;font:800 italic 40px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+html .pl-hero p{margin:0;color:var(--muted);font-size:14px;max-width:62ch}
+html .pl-hero .pl-note{grid-column:1/-1;margin:-6px 0 0;color:var(--ink);font-size:13px}
+html .pl-hero .pl-note:empty{display:none}
+html .pl-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+html .pl-pill{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px;border-radius:999px;font:600 12px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.04em;white-space:nowrap;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+html .pl-pill i{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+html .pl-acts{display:flex;flex-direction:column;gap:8px;align-items:stretch;width:220px}
+html .pl-acts .btn{justify-content:center;gap:8px;height:40px}
+html .pl-acts small{color:var(--muted);font-size:11.5px;text-align:center;line-height:1.35}
+html .pl-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+html .pl-card{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:inset 0 3px 0 var(--c)}
+html .pl-top{display:flex;align-items:center;gap:10px}
+html .pl-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+html .pl-card h3{margin:0;font:800 italic 20px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .pl-st{font:600 12px 'SF Roboto Mono',Consolas,monospace;color:var(--c);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .pl-big{display:flex;gap:18px}
+html .pl-big div{display:flex;flex-direction:column}
+html .pl-big b{font:600 28px/1 'SF Roboto Mono',Consolas,monospace}
+html .pl-big small{color:var(--muted);font-size:11.5px;margin-top:3px}
+html .pl-card p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.4}
+html .pl-row{display:flex;gap:6px;flex-wrap:wrap}
+html .pl-card .pl-row{margin-top:auto}
+html .pl .pl-panel{margin:0;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+html .pl-ph{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+html .pl-ph h2{margin:0;font:800 italic 22px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .pl-chips{margin-left:auto}
+html .pl-tr{display:grid;grid-template-columns:110px minmax(0,1fr) 140px 300px;gap:14px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--line)}
+html .pl-tr:last-child{border-bottom:0}
+html .pl-d{font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .pl-tr b{display:block;font-size:14px}
+html .pl-tr small{color:var(--muted);font-size:12px}
+html .pl-a{display:flex;gap:6px;justify-content:flex-end}
+html .pl-tr.att{background:color-mix(in srgb,#e5484d 6%,var(--panel));box-shadow:inset 3px 0 0 #e5484d}
+html .pl-tr.wait{box-shadow:inset 3px 0 0 #f2b705}
+html .pl-empty{margin:0;padding:14px 18px;color:var(--muted);font-size:13px}
+html .pl-moreline{display:flex;justify-content:center;padding:10px}
+html .pl-conn{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;padding:18px}
+html .pl-hosts{display:grid;gap:8px;margin-top:8px}
+html .pl-hosts .pl-empty{padding:4px 0}
+html .pl-host{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+html .pl-host.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+html .pl-host b{display:block}
+html .pl-host small{font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .pl-host em{margin-left:auto;font:600 11px 'SF Roboto Mono',Consolas,monospace;font-style:normal;text-transform:uppercase;color:#3ecf8e}
+html .pl-host i{margin-left:auto;color:#3ecf8e}
+html .pl-host em+i{margin-left:8px}
+html .pl-side{display:grid;gap:12px;align-content:start}
+html .pl-side .btn.primary{justify-self:start}
+html .pl-f{display:grid;gap:6px;font-size:13px;font-weight:600}
+html .pl-f[hidden]{display:none}
+html .pl-f input{height:38px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit}
+html .pl-chk{display:flex;align-items:center;gap:8px;font-size:13px}
+html .pl-steps{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+html .pl-steps li{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+html .pl-steps li i{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;font-style:normal;font-size:11px;background:color-mix(in srgb,var(--c,#8a94a6) 18%,transparent);color:var(--c,#8a94a6)}
+html .pl-steps li.ok{--c:#3ecf8e;color:var(--ink)}
+html .pl-steps li.bad{--c:#e5484d;color:var(--ink)}
+html .pl-steps li.busy{--c:#f2b705}
+html .pl-fine{margin:0;color:var(--muted);font-size:12px}
+html .pl-link{padding:0;border:0;background:none;color:var(--accent-text);font:inherit;text-decoration:underline;cursor:pointer}
+html .pl-older{border:1px dashed var(--line);border-radius:12px;padding:12px 16px;color:var(--muted)}
+html .pl-older summary{cursor:pointer;font-weight:600;color:var(--ink)}
+html .pl-older>p{margin:8px 0}
+@media (max-width:1000px){html .pl-trio{grid-template-columns:1fr}html .pl-hero{grid-template-columns:1fr}html .pl-acts{width:auto}html .pl-tr{grid-template-columns:minmax(0,1fr) auto}html .pl-tr .pl-d{grid-column:1/-1}html .pl-a{grid-column:1/-1;justify-content:flex-start}html .pl-conn{grid-template-columns:1fr}}

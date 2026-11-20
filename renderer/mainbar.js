@@ -186,7 +186,7 @@ const MainBar = (() => {
       state.tab = 'settings';
       state.settingsSub = { hardware: 'hardware', connections: 'network', qr: 'network', backup: 'transfer' }[go] || 'general';
       if (go === 'backup' && typeof folderClosed !== 'undefined') folderClosed.delete('transfer:auto'); // (its folder is open)
-      if (go === 'connections' && typeof connectionsTab !== 'undefined') connectionsTab = 'library';
+      if (go === 'connections' && typeof connectionsTab !== 'undefined') connectionsTab = 'paddock';
       if (go === 'hardware' && typeof unusedTimingConnected === 'function') {
         const first = unusedTimingConnected(state.settings)[0];
         if (first) state.hwSub = first;

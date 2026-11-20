@@ -518,6 +518,21 @@ class Paddock {
       this.busy = false;
     }
   }
+  // (2.4.0, "Paddock Pit Lane") is the Dealership still there? A status request (no results are sent); the reconnect timer asks every minute
+  async ping() {
+    const { connection: c } = await this.connection();
+    if (!c || c.mode === 'local' || !this.code || this.busy || this.stopped || this.isRacing?.()) return this.connected;
+    try {
+      await this.hostRequest(c.address, '/v1/status', this.code);
+      this.connected = true;
+      this.error = '';
+    } catch (e) {
+      this.connected = false;
+      this.error = e.message;
+      if (['UNAUTHENTICATED', 'DATABASE_MISMATCH'].includes(e.code)) this.code = '';
+    }
+    return this.connected;
+  }
   disconnect(forget = false) {
     return this.exclusive(async () => {
       this.closeLocalEvents?.();

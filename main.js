@@ -1,4 +1,32 @@
-const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, safeStorage } = require('electron');
+// (2.4.0, "Paddock Pit Lane") the Dealership password remembered on this computer (paddock-keep.js), and reconnecting by itself every minute while
+// the Dealership is offline (never during a race)
+let paddockKeepStore = null,
+  paddockReconnectTimer = null;
+function paddockKeep() {
+  if (!paddockKeepStore)
+    paddockKeepStore = new (require('./paddock-keep').PaddockKeep)(path.join(app.getPath('userData'), 'paddock-dealership.json'), {
+      available: () => safeStorage.isEncryptionAvailable(),
+      encrypt: text => safeStorage.encryptString(text),
+      decrypt: buf => safeStorage.decryptString(buf)
+    });
+  return paddockKeepStore;
+}
+function paddockKeepState() {
+  return { canRemember: paddockKeep().available(), remembered: paddockKeep().has() };
+}
+function paddockAutoReconnect() {
+  clearInterval(paddockReconnectTimer);
+  const go = () => {
+    if (!paddock || paddock.stopped || !paddockKeep().has()) return;
+    require('./paddock-keep')
+      .reconnect(paddock, paddockKeep(), () => require('./paddock').discover())
+      .catch(() => {});
+  };
+  setTimeout(go, 5000).unref?.();
+  paddockReconnectTimer = setInterval(go, 60000);
+  paddockReconnectTimer.unref?.();
+}
 const fs = require('fs');
 const path = require('path');
 let Database, schema, createServer, QR, transfer, backup, LiveShare, parallel;
@@ -477,6 +505,7 @@ async function openStorageAndPaddock() {
   ipcMain.handle('schema', () => schema);
   paddock = sqliteRuntime ? sqliteRuntime.createPaddock() : new (require('./paddock').Paddock)(db);
   paddock.isRacing = () => !!live.dyn && ['countdown', 'running', 'paused', 'between'].includes(live.dyn.phase);
+  paddockAutoReconnect();
   if (require('./shared-library-activation').enabled) {
     const descriptor = require('./integration/timing-legacy/index.cjs').describe(app.getPath('userData'));
     const sourceId = await paddock.storage.localRead({ kind: 'source' });
@@ -715,13 +744,34 @@ function registerLibraryHandlers() {
     paddockIdle(e);
     return paddock.acceptLocalTransfer(id, expected);
   });
-  ipcMain.handle('paddock:connect', (e, input) => {
+  ipcMain.handle('paddock:connect', async (e, input) => {
     paddockIdle(e);
-    return paddock.connect(input);
+    const status = await paddock.connect(input);
+    // (2.4.0, "Paddock Pit Lane") Remember it on this computer: the password kept encrypted by Windows, for reconnecting by itself
+    if (input && input.mode !== 'local' && typeof input.remember === 'boolean') {
+      if (input.remember) paddockKeep().remember(status.connection, input.code);
+      else paddockKeep().forget();
+    }
+    return { ...status, remembered: paddockKeep().has(status.connection?.databaseId) };
   });
-  ipcMain.handle('paddock:disconnect', (e, forget) => {
+  ipcMain.handle('paddock:disconnect', async (e, forget) => {
     paddockIdle(e);
-    return paddock.disconnect(forget);
+    const status = await paddock.disconnect(forget);
+    if (forget) paddockKeep().forget();
+    return status;
+  });
+  // (2.4.0) is a password remembered, can it be (Windows encryption), and connect again now (Fix it)
+  ipcMain.handle('paddock:keep', async (e, action) => {
+    paddockOwner(e);
+    if (action === 'forget') paddockKeep().forget();
+    if (action === 'reconnect') {
+      paddockIdle(e);
+      return {
+        ...(await require('./paddock-keep').reconnect(paddock, paddockKeep(), () => require('./paddock').discover())),
+        ...paddockKeepState()
+      };
+    }
+    return paddockKeepState();
   });
   ipcMain.handle('paddock:browse', e => {
     paddockIdle(e);

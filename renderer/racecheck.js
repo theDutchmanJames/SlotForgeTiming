@@ -127,7 +127,11 @@
             ? 'Ready to start'
             : '';
     sections[1].note = timing[0] && timing[0].level === 'ok' ? 'Counting laps' : timing.length ? 'Not counting laps' : '';
-    sections[2].note = lib ? lib.text.replace(/ waiting for the shared library$/, ' to send') : sections[2].level === 'ok' ? 'Shared' : '';
+    sections[2].note = lib
+      ? lib.text.replace(/ waiting (for the shared library|in Paddock)$/, ' to send')
+      : sections[2].level === 'ok'
+        ? 'Shared'
+        : '';
     // (sharing that is off is grey, not red: it is a choice)
     return {
       sections,
