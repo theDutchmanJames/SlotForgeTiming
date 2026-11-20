@@ -216,6 +216,8 @@
     "renderer/pitlaneview.js",
     "paddock-keep.js",
     "tests/pitlane.test.js",
+    "renderer/calcbench.js",
+    "tests/calcbench.test.js",
     "renderer/report.js",
     "renderer/resources.js",
     "renderer/resourceui.js",

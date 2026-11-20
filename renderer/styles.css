@@ -6935,3 +6935,110 @@ html .pl-older{border:1px dashed var(--line);border-radius:12px;padding:12px 16p
 html .pl-older summary{cursor:pointer;font-weight:600;color:var(--ink)}
 html .pl-older>p{margin:8px 0}
 @media (max-width:1000px){html .pl-trio{grid-template-columns:1fr}html .pl-hero{grid-template-columns:1fr}html .pl-acts{width:auto}html .pl-tr{grid-template-columns:minmax(0,1fr) auto}html .pl-tr .pl-d{grid-column:1/-1}html .pl-a{grid-column:1/-1;justify-content:flex-start}html .pl-conn{grid-template-columns:1fr}}
+/* Engineer's Bench (2.4.0, SlotForgeRestyle.md "Engineer's Bench"): App Settings › Calculations as Try it (nothing is saved) beside Your rules, then the formulas */
+html .calc-content.cb-on{display:grid;gap:16px;color:var(--ink)}
+html .calc-content.cb-on .cb-k{font:600 11px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .calc-content.cb-on>header.cb-hd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end;margin:0;padding:20px 22px;border:1px solid var(--line);border-radius:18px;background:radial-gradient(130% 140% at 0% 0%,color-mix(in srgb,var(--cb) 12%,var(--panel)),var(--panel) 62%)}
+html .calc-content.cb-on .cb-hd h1{margin:4px 0 6px;font:800 italic 38px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .calc-content.cb-on .cb-hd p{margin:0;color:var(--muted);font-size:14px;max-width:64ch}
+html .calc-content.cb-on .cb-used{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+html .calc-content.cb-on .cb-chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;background:var(--bg)}
+html .calc-content.cb-on .cb-chip i{width:7px;height:7px;border-radius:50%;background:var(--cb)}
+html .calc-content.cb-on .cb-tools{display:flex;align-items:center;gap:8px}
+html .calc-content.cb-on .cb-find{position:relative}
+html .calc-content.cb-on .cb-find input{width:240px;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+html .calc-content.cb-on .cb-found{position:absolute;right:0;top:40px;z-index:30;display:grid;width:340px;max-height:360px;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 16px 40px rgba(0,0,0,.35)}
+html .calc-content.cb-on .cb-found[hidden]{display:none}
+html .calc-content.cb-on .cb-found button{display:grid;gap:2px;padding:8px 10px;border:0;border-radius:8px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+html .calc-content.cb-on .cb-found button:hover,html .calc-content.cb-on .cb-found button:focus-visible{background:var(--bg)}
+html .calc-content.cb-on .cb-found small{color:var(--muted);font-size:11.5px}
+html .calc-content.cb-on .cb-found p{margin:6px 8px;color:var(--muted);font-size:12.5px}
+html .calc-content.cb-on .cb-bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+html .calc-content.cb-on .cb-try{border:1.5px dashed color-mix(in srgb,var(--cb) 45%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--bg) 70%,var(--panel));overflow:hidden;min-width:0}
+html .calc-content.cb-on .cb-tryh,html .calc-content.cb-on .cb-rulh,html .calc-content.cb-on .cb-howh{display:flex;align-items:center;gap:10px;padding:12px 16px}
+html .calc-content.cb-on .cb-tryh{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--cb) 10%,transparent) 0 10px,transparent 10px 20px);border-bottom:1px dashed color-mix(in srgb,var(--cb) 35%,var(--line))}
+html .calc-content.cb-on :is(.cb-tryh,.cb-rulh,.cb-howh) h2{margin:0;font:800 italic 22px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .calc-content.cb-on .cb-tag{margin-left:auto;font:600 11px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--cb);border:1px solid color-mix(in srgb,var(--cb) 50%,transparent);border-radius:999px;padding:3px 9px}
+html .calc-content.cb-on .cb-tryb{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:16px}
+html .calc-content.cb-on .cb-tryb>*{min-width:0}
+html .calc-content.cb-on .cb-none{margin:0;color:var(--muted);font-size:13px}
+html .calc-content.cb-on .cb-src{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+html .calc-content.cb-on .cb-src select{height:30px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px;max-width:100%}
+html .calc-content.cb-on .cb-seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:999px;background:var(--bg)}
+html .calc-content.cb-on .cb-seg button{height:26px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
+html .calc-content.cb-on .cb-seg button.on{background:var(--ink);color:var(--panel);font-weight:600}
+html .calc-content.cb-on .cb-bars{display:grid;gap:4px}
+html .calc-content.cb-on .cb-barrow{position:relative;display:flex;align-items:flex-end;gap:4px;height:110px;padding:0 4px;border-bottom:1px solid var(--line)}
+html .calc-content.cb-on .cb-barrow span{flex:1;min-width:3px;border-radius:4px 4px 0 0;background:color-mix(in srgb,var(--muted) 45%,transparent)}
+html .calc-content.cb-on .cb-barrow span.out{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 35%,transparent) 0 4px,transparent 4px 8px)}
+html .calc-content.cb-on .cb-barrow span.new{background:var(--cb)}
+html .calc-content.cb-on .cb-barrow em{position:absolute;left:0;right:0;border-top:2px dashed #3ecf8e;pointer-events:none}
+html .calc-content.cb-on .cb-barrow em small{position:absolute;right:4px;top:-18px;font:600 11px 'SF Roboto Mono',Consolas,monospace;color:#3ecf8e;font-style:normal}
+html .calc-content.cb-on .cb-barx{display:flex;gap:4px;padding:0 4px;font:500 10.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .calc-content.cb-on .cb-barx span{flex:1;min-width:0;text-align:center;overflow:visible;white-space:nowrap}
+html .calc-content.cb-on .cb-barx span.new{color:var(--cb)}
+html .calc-content.cb-on .cb-left{color:var(--muted);font-size:11.5px}
+html .calc-content.cb-on .cb-slide{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;font-size:13px;font-weight:600}
+html .calc-content.cb-on .cb-slide input{accent-color:var(--cb)}
+html .calc-content.cb-on .cb-slide b{font:600 13px 'SF Roboto Mono',Consolas,monospace}
+html .calc-content.cb-on .cb-out{display:grid;gap:8px;padding:14px 16px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+html .calc-content.cb-on .cb-out h3{margin:0;font:800 italic 30px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .calc-content.cb-on .cb-out h3.cb-push{color:var(--cb)}
+html .calc-content.cb-on .cb-out h3.cb-save{color:#3ecf8e}
+html .calc-content.cb-on .cb-gauge{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,var(--cb),color-mix(in srgb,var(--cb) 30%,transparent) 45%,color-mix(in srgb,#3ecf8e 30%,transparent) 55%,#3ecf8e)}
+html .calc-content.cb-on .cb-gauge i{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--ink);transform:translate(-50%,-50%)}
+html .calc-content.cb-on .cb-gl{display:flex;justify-content:space-between;font:500 11px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .calc-content.cb-on .cb-fx{display:flex;flex-wrap:wrap;gap:8px}
+html .calc-content.cb-on .cb-fx span{display:inline-flex;gap:6px;align-items:baseline;padding:6px 10px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:12.5px}
+html .calc-content.cb-on .cb-fx b{font:600 16px 'SF Roboto Mono',Consolas,monospace}
+html .calc-content.cb-on .cb-vs{margin:0;font-size:12.5px;color:var(--muted)}
+html .calc-content.cb-on .cb-try .calc-lab,html .calc-content.cb-on .cb-try .calc-example{margin:0;padding:0;border:0;background:none}
+html .calc-content.cb-on .cb-try .calc-lab>summary{padding:0 0 4px;font:800 italic 18px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .calc-content.cb-on .cb-try .calc-lab>p,html .calc-content.cb-on .cb-try .calc-example>p{margin:0 0 8px;font-size:12px;color:var(--muted)}
+html .calc-content.cb-on .cb-try .calc-example h4{margin:0 0 6px;font-size:13px}
+html .calc-content.cb-on .calc-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:8px 0}
+html .calc-content.cb-on .calc-fields label,html .calc-content.cb-on .calc-record>label{display:grid;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink)}
+html .calc-content.cb-on .calc-fields :is(input,select),html .calc-content.cb-on .calc-record>label select{height:32px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px;min-width:0}
+html .calc-content.cb-on .calc-fields input[type=number]{font-family:'SF Roboto Mono',Consolas,monospace}
+html .calc-content.cb-on .cb-try output.calc-preview{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html .calc-content.cb-on .cb-try output.calc-preview>span{display:grid;gap:4px;flex:1 1 140px;font-size:12px;color:var(--muted)}
+html .calc-content.cb-on .cb-try output.calc-preview strong{font:600 18px 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+html .calc-content.cb-on .cb-try output.calc-preview>p{flex:1 1 100%;margin:0;font-size:12.5px}
+html .calc-content.cb-on .cb-also{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;font-size:12px}
+html .calc-content.cb-on .cb-also>b{flex:1 1 100%;font:600 11px 'SF Roboto Mono',Consolas,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+html .calc-content.cb-on .cb-also>span{display:grid;gap:2px;flex:1 1 120px;color:var(--muted)}
+html .calc-content.cb-on .cb-also>p{flex:1 1 100%;margin:0}
+html .calc-content.cb-on .cb-cmp{grid-column:1/-1}
+html .calc-content.cb-on .cb-rules{position:sticky;top:12px;display:flex;flex-direction:column;max-height:calc(100vh - 110px);border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:inset 3px 0 0 var(--cb);overflow:hidden;min-width:0}
+html .calc-content.cb-on .cb-rulh{border-bottom:1px solid var(--line)}
+html .calc-content.cb-on .cb-rulh .cb-k{margin-left:auto}
+html .calc-content.cb-on .cb-rulb{display:grid;gap:0;overflow:auto;padding:0 0 4px}
+html .calc-content.cb-on .cb-rulb>:is(form,section,div){margin:0;padding:14px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none}
+html .calc-content.cb-on .cb-rulb h4{margin:0 0 4px;font-size:14px}
+html .calc-content.cb-on .cb-rulb p{margin:4px 0;font-size:12px;color:var(--muted)}
+html .calc-content.cb-on .cb-rulb .calc-record>label{margin:0 0 6px}
+html .calc-content.cb-on .cb-rulb .calc-record-form{margin:0}
+html .calc-content.cb-on .cb-rulb form>button:not([type=button]),html .calc-content.cb-on .cb-rulb .calc-record-form>button,html .calc-content.cb-on .cb-rulb output[data-preview]{display:none}
+html .calc-content.cb-on .cb-rulb .calc-save:empty{display:none}
+html .calc-content.cb-on .cb-rulb .calc-save{display:block;margin-top:6px;font-size:12px;color:#f2b705}
+html .calc-content.cb-on .cb-rulb .calc-actions,html .calc-content.cb-on .cb-routes{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;margin-top:6px}
+html .calc-content.cb-on .cb-rulb .calc-actions .btn,html .calc-content.cb-on .cb-routes .btn{height:28px;padding:0 10px;font-size:12px}
+html .calc-content.cb-on .cb-routes{padding:12px 16px}
+html .calc-content.cb-on .cb-save{display:flex;align-items:center;gap:8px;margin-top:auto;padding:12px 16px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 60%,var(--panel));font-size:13px}
+html .calc-content.cb-on .cb-save [data-cb-state]{flex:1;min-width:0;color:var(--muted)}
+html .calc-content.cb-on .cb-save .cb-dot{width:8px;height:8px;border-radius:50%;background:#3ecf8e;flex:none}
+html .calc-content.cb-on .cb-save.dirty .cb-dot{background:#f2b705}
+html .calc-content.cb-on .cb-save.dirty [data-cb-state]{color:var(--ink)}
+html .calc-content.cb-on .cb-how{border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+html .calc-content.cb-on .cb-howh{border-bottom:1px solid var(--line)}
+html .calc-content.cb-on .cb-intro{margin:12px 16px 0;max-width:80ch;font-size:13px;color:var(--muted)}
+html .calc-content.cb-on .cb-fm{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:14px 16px}
+html .calc-content.cb-on .cb-fm .calc-equation{display:grid;gap:8px;align-content:start;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);transition:box-shadow .3s}
+html .calc-content.cb-on .cb-fm .calc-equation h4{margin:0;font-size:14px}
+html .calc-content.cb-on .cb-fm .calc-equation code{display:block;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,#000 22%,var(--panel));font:500 12px/1.45 'SF Roboto Mono',Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+html .calc-content.cb-on .cb-fm .calc-equation p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.4}
+html .calc-content.cb-on .cb-fm .calc-worked{padding:0;border:0;background:none;color:var(--ink)!important}
+html .calc-content.cb-on .cb-fm .calc-worked b{display:block;margin-bottom:2px;font:600 10.5px 'SF Roboto Mono',Consolas,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--cb)}
+html .calc-content.cb-on .cb-fm .calc-worked span:empty::before{content:'Change Try it to see your numbers here.';color:var(--muted)}
+html .calc-content.cb-on .cb-flash{box-shadow:0 0 0 3px var(--cb)}
+@media (max-width:1100px){html .calc-content.cb-on .cb-bench{grid-template-columns:1fr}html .calc-content.cb-on .cb-rules{position:static;max-height:none}html .calc-content.cb-on>header.cb-hd{grid-template-columns:1fr}html .calc-content.cb-on .cb-find input{width:100%}}

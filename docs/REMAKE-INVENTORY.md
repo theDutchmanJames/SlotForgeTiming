@@ -160,7 +160,7 @@ Verdicts here are about the design only: **Design remake** · **Design rework** 
 | Race Setup editor | Design remake | Race Settings is one flat list of 13 identical rows; Track Call spread over 4 rows; a system is picked in a dropdown and then switched on again in a pill row; a native dropdown plus a duplicate track card; long engineering labels |
 | Slotcars, Drivers lists | Design remake | Letter tiles (see 4); "Archive…" in red 48 times; a red trash on every driver |
 | Car editor | Design remake | About 30 fields of equal weight in a long modal; the footer cut off; "Reload current record", "Save history"; 6-7 lines of help under fields |
-| Calculations | Design remake | About 2600 px of demo, prose, a "try it" sandbox and real settings mixed, with two small save buttons; sandbox and real settings look identical |
+| Calculations | Design remake · **Done (2.4.0, "Engineer's Bench")** | About 2600 px of demo, prose, a "try it" sandbox and real settings mixed, with two small save buttons; sandbox and real settings look identical |
 | Home | Design rework | Start a Race is the right centrepiece, but the race picker looks like a heading, the helmet art squeezes the driver and car pickers, and "No timing hardware chosen" has the same weight as "34 drivers". (The title showed "TRACK" doubled behind it in the capture; check on a real screen.) |
 | Tracks | Design rework | Letter tiles for 9 tracks (two are "C") where a layout drawing would say it at once; an overloaded toolbar |
 | Track editor | Design rework | Fine structure; Length and Lanes is a wall of "(optional)" and π maths |

@@ -1,9 +1,35 @@
 // Calculations uses the same saved systems and pure rules as race preparation.
 // Example inputs are local to this page; only labelled Save controls persist rules.
 const CalculationPage = (() => {
+  const EXAMPLE = { laps: '10, 10.2, 9.8, 12', lap: 9.5, target: 10 };
   let active = 'pace',
     selected = {},
-    example = { laps: '10, 10.2, 9.8, 12', lap: 9.5, target: 10 };
+    example = { ...EXAMPLE };
+  // (2.4.0, SlotForgeRestyle.md "Engineer's Bench") the bench: unsaved values of a saved system (Try it follows them), the system to compare with per
+  // example, the source of the example laps (typed, or a real race), the refs of the last drawing, and the index to find a formula
+  let drafts = {},
+    compareWith = {},
+    lapSource = { kind: 'example', race: '', driver: '', races: null, laps: null, left: [] },
+    lastRefs = {},
+    findIndex = null;
+  // the examples that use a saved system (to compare with another one)
+  const LAB_ENTITY = { wear: 'pushsavesystems', penalty: 'penaltysystems', safety: 'safetycarsystems', scoring: 'championships' };
+  // the formulas that show the numbers of Try it in their example
+  const LIVE = {
+    'Pace difference': 'pace',
+    'Push & Save curve': 'curve',
+    'Tyre wear this lap': 'wear',
+    'Normal service order': 'service',
+    'Service Stop release': 'release',
+    'Penalty points and tiers': 'penalty',
+    'Combined fuel effects': 'combined',
+    'Safety Car': 'safety',
+    'Resource balance': 'resources',
+    'Championship points': 'drops',
+    'Fuel Range widget': 'range',
+    'Tyre life estimate': 'life',
+    'Fractional-lap gap': 'gap'
+  };
   const sections = [
     ['pace', 'Pace benchmarks', 'Push & Save · Tyre Wear', 'var(--c-ps)'],
     ['fuel', 'Fuel & tyres', 'Consumption · grip · stacking', 'var(--c-fuel)'],
@@ -27,7 +53,11 @@ const CalculationPage = (() => {
     'tracks'
   ];
   const formula = (title, equation, text, worked) =>
-    `<article class="calc-equation"><h4>${esc(title)}</h4><code>${esc(equation)}</code><p>${esc(text)}</p>${worked ? `<p class="calc-worked"><b>Example</b> ${esc(worked)}</p>` : ''}</article>`;
+    `<article class="calc-equation" data-formula="${esc(title)}"><h4>${esc(title)}</h4><code>${esc(equation)}</code><p>${esc(text)}</p>${
+      worked || LIVE[title]
+        ? `<p class="calc-worked"${LIVE[title] ? ` data-worked="${LIVE[title]}"` : ''}><b>${LIVE[title] ? 'With your numbers' : 'Example'}</b> <span>${esc(worked || '')}</span></p>`
+        : ''
+    }</article>`;
   const input = (key, label, value, max = 1000) =>
     `<label>${esc(label)}<input type="number" data-policy="${key}" min="0" max="${max}" step="1" value="${value}" required></label>`;
   const methods = current =>
@@ -58,7 +88,16 @@ const CalculationPage = (() => {
   }
   const trials = {};
   function lab(kind, title, fields, note) {
-    return `<details class="calc-lab" open data-lab="${kind}"><summary>${title}</summary><p class="muted">Preview only · ${note}</p><div class="calc-fields">${fields}</div><output class="calc-preview" aria-live="polite"></output></details>`;
+    const ent = LAB_ENTITY[kind],
+      rows = (ent && lastRefs[ent]) || [];
+    const cmp =
+      rows.length > 1
+        ? `<label class="cb-cmp">Compare with<select data-cb-compare="${kind}"><option value="">Nothing</option>${rows
+            .filter(r => r.id !== selected[ent])
+            .map(r => `<option value="${esc(r.id)}"${compareWith[kind] === r.id ? ' selected' : ''}>${esc(titleOf(ent, r))}</option>`)
+            .join('')}</select></label>`
+        : '';
+    return `<details class="calc-lab" open data-lab="${kind}"><summary>${title}</summary><p class="muted">${note}</p><div class="calc-fields">${fields}${cmp}</div><output class="calc-preview" aria-live="polite"></output></details>`;
   }
   function laboratories() {
     if (active === 'pits')
@@ -125,6 +164,18 @@ const CalculationPage = (() => {
           number('temperature', 'Temperature multiplier', 1, 1, 3, 0.1),
         'Uses the selected Push & Save System below; base wear, weather and temperature are example inputs. The example benchmark is supplied explicitly, so history learning is not simulated.'
       );
+    if (active === 'estimates')
+      return lab(
+        'estimate',
+        'Try the estimates',
+        number('fuelLeft', 'Fuel left · L', 30, 0, 10000, 0.1) +
+          number('used', 'Average use · L per lap', 2.5, 0.01, 1000, 0.01) +
+          number('life', 'Tyre life left · %', 60, 0, 100, 1) +
+          number('wear', 'Base wear · % per lap', 2, 0.01, 100, 0.01) +
+          number('gap', 'Time gap to the leader · seconds', 2, 0, 3600, 0.01) +
+          number('pace', 'Leader pace · seconds', 10, 0.1, 3600, 0.01),
+        'Example values; in a race they come from the laps already driven and the saved systems.'
+      );
     if (active === 'effects')
       return lab(
         'safety',
@@ -173,7 +224,10 @@ const CalculationPage = (() => {
     return '';
   }
   function wireTools(box, refs) {
-    const record = entity => refs[entity]?.find(r => r.id === selected[entity]) || refs[entity]?.[0];
+    const record = (entity, draft = true) => {
+      const row = refs[entity]?.find(r => r.id === selected[entity]) || refs[entity]?.[0];
+      return row && draft && drafts[entity] ? { ...row, ...drafts[entity] } : row;
+    };
     box.querySelectorAll('[data-extra]').forEach(form => {
       const read = () =>
         Object.fromEntries([...form.querySelectorAll('[name]')].map(el => [el.name, el.type === 'number' ? Number(el.value) : el.value]));
@@ -202,6 +256,7 @@ const CalculationPage = (() => {
     box.querySelectorAll('[data-lab]').forEach(panel => {
       const kind = panel.dataset.lab;
       for (const el of panel.querySelectorAll('[name]')) if (trials[kind]?.[el.name] !== undefined) el.value = trials[kind][el.name];
+      panel.querySelector('[data-cb-compare]')?.addEventListener('input', ev => (compareWith[kind] = ev.target.value));
       const draw = () => {
         if ([...panel.querySelectorAll('input')].some(el => !el.checkValidity() || el.value === '')) {
           panel.querySelector('output').textContent = 'Enter valid example values to see the calculation.';
@@ -213,130 +268,169 @@ const CalculationPage = (() => {
         trials[kind] = v;
         const n = x => Number(x.toFixed(3)),
           stat = (label, value) => `<span>${esc(label)}<strong>${esc(value)}</strong></span>`;
-        let html = '';
-        if (kind === 'service') {
-          const f = 1 - v.reduction / 100,
-            j = {
-              fuel: v.fuel * f,
-              repair: v.repair * f,
-              tyres: v.tyres * f,
-              repairAdd: ['add', 'repair'].includes(v.order),
-              tyreAdd: ['add', 'tyres'].includes(v.order)
-            };
-          const natural = Math.max(
-              j.fuel,
-              (j.repairAdd ? j.fuel : 0) + j.repair,
-              (j.tyreAdd ? Math.max(j.fuel, (j.repairAdd ? j.fuel : 0) + j.repair) : 0) + j.tyres
-            ),
-            duration = v.fixed === 'on' ? v.window : natural;
-          const ends = PitHold.servicePlan(j),
-            total = duration + v.penalty,
-            max = Math.max(1, total, natural);
-          html =
-            `<p><b>Work completes: ${n(natural)} s · timer release: ${n(total)} s (including ${n(v.penalty)} s penalty)</b></p>` +
-            ['fuel', 'repair', 'tyres', 'penalty']
-              .map((k, i) => {
-                const start = k === 'penalty' ? duration : ends[k] - j[k],
-                  end = k === 'penalty' ? total : ends[k];
-                return `<div class="calc-job"><span>${['Fuel', 'Repairs', 'Tyres', 'Penalty'][i]} · ${n(start)}–${n(end)} s</span><div><i style="margin-left:${(start / max) * 100}%;width:${((end - start) / max) * 100}%;background:${['var(--c-fuel)', 'var(--c-dmg)', 'var(--c-tyre)', 'var(--c-pen)'][i]}"></i></div></div>`;
-              })
-              .join('') +
-            `<p>${natural > total ? 'Some work remains unfinished at timer release; fuel is kept as refuelled, incomplete changes are not applied.' : 'Work retains its own duration; any remaining time is waiting.'}</p>`;
-        } else if (kind === 'combined') {
-          const lever = k => ({
-              use: ['all', 'use'].includes(v[k + 'Lever']),
-              rate: ['all', 'rate'].includes(v[k + 'Lever']),
-              tank: ['all', 'tank'].includes(v[k + 'Lever'])
-            }),
-            f = Bop.mix([
-              [v.bop, lever('bop')],
-              [-v.weather, lever('weather')],
-              [v.grip, lever('grip')]
-            ]);
-          html =
-            stat('Fuel per lap', `${n(v.use * f.use)} L · ×${n(f.use)}`) +
-            stat('Refuelling', `${n(v.rate * f.rate)} L/s · ×${n(f.rate)}`) +
-            stat('Tank', `${n(v.tank * f.tank)} L · ×${n(f.tank)}`) +
-            `<p>BoP ${v.bop > 0 ? '+' : ''}${v.bop}% · weather −${v.weather}% · tyres ${v.grip > 0 ? '+' : ''}${v.grip}%. Contributions add per enabled effect and stop at ±90%.</p>`;
-        } else if (kind === 'wear') {
-          const ps = record('pushsavesystems'),
-            p = ps ? PushSave.lapEffect(PushSave.clean(ps), { ref: v.reference * 1000, lapMs: v.lap * 1000, lapNo: 100 }) : { tyres: 1 },
-            total = v.base * v.weather * v.temperature * p.tyres;
-          html =
-            stat('Calculated wear this lap', `${n(total)} percentage points`) +
-            `<p>${v.base}% base × ${v.weather} weather × ${v.temperature} temperature × ${n(p.tyres)} Push & Save = <b>${n(total)}%</b>. Remaining life stops at 0%.</p><p>${ps ? 'Push & Save: ' + esc(ps.name) : 'No Push & Save selected: pace has no effect on wear.'}</p>`;
-        } else if (kind === 'penalty') {
-          const row = record('penaltysystems');
-          if (!row) html = '<p>Create a Penalty System below to try its ladder.</p>';
-          else {
-            const p = RaceEngine.penaltyConfig(row),
-              e = RaceEngine.penaltyEffects(p, v.points);
+        const compute = rec => {
+          let html = '';
+          const live = {};
+          if (kind === 'service') {
+            const f = 1 - v.reduction / 100,
+              j = {
+                fuel: v.fuel * f,
+                repair: v.repair * f,
+                tyres: v.tyres * f,
+                repairAdd: ['add', 'repair'].includes(v.order),
+                tyreAdd: ['add', 'tyres'].includes(v.order)
+              };
+            const natural = Math.max(
+                j.fuel,
+                (j.repairAdd ? j.fuel : 0) + j.repair,
+                (j.tyreAdd ? Math.max(j.fuel, (j.repairAdd ? j.fuel : 0) + j.repair) : 0) + j.tyres
+              ),
+              duration = v.fixed === 'on' ? v.window : natural;
+            const ends = PitHold.servicePlan(j),
+              total = duration + v.penalty,
+              max = Math.max(1, total, natural);
             html =
-              stat('Time total', `${n(RaceEngine.penaltyMs(p, v.points) / 1000)} s`) +
-              stat('Scoring laps deducted', e.laps) +
-              stat('Unserved tier requires', `${e.pit} s in pits`) +
-              `<p>${p.dq && v.points >= p.dq ? 'Point-limit disqualification applies.' : 'Point-limit disqualification not reached.'} Testing ${esc(row.name)}.</p>`;
-          }
-        } else if (kind === 'safety') {
-          const row = record('safetycarsystems');
-          if (!row) html = '<p>Create a Safety Car System below to try its rules.</p>';
-          else {
-            const c = SafetyCar.clean(row),
-              failed = c.target > 0 && v.lap * 1000 < c.target;
+              `<p><b>Work completes: ${n(natural)} s · timer release: ${n(total)} s (including ${n(v.penalty)} s penalty)</b></p>` +
+              ['fuel', 'repair', 'tyres', 'penalty']
+                .map((k, i) => {
+                  const start = k === 'penalty' ? duration : ends[k] - j[k],
+                    end = k === 'penalty' ? total : ends[k];
+                  return `<div class="calc-job"><span>${['Fuel', 'Repairs', 'Tyres', 'Penalty'][i]} · ${n(start)}–${n(end)} s</span><div><i style="margin-left:${(start / max) * 100}%;width:${((end - start) / max) * 100}%;background:${['var(--c-fuel)', 'var(--c-dmg)', 'var(--c-tyre)', 'var(--c-pen)'][i]}"></i></div></div>`;
+                })
+                .join('') +
+              `<p>${natural > total ? 'Some work remains unfinished at timer release; fuel is kept as refuelled, incomplete changes are not applied.' : 'Work retains its own duration; any remaining time is waiting.'}</p>`;
+            live.service = `Fuel ${n(j.fuel)} s, repairs ${n(j.repair)} s, tyres ${n(j.tyres)} s → the work is done at ${n(natural)} s.`;
+            live.release =
+              v.fixed === 'on'
+                ? `Timer ${n(v.window)} s + penalty ${n(v.penalty)} s → released at ${n(total)} s.`
+                : `No timer: released when the work is done (${n(natural)} s) + ${n(v.penalty)} s penalty = ${n(total)} s.`;
+          } else if (kind === 'combined') {
+            const lever = k => ({
+                use: ['all', 'use'].includes(v[k + 'Lever']),
+                rate: ['all', 'rate'].includes(v[k + 'Lever']),
+                tank: ['all', 'tank'].includes(v[k + 'Lever'])
+              }),
+              f = Bop.mix([
+                [v.bop, lever('bop')],
+                [-v.weather, lever('weather')],
+                [v.grip, lever('grip')]
+              ]);
             html =
-              stat('Full-yellow lap', failed ? 'Too fast' : c.target ? 'Target met' : 'No target enforced') +
-              stat('Penalty points', failed ? c.points : 0) +
-              stat('Service work', `${n(v.service * (1 - c.pit / 100))} s`) +
-              `<p>Using ${esc(row.name)}. The service reduction is fixed at pit entry.</p>`;
-          }
-        } else if (kind === 'resources') {
-          const sets = Math.max(0, v.sets - 1),
-            changes = Math.min(sets, v.changes),
-            damage = Math.min(v.credits, v.damage),
-            failures = Math.min(v.credits - damage, v.components, v.failures);
-          html =
-            stat('Unused tyre sets', sets - changes) +
-            stat('Repair credits left', v.credits - damage - failures) +
-            stat('Components left', v.components - failures) +
-            `<p>Starting set: ${v.sets ? 1 : 0}; completed tyre changes: ${changes}/${v.changes}; damage repairs: ${damage}/${v.damage}; failure repairs: ${failures}/${v.failures}.</p>`;
-        } else if (kind === 'scoring') {
-          const row = record('championships');
-          if (!row) html = '<p>Create a Championship below to preview its points table.</p>';
-          else {
-            const c = Champ.clean(row);
-            if (c.pointsMode === 'beaten') {
-              panel.querySelector('output').textContent =
-                'This championship awards points for opponents beaten. Use a position-table championship for this table preview; its scoring rules are unchanged.';
-              return;
+              stat('Fuel per lap', `${n(v.use * f.use)} L · ×${n(f.use)}`) +
+              stat('Refuelling', `${n(v.rate * f.rate)} L/s · ×${n(f.rate)}`) +
+              stat('Tank', `${n(v.tank * f.tank)} L · ×${n(f.tank)}`) +
+              `<p>BoP ${v.bop > 0 ? '+' : ''}${v.bop}% · weather −${v.weather}% · tyres ${v.grip > 0 ? '+' : ''}${v.grip}%. Contributions add per enabled effect and stop at ±90%.</p>`;
+            live.combined = `BoP ${v.bop > 0 ? '+' : ''}${v.bop}%, weather −${v.weather}%, tyres ${v.grip > 0 ? '+' : ''}${v.grip}% → fuel use ×${n(f.use)}, refuel ×${n(f.rate)}, tank ×${n(f.tank)}.`;
+          } else if (kind === 'wear') {
+            const ps = rec('pushsavesystems'),
+              p = ps ? PushSave.lapEffect(PushSave.clean(ps), { ref: v.reference * 1000, lapMs: v.lap * 1000, lapNo: 100 }) : { tyres: 1 },
+              total = v.base * v.weather * v.temperature * p.tyres;
+            html =
+              stat('Calculated wear this lap', `${n(total)} percentage points`) +
+              `<p>${v.base}% base × ${v.weather} weather × ${v.temperature} temperature × ${n(p.tyres)} Push & Save = <b>${n(total)}%</b>. Remaining life stops at 0%.</p><p>${ps ? 'Push & Save: ' + esc(ps.name) : 'No Push & Save selected: pace has no effect on wear.'}</p>`;
+            live.wear = `${v.base}% × ${v.weather} × ${v.temperature} × ${n(p.tyres)} = ${n(total)}% of tyre life this lap.`;
+          } else if (kind === 'penalty') {
+            const row = rec('penaltysystems');
+            if (!row) html = '<p>Create a Penalty System below to try its ladder.</p>';
+            else {
+              const p = RaceEngine.penaltyConfig(row),
+                e = RaceEngine.penaltyEffects(p, v.points);
+              html =
+                stat('Time total', `${n(RaceEngine.penaltyMs(p, v.points) / 1000)} s`) +
+                stat('Scoring laps deducted', e.laps) +
+                stat('Unserved tier requires', `${e.pit} s in pits`) +
+                `<p>${p.dq && v.points >= p.dq ? 'Point-limit disqualification applies.' : 'Point-limit disqualification not reached.'} Testing ${esc(row.name)}.</p>`;
+              live.penalty = `${v.points} points with ${row.name}: ${n(RaceEngine.penaltyMs(p, v.points) / 1000)} s and ${e.laps} ${e.laps === 1 ? 'lap' : 'laps'} deducted.`;
             }
-            const score = pos => ChampPts.scaled((c.points[pos - 1] ?? c.pointsRest) + v.bonus, v.share, v.round);
+          } else if (kind === 'safety') {
+            const row = rec('safetycarsystems');
+            if (!row) html = '<p>Create a Safety Car System below to try its rules.</p>';
+            else {
+              const c = SafetyCar.clean(row),
+                failed = c.target > 0 && v.lap * 1000 < c.target;
+              html =
+                stat('Full-yellow lap', failed ? 'Too fast' : c.target ? 'Target met' : 'No target enforced') +
+                stat('Penalty points', failed ? c.points : 0) +
+                stat('Service work', `${n(v.service * (1 - c.pit / 100))} s`) +
+                `<p>Using ${esc(row.name)}. The service reduction is fixed at pit entry.</p>`;
+              live.safety = `A ${v.lap} s full-yellow lap is ${failed ? 'too fast' : 'fine'}; ${v.service} s of work becomes ${n(v.service * (1 - c.pit / 100))} s.`;
+            }
+          } else if (kind === 'estimate') {
+            const range = Math.floor(v.fuelLeft / v.used + 1e-9),
+              life = Math.floor(v.life / v.wear + 1e-9),
+              gap = Math.round((v.gap / v.pace) * 10) / 10;
             html =
-              stat('Overall points', score(v.overall)) +
-              stat('Class points', score(v.classPos)) +
-              `<p>Separate standings using ${esc(row.name)}. Bonuses shown here assume both example entries are eligible.</p>`;
-          }
-        } else if (kind === 'drops') {
-          const a = v.scores.split(',').map(s => s.trim());
-          if (!a.length || a.some(x => x === '' || !Number.isFinite(+x) || +x < 0)) {
-            html = '<p>Enter non-negative round scores separated by commas.</p>';
-          } else {
-            const scores = a.map(Number),
-              dropped = new Set(
-                scores
-                  .map((score, i) => ({ score, i }))
-                  .sort((a, b) => a.score - b.score || a.i - b.i)
-                  .slice(0, Math.min(v.drop, scores.length - 1))
-                  .map(x => x.i)
-              );
+              stat('Fuel range', `about ${range} ${range === 1 ? 'lap' : 'laps'}`) +
+              stat('Tyre life', `about ${life} ${life === 1 ? 'lap' : 'laps'}`) +
+              stat('Gap in laps', `+${gap} laps`) +
+              `<p>Display estimates only: they never change the classification or the timing.</p>`;
+            live.range = `${v.fuelLeft} L ÷ ${v.used} L per lap = about ${range} laps.`;
+            live.life = `${v.life}% ÷ ${v.wear}% per lap = about ${life} laps.`;
+            live.gap = `${v.gap} s ÷ ${v.pace} s = +${gap} laps.`;
+          } else if (kind === 'resources') {
+            const sets = Math.max(0, v.sets - 1),
+              changes = Math.min(sets, v.changes),
+              damage = Math.min(v.credits, v.damage),
+              failures = Math.min(v.credits - damage, v.components, v.failures);
             html =
-              scores.map((x, i) => `<span>Round ${i + 1}: ${dropped.has(i) ? `<s>${x}</s> · dropped` : `<b>${x}</b>`}</span>`).join('') +
-              stat(
-                'Kept total',
-                scores.reduce((s, x, i) => s + (dropped.has(i) ? 0 : x), 0)
-              );
+              stat('Unused tyre sets', sets - changes) +
+              stat('Repair credits left', v.credits - damage - failures) +
+              stat('Components left', v.components - failures) +
+              `<p>Starting set: ${v.sets ? 1 : 0}; completed tyre changes: ${changes}/${v.changes}; damage repairs: ${damage}/${v.damage}; failure repairs: ${failures}/${v.failures}.</p>`;
+            live.resources = `${v.sets} sets − 1 starting set − ${changes} ${changes === 1 ? 'tyre change' : 'tyre changes'} = ${sets - changes} unused.`;
+          } else if (kind === 'scoring') {
+            const row = rec('championships');
+            if (!row) html = '<p>Create a Championship below to preview its points table.</p>';
+            else {
+              const c = Champ.clean(row);
+              if (c.pointsMode === 'beaten')
+                return {
+                  html: '<p>This championship awards points for opponents beaten. Use a position-table championship for this table preview; its scoring rules are unchanged.</p>',
+                  live
+                };
+              const score = pos => ChampPts.scaled((c.points[pos - 1] ?? c.pointsRest) + v.bonus, v.share, v.round);
+              html =
+                stat('Overall points', score(v.overall)) +
+                stat('Class points', score(v.classPos)) +
+                `<p>Separate standings using ${esc(row.name)}. Bonuses shown here assume both example entries are eligible.</p>`;
+            }
+          } else if (kind === 'drops') {
+            const a = v.scores.split(',').map(s => s.trim());
+            if (!a.length || a.some(x => x === '' || !Number.isFinite(+x) || +x < 0)) {
+              html = '<p>Enter non-negative round scores separated by commas.</p>';
+            } else {
+              const scores = a.map(Number),
+                dropped = new Set(
+                  scores
+                    .map((score, i) => ({ score, i }))
+                    .sort((a, b) => a.score - b.score || a.i - b.i)
+                    .slice(0, Math.min(v.drop, scores.length - 1))
+                    .map(x => x.i)
+                );
+              live.drops = `Scores ${scores.join(', ')}, ${dropped.size} dropped → ${scores.reduce((t, x, i) => t + (dropped.has(i) ? 0 : x), 0)} points.`;
+              html =
+                scores.map((x, i) => `<span>Round ${i + 1}: ${dropped.has(i) ? `<s>${x}</s> · dropped` : `<b>${x}</b>`}</span>`).join('') +
+                stat(
+                  'Kept total',
+                  scores.reduce((s, x, i) => s + (dropped.has(i) ? 0 : x), 0)
+                );
+            }
           }
+          return { html, live };
+        };
+        const ent = LAB_ENTITY[kind],
+          main = compute(entity => record(entity, true));
+        let extra = '';
+        if (ent && drafts[ent]) {
+          const saved = compute(entity => record(entity, false));
+          if (saved.html !== main.html) extra += `<div class="cb-also"><b>With the saved values</b>${saved.html}</div>`;
         }
-        panel.querySelector('output').innerHTML = html;
+        const cmp = ent && compareWith[kind] ? refs[ent]?.find(r => r.id === compareWith[kind]) : null;
+        if (cmp)
+          extra += `<div class="cb-also"><b>Compare: ${esc(titleOf(ent, cmp))}</b>${compute(entity => (entity === ent ? cmp : record(entity, true))).html}</div>`;
+        panel.querySelector('output').innerHTML = main.html + extra;
+        for (const [k, t] of Object.entries(main.live))
+          box.querySelectorAll(`[data-worked="${k}"] span`).forEach(el => (el.textContent = t));
       };
       panel.oninput = draw;
       draw();
@@ -375,6 +469,7 @@ const CalculationPage = (() => {
       ${policyCard('pushSave', 'Push & Save', 'var(--c-ps)')}
       ${formula('Pace difference', '(lap ÷ reference − 1) × 100%', 'A negative difference is faster; a positive difference is slower. No available reference means normal use and wear.', '9.5 s against 10 s = −5%: pushing.')}
       ${formula('Push & Save curve', 'push: 1 + extra × min(1, −pace ÷ push threshold)\nsave: 1 − saving × min(1, pace ÷ save threshold)', 'Extra and saving are fractions. Fuel and tyres have their own switches and amounts. Early laps and excluded laps have no normal pace effect; the yellow-save option is a separate rule.', 'At −1.5%, with full push at −3% and +40% tyre wear, tyre multiplier = 1.20.')}
+      ${formula('Tyre wear this lap', 'wear = base × weather × temperature × Push & Save tyres', 'Base wear comes from the Tyre Wear System and the compound. Remaining life stops at 0%.', '')}
       ${recordControl('pushsavesystems', refs, ['pushAt', 'saveAt', 'tyreExtra', 'tyreSave', 'fuelExtra', 'fuelSave'])}
       ${recordControl('tyrewearsystems', refs, ['stop', 'changeSeconds'])}`;
     if (active === 'fuel')
@@ -416,16 +511,139 @@ const CalculationPage = (() => {
     const c = Bop.settingsOf(state.settings);
     return `<form class="calc-bop calc-policy"><h4>Balance of Power calculation</h4><div class="calc-fields"><label>Measure<select name="bopMeasure"><option value="median"${c.measure === 'median' ? ' selected' : ''}>Median</option><option value="average"${c.measure === 'average' ? ' selected' : ''}>Average</option></select></label><label>Recent laps<input name="bopWindow" type="number" min="3" max="50" value="${c.window}" required></label><label>Minimum laps<input name="bopMinLaps" type="number" min="1" max="50" value="${c.minLaps}" required></label></div><button class="btn">Save Balance of Power calculation</button><span class="calc-save" role="status"></span><p class="muted">Uses the same settings as the Balance of Power page.</p>${routeButton('setup', 'bop', 'Edit all Balance of Power rules')}</form>`;
   }
-  async function render(box) {
+  // the formulas of every topic (to find one, and for the formula sheet)
+  function allTopics() {
+    const keep = active,
+      out = [];
+    try {
+      for (const [id, title] of sections) {
+        active = id;
+        const t = document.createElement('template');
+        t.innerHTML = content(lastRefs);
+        out.push({
+          id,
+          title,
+          formulas: [...t.content.querySelectorAll('.calc-equation')].map(a => ({
+            title: a.querySelector('h4')?.textContent || '',
+            equation: a.querySelector('code')?.textContent || '',
+            text: a.querySelector(':scope > p')?.textContent || '',
+            worked: a.querySelector('.calc-worked span')?.textContent || ''
+          }))
+        });
+      }
+    } finally {
+      active = keep;
+    }
+    return out;
+  }
+  // (2.4.0) the laps of a real race as the example: the races, then a driver's laps (the last one is the new lap)
+  async function loadRaces() {
+    const page = await api.historyPage('racing', {});
+    lapSource.revision = page.revision;
+    lapSource.races = ((page.sessions && page.sessions.items) || [])
+      .filter(x => x && x.sessionType !== 'tokens')
+      .slice(0, 40)
+      .map(x => ({
+        id: x.id,
+        name: `${x.setupName || 'Race'}${x.trackName ? ' · ' + x.trackName : ''} · ${new Date(x.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+      }));
+    if (!lapSource.race && lapSource.races[0]) lapSource.race = lapSource.races[0].id;
+  }
+  async function loadLaps() {
+    lapSource.laps = null;
+    lapSource.drivers = [];
+    if (!lapSource.race) return;
+    const d = await api.historySession('racing', lapSource.race, { revision: lapSource.revision, exportAll: true });
+    lapSource.laps = (d && d.laps) || [];
+    lapSource.drivers = ((d && d.session && d.session.standings) || [])
+      .filter(x => x.driverId)
+      .map(x => ({ id: x.driverId, name: x.driverName || 'Driver' }));
+    if (!lapSource.drivers.some(x => x.id === lapSource.driver)) lapSource.driver = lapSource.drivers[0]?.id || '';
+    useDriver();
+  }
+  function useDriver() {
+    const mine = (lapSource.laps || [])
+      .filter(l => l.driverId === lapSource.driver && l.time > 0)
+      .sort((a, b) => a.lapNumber - b.lapNumber);
+    if (mine.length < 2) return;
+    example.laps = mine
+      .slice(0, -1)
+      .map(l => (l.time / 1000).toFixed(3))
+      .join(', ');
+    example.lap = Number((mine.at(-1).time / 1000).toFixed(3));
+    lapSource.left = mine.slice(0, -1).map(l => !!(l.invalid || l.pit || l.removed || l.excluded));
+  }
+  function sourceHtml() {
+    const race = lapSource.kind === 'race';
+    const sel = (attr, label, list, cur) =>
+      `<select ${attr} aria-label="${label}">${(list || []).map(x => `<option value="${esc(x.id)}"${x.id === cur ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
+    return `<div class="cb-src"><span class="cb-seg" role="group" aria-label="Example laps"><button type="button" data-cb-src="example" class="${race ? '' : 'on'}" aria-pressed="${!race}">Example laps</button><button type="button" data-cb-src="race" class="${race ? 'on' : ''}" aria-pressed="${race}">From a real race</button></span>${
+      race
+        ? lapSource.races && lapSource.races.length
+          ? sel('data-cb-race', 'Race', lapSource.races, lapSource.race) +
+            (lapSource.drivers && lapSource.drivers.length
+              ? sel('data-cb-driver', 'Driver', lapSource.drivers, lapSource.driver)
+              : '<span class="cb-none">No laps in this race.</span>')
+          : '<span class="cb-none">No finished race to take laps from yet.</span>'
+        : ''
+    }</div><div class="cb-bars" id="cb-bars" aria-hidden="true"></div><label class="cb-slide"><span>New lap</span><input type="range" data-cb-lap min="1" max="20" step="0.01" value="${esc(example.lap)}" aria-label="New lap in seconds"><b data-cb-lapv></b></label><div class="cb-out" id="cb-pace" aria-live="polite"></div>`;
+  }
+  async function render(box, note = '') {
     const rows = await Promise.all(entities.map(e => api.list(e))),
       refs = Object.fromEntries(entities.map((e, i) => [e, rows[i]]));
     if (!box.isConnected) return;
     Object.assign(state.refs, refs);
+    lastRefs = refs;
+    findIndex = null;
     const section = sections.find(s => s[0] === active);
-    box.innerHTML = `<section class="calc-page calc-expanded setuppage"><header class="calc-head"><div><p class="eyebrow">SETTINGS FOR FUTURE RACES</p><h3>Calculations</h3><p>In plain words: choose how pace is measured, see what every racing system adds, and tune the original settings in one place.</p></div><aside><b>Predictable races</b><span>A running race keeps its starting rules. New results retain those rules for review.</span></aside></header><div class="calc-shell"><nav class="calc-rail" aria-label="Calculation sections">${sections.map(([id, title, note, color]) => `<button class="btn" type="button" data-calc-section="${id}" aria-current="${id === active ? 'page' : 'false'}" style="--calc-accent:${color}"><b>${title}</b><small>${note}</small></button>`).join('')}</nav><main class="calc-content" style="--calc-accent:${section[3]}"><header><p class="eyebrow">CALCULATION LIBRARY</p><h3>${section[1]}</h3></header>${active === 'estimates' ? extraControls() : ''}${laboratories()}${content(refs)}</main></div></section>`;
+    const [question, line] = CalcBench.head(active);
+    // (2.4.0, "Engineer's Bench") the parts of a topic sorted onto the bench: the examples to try, the saved rules, and the formulas
+    const tpl = document.createElement('template');
+    tpl.innerHTML = (active === 'estimates' ? extraControls() : '') + laboratories() + content(refs);
+    const tries = [],
+      rules = [],
+      formulas = [],
+      routes = [];
+    let intro = '';
+    for (const n of [...tpl.content.children]) {
+      if (n.matches('.calc-equation')) formulas.push(n.outerHTML);
+      else if (n.matches('.calc-lab, .calc-example, #calc-fuel-example')) tries.push(n.outerHTML);
+      else if (n.matches('.calc-intro')) intro = n.textContent.trim();
+      else if (n.matches('[data-calc-route]')) routes.push(n.outerHTML);
+      else if (n.matches('.calc-actions')) routes.push(n.innerHTML);
+      else rules.push(n.outerHTML);
+    }
+    // the systems of this topic, and the race setups that use them
+    const ents = [...new Set([...rules.join('').matchAll(/data-entity="([a-z]+)"/g)].map(m => m[1]))];
+    const fields = state.schema.racesetups?.fields || [];
+    const users = new Set();
+    const chips = ents
+      .map(e => {
+        const row = refs[e]?.find(r => r.id === selected[e]);
+        if (!row || e === 'racesetups' || e === 'tracks') return '';
+        CalcBench.usedBy(refs.racesetups, fields, e, row.id).forEach(n => users.add(n));
+        return `<span class="cb-chip"><i></i>${esc(state.schema[e]?.label || e)}: ${esc(titleOf(e, row))}</span>`;
+      })
+      .join('');
+    const used = chips ? `<span class="cb-chip">${esc(CalcBench.usedText([...users]))}</span>` : '';
+    const bench = `<header class="cb-hd"><div><span class="cb-k">Calculations · ${esc(section[1])}</span><h1>${esc(question)}</h1><p>${esc(line)}</p>${chips ? `<div class="cb-used">${chips}${used}</div>` : ''}</div><div class="cb-tools"><div class="cb-find"><input type="search" data-cb-find placeholder="Find a calculation…" aria-label="Find a calculation" autocomplete="off"><div class="cb-found" hidden></div></div><button type="button" class="btn sm" data-cb-sheet title="Every formula on one page, to print or keep">Formula sheet</button></div></header>
+      <div class="cb-bench"><section class="cb-try" aria-label="Try it"><div class="cb-tryh"><h2>Try it</h2><span class="cb-tag">Preview · nothing is saved</span><button type="button" class="btn sm ghost" data-cb-reset>Reset</button></div><div class="cb-tryb">${active === 'pace' ? sourceHtml() : ''}${[...tries.filter(t => t.startsWith('<section class="calc-example')), ...tries.filter(t => !t.startsWith('<section class="calc-example'))].join('')}${
+        !tries.length && active !== 'pace'
+          ? '<p class="cb-none">This topic has no example to try. Its rules are beside it, its formulas below.</p>'
+          : ''
+      }</div></section>
+      <section class="cb-rules" aria-label="Your rules"><div class="cb-rulh"><h2>Your rules</h2><span class="cb-k">saved · used in new races</span></div><div class="cb-rulb">${rules.join('') || '<p class="cb-none">Nothing to set here.</p>'}${routes.length ? `<div class="cb-routes">${routes.join('')}</div>` : ''}</div><div class="cb-save"><span class="cb-dot" aria-hidden="true"></span><span data-cb-state role="status">${esc(note || 'Everything is saved')}</span><button type="button" class="btn sm ghost" data-cb-undo disabled>Undo</button><button type="button" class="btn primary sm" data-cb-saveall disabled>Save</button></div></section></div>
+      <section class="cb-how" aria-label="How it is worked out"><div class="cb-howh"><h2>How it is worked out</h2><span class="cb-k">${Object.values(LIVE).some(k => formulas.join('').includes(`data-worked="${k}"`)) ? 'with your numbers from Try it' : ''}</span></div>${intro ? `<p class="cb-intro">${esc(intro)}</p>` : ''}<div class="cb-fm">${formulas.join('')}</div></section>`;
+    box.innerHTML = `<section class="calc-page calc-expanded setuppage"><header class="calc-head"><div><p class="eyebrow">SETTINGS FOR FUTURE RACES</p><h3>Calculations</h3><p>In plain words: choose how pace is measured, see what every racing system adds, and tune the original settings in one place.</p></div><aside><b>Predictable races</b><span>A running race keeps its starting rules. New results retain those rules for review.</span></aside></header><div class="calc-shell"><nav class="calc-rail" aria-label="Calculation sections">${sections.map(([id, title, note, color]) => `<button class="btn" type="button" data-calc-section="${id}" aria-current="${id === active ? 'page' : 'false'}" style="--calc-accent:${color}"><b>${title}</b><small>${note}</small></button>`).join('')}</nav><main class="calc-content cb-on" style="--calc-accent:${section[3]};--cb:${section[3]}">${bench}</main></div></section>`;
     box.querySelectorAll('[data-calc-section]').forEach(
       b =>
-        (b.onclick = () => {
+        (b.onclick = async () => {
+          if (
+            box._cbDirty &&
+            !(await Dialog.confirm('Leave this topic without saving your changes?', { ok: 'Leave without saving', danger: true }))
+          )
+            return;
+          drafts = {};
           active = b.dataset.calcSection;
           render(box);
         })
@@ -481,7 +699,15 @@ const CalculationPage = (() => {
     box.querySelectorAll('[data-entity]').forEach(panel => {
       const e = panel.dataset.entity,
         row = refs[e].find(r => r.id === selected[e]);
-      panel.querySelector('[data-record-select]').onchange = ev => {
+      panel.querySelector('[data-record-select]').onchange = async ev => {
+        if (
+          box._cbDirty &&
+          !(await Dialog.confirm('Choose another system without saving your changes?', { ok: 'Choose it', danger: true }))
+        ) {
+          ev.target.value = selected[e];
+          return;
+        }
+        drafts = {};
         selected[e] = ev.target.value;
         render(box);
       };
@@ -510,16 +736,24 @@ const CalculationPage = (() => {
       panel.querySelector('[data-new-record]').onclick = () => edit(null);
       const form = panel.querySelector('form');
       if (form) {
-        form.oninput = () => fuelPreview(box);
-        form.onsubmit = async ev => {
-          ev.preventDefault();
-          if (!form.reportValidity()) return;
-          const patch = Object.fromEntries(
+        const patchOf = () =>
+          Object.fromEntries(
             [...form.querySelectorAll('[data-record-field]')].map(el => [
               el.dataset.recordField,
               el.tagName === 'SELECT' ? el.value : Number(el.value)
             ])
           );
+        // (2.4.0) Try it follows the values before they are saved
+        form.oninput = () => {
+          drafts[e] = patchOf();
+          fuelPreview(box);
+          preview(box);
+          box.querySelectorAll('[data-lab]').forEach(el => el.dispatchEvent(new Event('input')));
+        };
+        form.onsubmit = async ev => {
+          ev.preventDefault();
+          if (!form.reportValidity()) return;
+          const patch = patchOf();
           if (e === 'pushsavesystems' && row.mode !== 'median' && patch.saveAt <= patch.normal) {
             form.querySelector('.calc-save').textContent = 'Full save must be slower than normal pace.';
             return;
@@ -527,6 +761,7 @@ const CalculationPage = (() => {
           await save(form, async () => {
             const result = await api.update(e, row.id, patch);
             Object.assign(row, patch);
+            delete drafts[e];
             box.querySelectorAll('[data-lab]').forEach(el => el.dispatchEvent(new Event('input')));
             return result;
           });
@@ -536,6 +771,181 @@ const CalculationPage = (() => {
     preview(box);
     fuelPreview(box);
     wireTools(box, refs);
+    benchWire(box);
+  }
+  // (2.4.0, "Engineer's Bench") one save bar for the rules of a topic, Undo, Reset, the real race, Find and the formula sheet
+  function benchWire(box) {
+    const forms = [...box.querySelectorAll('.cb-rules form')];
+    forms.forEach(f => (f._submit = f.onsubmit));
+    const fieldsOf = f => [...f.querySelectorAll('input, select')].filter(el => el.name || el.dataset.policy || el.dataset.recordField);
+    const snap = new Map(forms.map(f => [f, fieldsOf(f).map(el => [el, el.value])]));
+    const bar = box.querySelector('.cb-save'),
+      st = bar.querySelector('[data-cb-state]'),
+      undo = bar.querySelector('[data-cb-undo]'),
+      saveAll = bar.querySelector('[data-cb-saveall]');
+    const changes = () =>
+      forms.flatMap(f =>
+        snap
+          .get(f)
+          .filter(([el, v]) => el.value !== v)
+          .map(() => f)
+      );
+    const show = () => {
+      const n = changes().length;
+      bar.classList.toggle('dirty', n > 0);
+      if (n) st.textContent = `${n} unsaved ${n === 1 ? 'change' : 'changes'}`;
+      undo.disabled = saveAll.disabled = n === 0;
+      box._cbDirty = n > 0;
+    };
+    box._cbDirty = false;
+    const rules = box.querySelector('.cb-rules');
+    rules.addEventListener('input', show);
+    rules.addEventListener('change', show);
+    undo.onclick = () => {
+      for (const [f, list] of snap) {
+        let moved = false;
+        for (const [el, v] of list)
+          if (el.value !== v) {
+            el.value = v;
+            moved = true;
+          }
+        if (moved) f.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      drafts = {};
+      box.querySelectorAll('[data-lab]').forEach(el => el.dispatchEvent(new Event('input')));
+      preview(box);
+      show();
+      st.textContent = 'Changes undone.';
+    };
+    saveAll.onclick = async () => {
+      const dirty = [...new Set(changes())],
+        errors = [];
+      undo.disabled = saveAll.disabled = true;
+      st.textContent = 'Saving…';
+      for (const f of dirty) {
+        if (!f.checkValidity()) {
+          f.reportValidity();
+          errors.push('Check the values marked in red.');
+          continue;
+        }
+        await f._submit?.({ preventDefault() {} });
+        const msg = f.querySelector('.calc-save')?.textContent || '';
+        if (msg && !/^Saved/.test(msg)) errors.push(msg);
+      }
+      if (errors.length) {
+        st.textContent = errors[0];
+        undo.disabled = saveAll.disabled = false;
+        return;
+      }
+      drafts = {};
+      render(box, 'Saved for new races.');
+    };
+    box.querySelector('[data-cb-reset]').onclick = () => {
+      for (const k of Object.keys(trials)) delete trials[k];
+      example = { ...EXAMPLE };
+      compareWith = {};
+      lapSource.kind = 'example';
+      render(box);
+    };
+    // the laps of a real race
+    box.querySelectorAll('[data-cb-src]').forEach(
+      b =>
+        (b.onclick = async () => {
+          lapSource.kind = b.dataset.cbSrc;
+          try {
+            if (lapSource.kind === 'race' && !lapSource.races) {
+              await loadRaces();
+              await loadLaps();
+            } else if (lapSource.kind === 'race') useDriver();
+            else example = { ...EXAMPLE };
+          } catch (e) {
+            lapSource.races = [];
+            st.textContent = 'Could not read the races: ' + e.message;
+          }
+          render(box);
+        })
+    );
+    const raceSel = box.querySelector('[data-cb-race]'),
+      driverSel = box.querySelector('[data-cb-driver]');
+    if (raceSel)
+      raceSel.onchange = async () => {
+        lapSource.race = raceSel.value;
+        await loadLaps().catch(() => {});
+        render(box);
+      };
+    if (driverSel)
+      driverSel.onchange = () => {
+        lapSource.driver = driverSel.value;
+        useDriver();
+        render(box);
+      };
+    const slide = box.querySelector('[data-cb-lap]');
+    if (slide)
+      slide.oninput = () => {
+        example.lap = Number(slide.value);
+        const typed = box.querySelector('[data-example="lap"]');
+        if (typed) typed.value = slide.value;
+        preview(box);
+      };
+    // find a calculation in any topic
+    const find = box.querySelector('[data-cb-find]'),
+      found = box.querySelector('.cb-found');
+    find.oninput = () => {
+      if (!findIndex) findIndex = CalcBench.index(allTopics());
+      const hits = CalcBench.find(findIndex, find.value);
+      found.hidden = !find.value.trim();
+      found.innerHTML = hits.length
+        ? hits
+            .map(
+              h =>
+                `<button type="button" data-cb-go="${esc(h.topic)}" data-cb-f="${esc(h.title)}"><b>${esc(h.title)}</b><small>${esc(h.topicTitle)}</small></button>`
+            )
+            .join('')
+        : '<p>Nothing found. Try another word, such as fuel, gap or points.</p>';
+    };
+    find.onkeydown = ev => {
+      if (ev.key === 'Escape') {
+        find.value = '';
+        found.hidden = true;
+      }
+      if (ev.key === 'Enter') found.querySelector('button')?.click();
+    };
+    found.onclick = async ev => {
+      const b = ev.target.closest('[data-cb-go]');
+      if (!b) return;
+      if (b.dataset.cbGo !== active) {
+        if (
+          box._cbDirty &&
+          !(await Dialog.confirm('Leave this topic without saving your changes?', { ok: 'Leave without saving', danger: true }))
+        )
+          return;
+        drafts = {};
+        active = b.dataset.cbGo;
+        await render(box);
+      } else found.hidden = true;
+      const card = [...box.querySelectorAll('[data-formula]')].find(x => x.dataset.formula === b.dataset.cbF);
+      if (card) {
+        card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        card.classList.add('cb-flash');
+        setTimeout(() => card.classList.remove('cb-flash'), 2400);
+      }
+    };
+    // the formula sheet: every topic on one page
+    box.querySelector('[data-cb-sheet]').onclick = async () => {
+      try {
+        const res = await api.shareSave(
+          CalcBench.sheetHtml(allTopics(), {
+            title: 'Race calculations',
+            sub: `${state.settings.appName || 'SlotForge Timing'}: how pace, fuel, tyres, pit stops, estimates and scores are worked out.`
+          }),
+          'Race calculations.html',
+          'html'
+        );
+        st.textContent = res && res.saved ? 'Formula sheet saved to ' + res.path : 'The formula sheet was not saved.';
+      } catch (e) {
+        st.textContent = 'Could not save the formula sheet: ' + e.message;
+      }
+    };
   }
   async function save(form, write, settings = false) {
     const button = form.querySelector('button'),
@@ -561,17 +971,85 @@ const CalculationPage = (() => {
       .map(s => s.trim())
       .filter(Boolean)
       .map(Number)
-      .filter(n => Number.isFinite(n) && n > 0)
-      .map(n => n * 1000);
+      .filter(n => Number.isFinite(n) && n > 0);
     box.querySelectorAll('[data-prefix]').forEach(form => {
       const p = readPolicy(form),
-        ref = PushSave.benchmark(p.benchmark, laps, Number(example.target) * 1000, p),
+        ref = PushSave.benchmark(
+          p.benchmark,
+          laps.map(n => n * 1000),
+          Number(example.target) * 1000,
+          p
+        ),
         lap = Number(example.lap) * 1000;
       const pace = ref > 0 && lap > 0 ? (lap / ref - 1) * 100 : null;
       const out = form.querySelector('output');
       const position = pace === null ? 50 : Math.max(2, Math.min(98, 50 + pace * 2));
       out.innerHTML = `<div class="calc-preview-numbers"><b>${ref ? (ref / 1000).toFixed(3) + ' s reference' : 'Waiting for reference'}</b><span>${pace === null ? 'Add enough eligible laps or a track target' : (pace > 0 ? '+' : '') + pace.toFixed(2) + '% · ' + (pace < 0 ? 'faster' : pace > 0 ? 'slower' : 'at benchmark')}</span></div><div class="calc-pace-bar" aria-hidden="true"><i style="left:${position}%"></i></div><div class="calc-bar-labels"><span>Faster</span><span>Benchmark</span><span>Slower</span></div>`;
+      if (form.dataset.prefix === 'pushSave') benchPace(box, laps, ref, lap, pace);
     });
+  }
+  // (2.4.0, "Engineer's Bench") the new lap against its benchmark, big: the bars of the laps, the slider, the verdict, a gauge and what it does
+  function benchPace(box, laps, ref, lap, pace) {
+    const target = box.querySelector('#cb-pace');
+    if (!target) return;
+    const rows = lastRefs.pushsavesystems || [],
+      saved = rows.find(r => r.id === selected.pushsavesystems) || rows[0];
+    const draft = saved && drafts.pushsavesystems ? { ...saved, ...drafts.pushsavesystems } : saved;
+    const cfgOf = r => (r ? PushSave.clean(r) : null),
+      cfg = cfgOf(draft);
+    const effOf = c =>
+      c && ref > 0 && lap > 0 ? PushSave.lapEffect(c, { ref, lapMs: lap, lapNo: 100 }) : { tyres: 1, fuel: 1, kind: 'normal' };
+    const eff = effOf(cfg);
+    const pushAt = cfg ? cfg.pushAt : 3,
+      saveAt = cfg ? cfg.saveAt : 8;
+    const full = pace !== null && cfg && ((pace < 0 && -pace >= pushAt) || (pace > 0 && pace >= saveAt));
+    const v = CalcBench.verdict(pace, { tyres: eff.tyres, full });
+    const pos = pace === null ? 50 : pace < 0 ? 50 - 50 * Math.min(1, -pace / pushAt) : 50 + 50 * Math.min(1, pace / saveAt);
+    let also = '';
+    if (draft !== saved) {
+      const before = effOf(cfgOf(saved));
+      if (before.tyres !== eff.tyres || before.fuel !== eff.fuel)
+        also = `<p class="cb-vs">With the saved values: tyres ${CalcBench.pctOf(before.tyres)}, fuel ${CalcBench.pctOf(before.fuel)}.</p>`;
+    }
+    target.innerHTML = `<span class="cb-k">This lap</span><h3 class="cb-${v.state}">${esc(v.head)}</h3><div class="cb-gauge" role="img" aria-label="${esc(v.head)}"><i style="left:${pos}%"></i></div><div class="cb-gl"><span>full push −${pushAt}%</span><span>benchmark</span><span>full save +${saveAt}%</span></div><div class="cb-fx"><span>Tyres <b>${CalcBench.pctOf(eff.tyres)}</b> wear</span><span>Fuel <b>${CalcBench.pctOf(eff.fuel)}</b> use</span><span>Benchmark <b>${ref > 0 ? (ref / 1000).toFixed(2) + ' s' : '—'}</b></span></div>${
+      cfg ? '' : '<p class="cb-vs">No Push & Save system yet: pace has no effect on wear or fuel.</p>'
+    }${also}`;
+    // the formulas with these numbers
+    const say = (k, t) => box.querySelectorAll(`[data-worked="${k}"] span`).forEach(el => (el.textContent = t));
+    if (pace !== null) {
+      say(
+        'pace',
+        `${(lap / 1000).toFixed(2)} ÷ ${(ref / 1000).toFixed(2)} − 1 = ${pace > 0 ? '+' : pace < 0 ? '−' : ''}${Math.abs(pace).toFixed(1)}% (${pace < 0 ? 'faster' : pace > 0 ? 'slower' : 'the benchmark'}).`
+      );
+      say(
+        'curve',
+        `${pace > 0 ? '+' : pace < 0 ? '−' : ''}${Math.abs(pace).toFixed(1)}% → tyres ×${eff.tyres.toFixed(2)}, fuel ×${eff.fuel.toFixed(2)}${draft ? ` with ${draft.name}` : ''}.`
+      );
+    } else say('pace', 'Add enough earlier laps (or a track target) for a benchmark.');
+    // the earlier laps as bars, the benchmark as a line, the new lap in the colour of the topic
+    const slow = cfg && ref > 0 ? (cfg.slow || 150) / 100 : 0;
+    const left = laps.map((s, i) => !!(lapSource.kind === 'race' && lapSource.left[i]) || (slow > 0 && s * 1000 > ref * slow));
+    const step = Math.max(1, Math.ceil(laps.length / 10)); // (at most about ten numbers under the bars)
+    const bars = CalcBench.lapBars(laps, ref / 1000, lap / 1000, left),
+      host = box.querySelector('#cb-bars');
+    if (host)
+      host.innerHTML = bars
+        ? `<div class="cb-barrow">${bars.bars.map(b => `<span class="${b.out ? 'out' : ''}" style="height:${b.pct}%" title="${b.s.toFixed(3)} s${b.out ? ' · left out' : ''}"></span>`).join('')}${bars.lap ? `<span class="new" style="height:${bars.lap.pct}%" title="New lap ${bars.lap.s.toFixed(3)} s"></span>` : ''}${
+            bars.ref ? `<em style="bottom:${bars.ref.pct}%"><small>benchmark ${bars.ref.s.toFixed(2)} s</small></em>` : ''
+          }</div><div class="cb-barx">${bars.bars.map((b, i) => `<span>${i % step === 0 ? b.s.toFixed(1) : ''}</span>`).join('')}${bars.lap ? `<span class="new">${bars.lap.s.toFixed(1)}</span>` : ''}</div>${
+            left.some(Boolean) ? '<small class="cb-left">Striped laps are left out (slow, pit or invalid).</small>' : ''
+          }`
+        : '<p class="cb-none">Enter earlier laps to see them here.</p>';
+    const slide = box.querySelector('[data-cb-lap]');
+    if (slide && bars) {
+      if (document.activeElement !== slide) {
+        slide.min = Math.max(0.1, bars.min).toFixed(2);
+        slide.max = bars.max.toFixed(2);
+      }
+      slide.value = String(lap / 1000);
+      const shown = box.querySelector('[data-cb-lapv]');
+      if (shown) shown.textContent = (lap / 1000).toFixed(2) + ' s';
+    }
   }
   function fuelPreview(box) {
     const target = box.querySelector('#calc-fuel-example'),

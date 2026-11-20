@@ -68,6 +68,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Plugin Desk](#plugin-desk) | The open page or tool of a plugin: a head with the plugin as a status pill, the inputs and the output in boxes, the figures as tiles | Customization › Plugin Pages & Tools |
 | [Dealership Sheet](#dealership-sheet) | Dealership Mode: the connection as a status pill, rows with several controls stacked, the long words folded | App Settings › Connections › Paddock › Older connections and repair (since the Paddock Pit Lane) |
 | [Paddock Pit Lane](#paddock-pit-lane) | Paddock on one page: a headline that says how things stand with Fix it, three equal cards (shared library, Dealership, results), the results in plain words, Dealerships found as cards | App Settings › Connections › Paddock |
+| [Engineer's Bench](#engineers-bench) | Calculations: each topic as a question, Try it (dashed, nothing is saved) beside Your rules (one save bar), the formulas with your numbers | App Settings › Calculations |
 | [Review Sheet](#review-sheet) | Historical Review: the race as a head, the notice as a callout, the drivers tagged, Submit in the foot, the decisions as pills | Results and Records (a Paddock race) |
 | [Performance Gauges](#performance-gauges) | The Performance line as a row of small gauges, each with a health colour | Race tab (App Settings › General, Performance line) |
 | [Race Report PDF](#race-report-pdf) | The race on paper: page one as clubs post a race, then a page for every driver with the lap chart of Scrutineering; Colour or Monochrome | Results and Records › Export to PDF |
@@ -1901,6 +1902,35 @@ html .ab-tr.now{background:color-mix(in srgb,#e5484d 9%,var(--panel));box-shadow
 
 ---
 
+## Engineer's Bench
+
+App Settings › **Calculations** (`renderer/calcbench.js` holds the words, lists and the formula sheet; `renderer/calculationsui.js` lays out the bench; styles
+under `.cb-`, in `main.calc-content.cb-on`). The examples, rules and formulas of before are the same; they are sorted onto the bench.
+
+- **The header** (`.cb-hd`): *Calculations · topic* in Roboto Mono caps, the topic as a question in 38 px Barlow italic (*How fast is normal?*, *How long is a
+  stop?*, *Who scores what?*), one line, chips with the systems in use and the race setups that use them; *Find a calculation…* and *Formula sheet*.
+  A glow in the colour of the topic.
+- **Try it** (`.cb-try`): a dashed panel in the colour of the topic with a striped head and the tag *Preview · nothing is saved*, and *Reset*. For pace:
+  *Example laps / From a real race* (a race and a driver), the laps as bars with the benchmark as a dashed green line and left-out laps striped, a
+  *New lap* slider, and the lap as a verdict in 30 px Barlow (*5.9% faster · full push*) with a gauge from full push to full save and chips (tyres, fuel,
+  benchmark). The other examples follow, each with *Compare with* (another saved system) and *With the saved values* while a rule is not saved yet.
+- **Your rules** (`.cb-rules`): a solid panel with the colour of the topic on its left edge, sticky beside Try it: the saved settings as labelled fields,
+  each system with its picker, *Edit all … rules* and *Create …*; at the bottom one **save bar** (`.cb-save`: a green dot, or amber with *N unsaved
+  changes*, *Undo*, *Save*). Leaving the topic with unsaved changes asks first.
+- **How it is worked out** (`.cb-how`): the formulas as cards (title, the equation in Roboto Mono on a dark plate, the words) and *With your numbers* in the
+  colour of the topic, following Try it. A formula found with *Find* flashes.
+
+```css
+html .calc-content.cb-on .cb-try{border:1.5px dashed color-mix(in srgb,var(--cb) 45%,var(--line));border-radius:16px}
+html .calc-content.cb-on .cb-tryh{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--cb) 10%,transparent) 0 10px,transparent 10px 20px)}
+html .calc-content.cb-on .cb-rules{position:sticky;top:12px;box-shadow:inset 3px 0 0 var(--cb)}
+html .calc-content.cb-on .cb-out h3{font:800 italic 30px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .calc-content.cb-on .cb-barrow em{border-top:2px dashed #3ecf8e}
+html .calc-content.cb-on .cb-save.dirty .cb-dot{background:#f2b705}
+```
+
+---
+
 ## Paddock Pit Lane
 
 App Settings › Connections › **Paddock** (`renderer/pitlane.js` says what the page says, `renderer/pitlaneview.js` draws it and does what its buttons do; styles
@@ -2295,3 +2325,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Commentary Booth | New: the audio set editor opens on the voice (On air, Plays on, Hear it) and the presets as cards; Driver names; Play a sample race; the editor keeps its place |
 | 2026-11 | Widget Workshop | New: the Widget Builder list as cards on a race screen with Used in and Add to a layout; saving updates the layouts that use it; Simple / Canvas switch; eight lanes and Play a race; "and" conditions; the Fuel Strip |
 | 2026-11 | Paddock Pit Lane | New: Dealership Mode and Shared Library as one Paddock page: a headline with Fix it, three equal cards, the results in plain words, Dealerships found as cards, the connection check step by step, the password remembered; the Dealership Sheet folded under Older connections and repair |
+| 2026-11 | Engineer's Bench | New: Calculations as Try it beside Your rules with one save bar and Undo; each topic as a question; laps of a real race as bars with a slider; compare with another system; the formulas with your numbers; find a calculation; the formula sheet |

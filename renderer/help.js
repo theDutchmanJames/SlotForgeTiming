@@ -284,12 +284,13 @@ const Help = (() => {
           note: 'Understand and choose the rules behind the numbers',
           body: `
         <ul>
-          <li><b>App Settings → Calculations</b> offers seven coloured sections with formulas, saved-system controls and interactive examples. Preview inputs never change a race.</li>
-          <li>Choose the Push &amp; Save benchmark: median, average, recent-weighted, trimmed average, previous, best or Track target. Set history and minimum samples. The current lap never becomes its own reference.</li>
-          <li>Weighted averages favour newer laps. Trimmed averages remove 10% at each end, rounded down; fewer than ten samples use an ordinary average. Automatic sampling requires three laps for averages/median, one for previous/best; Track target needs none.</li>
-          <li><b>Push &amp; Save</b> controls pace-related tyre wear for new races. Its tyre and fuel effects have separate switches and amounts. Tyre Wear no longer adds a second pace factor; base wear, weather and temperature still apply.</li>
-          <li><b>Estimates</b> chooses median/average and history for lap gaps and Fuel Range. Fuel needs three samples. Zero history keeps all gap laps or each fuel widget’s setting.</li>
-          <li>Save applies to new races. Running and recovered races keep their starting rules. Restore defaults fills the form; Save confirms it. Full-yellow saving never teaches the normal benchmark.</li>
+          <li><b>App Settings → Calculations</b>: seven topics. <b>Try it</b> (nothing is saved) sits beside <b>Your rules</b> (used in new races) with one <b>Save</b> bar and <b>Undo</b>; the formulas below show your numbers.</li>
+          <li>Try it follows unsaved rules, can <b>Compare with</b> another system and use the laps of a <b>real race</b>. <b>Find a calculation</b> searches every topic; <b>Formula sheet</b> saves them all as one page.</li>
+          <li>The Push &amp; Save benchmark: median, average, weighted, trimmed average, previous, best or Track target, with history and minimum samples. A lap is never its own reference.</li>
+          <li>Weighted favours newer laps. Trimmed removes 10% at each end (fewer than ten samples: an ordinary average). Averages and median need three laps, previous and best one.</li>
+          <li><b>Push &amp; Save</b> sets pace-related tyre wear and fuel use, each with its own switch. Base wear, weather and temperature still apply.</li>
+          <li><b>Estimates</b> chooses median or average and the history for gaps and Fuel Range.</li>
+          <li>Running and recovered races keep their starting rules. Full-yellow saving never teaches the benchmark.</li>
         </ul>`
         },
         {
