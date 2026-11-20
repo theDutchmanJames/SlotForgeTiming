@@ -180,6 +180,36 @@ Verdicts here are about the design only: **Design remake** · **Design rework** 
 | App Settings › General | Good | The rail with value summaries is excellent; Picture quality and Units are too thin for pages of their own; Performance hides its explanations behind "More" |
 | App Theme, Import and Export, Help, Racing Rules, Plugin Pages, Balance of Power, Time Tokens | Good | Small points only (a full temp path in bold, a detached search field, the explainer repeating the header) |
 
+### Checked again (20 Nov 2026, after every Tier 1 and Tier 2 remake)
+Screenshots of every page at 1366 px in the QA profile, plus measurements (red buttons, explainer height, cut-off text).
+
+**Fixed:** Database lists (car and track pictures, no red per row), the car, driver and track editors, the Race Setup editor
+(sections, *Only if you need it*), Results and Records, Championships (standings, the season strip), Home's race picker,
+the race window's control strip (Stop and Red marked), Customization libraries (previews, *Audio sets* / *Picture sets*),
+the App Settings structure, Teams and Virtual Rival (designed cards).
+
+**Still open:**
+1. **Explainers that lead:** Race Director (six lines above one two-way choice), the Widget Builder (five lines), the
+   Damage System editor (a five-line intro); every Race Setup list keeps a three-line note above its content.
+2. **An empty field that is not empty:** the Damage System editor's *Deslot* stepper is blank while its rail says
+   *deslot 1 point*.
+3. **Red:** Parallel Port has three red buttons on one page; *Export to PDF* is the red primary on the standings; the
+   Widget Builder shows two red buttons on one card row; *Delete* in red on every system card.
+4. **Unlabelled dots:** the green dot on every Race Setup card and beside *Penalty Systems* in the side list.
+5. **Labels on top of values:** in the default layout (race screen preview) *Race clock*, *Race info*, *Race flag* and
+   *Start lights* sit over their values.
+6. **Cut off:** *No timing hardware cho…* in the race bar; *Find a race or a* (Results search); the Race Director
+   view description (*Balanc… More*); the Tracks toolbar wraps onto a second line.
+7. **Plain empty state:** Plugins (*No plugins installed…* as a line of text).
+8. **"(optional)" and long help:** the Track editor's *Track length (metres) (optional)* with two lines of explanation.
+9. **Used by:** picture sets and chart designs do not say which layouts use them (layouts, audio sets and widgets do).
+10. **Unknown words outside the Layout Editor:** Widget Builder cards show `{lapsleft}` and `{racename}` as typed, with
+    no warning (the Layout Editor warns since "Try It").
+11. **Thin pages:** Units and Picture quality are pages of their own with one or two settings; Share the race keeps the
+    addresses and QR codes on a second section.
+
+Not looked at again: the race window after Finalize and between heats (remade in "Chequered Flag"; not re-run today).
+
 ### What this changes in the order
 The design pass agrees with the feature pass on the race window, the Race Setup editor and the screens after a race. It
 adds three that the feature pass rated lower: the **Database lists and the Car editor** (letter tiles, 30-field modal),
