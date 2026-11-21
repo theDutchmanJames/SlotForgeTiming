@@ -76,8 +76,7 @@ const LayoutTry = (() => {
     for (let i = 0; i < b.length; i++) {
       if (b[i].nodeType === 3) {
         if (a[i].data !== b[i].data) live[i].data = b[i].data;
-      } else
-        for (const at of b[i].attributes) if (a[i].getAttribute(at.name) !== at.value) live[i].setAttribute(at.name, at.value);
+      } else for (const at of b[i].attributes) if (a[i].getAttribute(at.name) !== at.value) live[i].setAttribute(at.name, at.value);
     }
     return true;
   }
@@ -97,7 +96,8 @@ const LayoutTry = (() => {
         def = w && Widgets.def(w.type);
       if (!val || !def || def.button) return;
       // (one content() call gives the words and the colour; previewOf would make the same call for the words alone)
-      const o = ctx && typeof WidgetPreview !== 'undefined' ? WidgetPreview.content({ ...w, lane: w.lane || 0, previewContext: ctx }) : null,
+      const o =
+          ctx && typeof WidgetPreview !== 'undefined' ? WidgetPreview.content({ ...w, lane: w.lane || 0, previewContext: ctx }) : null,
         html = o ? o.html : previewOf(def, w),
         look = o ? [o.color, o.bg, o.disabled].join('|') : ''; // (a car in the pits or under a penalty: the colour changes, the text may not)
       if (el._ltHtml === html && el._ltLook === look) return;

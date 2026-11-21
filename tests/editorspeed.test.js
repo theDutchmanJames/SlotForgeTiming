@@ -88,7 +88,9 @@ test('the editor reads the canvas height once, and measures every widget before 
   assert.ok(has(EC, '* height() < 20;'));
   assert.ok(!has(EC, '* canvas.clientHeight < 20;'));
   const E = code('renderer/editor.js');
-  assert.ok(has(E, 'for (const el of list) el._sfBox = { width: el.getBoundingClientRect().width, cw: el.clientWidth, ch: el.clientHeight };'));
+  assert.ok(
+    has(E, 'for (const el of list) el._sfBox = { width: el.getBoundingClientRect().width, cw: el.clientWidth, ch: el.clientHeight };')
+  );
   assert.ok(has(code('renderer/frame.js'), 'const box = el._sfBox ||'));
   assert.ok(/\.canvas>\.lw\{contain:size layout style\}/.test(code('renderer/styles.css')));
 });
