@@ -81,6 +81,8 @@ function wrap(base, client, options = {}) {
       ).filter(Boolean)
     );
   const catalogueFlights = new Map();
+  let transferCars = null, // { revision, rows }: the cars of the last transfer list, and the library revision they were read at
+    transferFlight = null; // (the read under way)
   // what the library says about a car beyond its own fields: its Timing settings (the binding) and its custom fields and service figures.
   // These are two to three requests to the library per car, about 20 ms each one after another; a list of a hundred cars took seconds.
   const libraryParts = async car => {
@@ -197,16 +199,28 @@ function wrap(base, client, options = {}) {
     async transferChoices(entity) {
       if (entity === 'raceclasses') return classes();
       if (entity !== 'slotcars') return base.transferChoices(entity);
-      const rows = [];
-      let cursor;
-      do {
-        const p = await adapter.catalogue(entity, { limit: 48, cursor });
-        rows.push(
-          ...p.items.map(({ record: r }) => ({ id: r.id, brand: r.brand, manufacturer: r.manufacturer, model: r.model || r.name }))
-        );
-        cursor = p.next;
-      } while (cursor);
-      return rows;
+      // (2.4.0) reading every car works out its laps and services too (about 3 ms a car), and Import and Export asks twice when it opens (the
+      // list to export, and how many cars you have now). The list is kept until the library changes: one small read says if it did.
+      // (Two asks at the same time share one read.)
+      transferFlight ||= (async () => {
+        const now = encode((await consistent(() => client.catalogue({ limit: 1 }))).token);
+        if (transferCars && transferCars.revision === now) return transferCars.rows;
+        const rows = [];
+        let cursor, revision;
+        do {
+          const p = await adapter.catalogue(entity, { limit: 48, cursor });
+          revision ??= p.revision;
+          rows.push(
+            ...p.items.map(({ record: r }) => ({ id: r.id, brand: r.brand, manufacturer: r.manufacturer, model: r.model || r.name }))
+          );
+          cursor = p.next;
+        } while (cursor);
+        transferCars = { revision, rows };
+        return rows;
+      })().finally(() => {
+        transferFlight = null;
+      });
+      return (await transferFlight).map(r => ({ ...r }));
     },
     async get(entity, id) {
       if (entity === 'raceclasses') return (await classes()).find(c => c.id === id) || null;

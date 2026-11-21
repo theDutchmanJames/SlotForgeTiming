@@ -107,6 +107,16 @@ for(const backend of ['json','sqlite']){
   assert.equal((await base.list('slotcars')).length,1);assert(await base.get('sessions',journal.items.sessions[0].id));assert.equal((await peer.historyRead({kind:'sessions'})).entries.length,1);const imported=await peer.customRead({carId:client.canonicalId(journal.items.slotcars[0].id)});assert(Object.values(imported.values).includes('Retained note'));assert.equal((await peer.serviceRead({carId:imported.carId})).service.lapsDriven,25);
   await I.resume(client,base,profile);assert.equal((await base.list('sessions')).length,1);
  });
+ // (2.4.0) Import and Export asks for the cars twice when it opens; reading every car works out its laps and services, so the list is kept until the library changes
+ test(backend+': the transfer list of cars is read again only after the library changed',async t=>{
+  const {client,peer,db,worker}=await fixture(t,backend),base=worker?new(require('../sqlite-app-repository'))(worker):new(require('../data-repository'))(db),records=require('../shared-library-records').wrap(base,client);
+  let overviews=0;const overview=client.handle.catalogueOverview.bind(client.handle);client.handle.catalogueOverview=async o=>(overviews++,overview(o));
+  const first=await records.transferChoices('slotcars');assert.equal(first.length,1);assert.equal(overviews,1);
+  first[0].model='changed by the caller';const [a,b]=await Promise.all([records.transferChoices('slotcars'),records.transferChoices('slotcars')]);
+  assert.equal(overviews,1,'nothing changed: no new read');assert.notEqual(a[0].model,'changed by the caller','each caller gets its own copy');assert.deepEqual(a,b);
+  const car=await client.car('old-car'),s=await client.status();await peer.carWrite({databaseId:s.databaseId,recoveryId:s.recoveryId,operationId:'transfer-list-edit',action:'patch',carId:car.id,expectedRevision:car.revision,set:{model:'Edited elsewhere'}});
+  assert.equal((await records.transferChoices('slotcars'))[0].model,'Edited elsewhere');assert.equal(overviews,2);
+ });
  test(backend+': normal statistics use canonical history once and current car exports use peer edits',async t=>{
   const {client,peer,db,worker}=await fixture(t,backend),base=worker?new(require('../sqlite-app-repository'))(worker):new(require('../data-repository'))(db),records=require('../shared-library-records').wrap(base,client),outbox=worker||new(require('../json-delivery-store'))(db),pump=new(require('../shared-library-delivery'))(client,outbox),e=require('../tools/qa/rich-mapper-fixtures.cjs').evidence(),captured=await client.prepare(['old-car']);
   e.session.paddockJournal.captures.local=captured.captures['old-car'];e.session.paddockJournal.sharedLibrary=captured.sharedLibrary;await records.saveSession(e.session,e.laps);await pump.flush();

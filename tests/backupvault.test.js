@@ -180,3 +180,10 @@ test('the main process, the bridge and the page are wired', () => {
   assert(has(code('renderer/settingspage.js'), "['backups', 'Backups', 'Made by itself and by hand', 'clock'],"));
   assert(has(code('renderer/generalpage.js'), ':scope > .bv'));
 });
+
+test('opening the page asks for the backups while the items to export are read', () => {
+  const T = code('renderer/transferui.js');
+  const ask = T.indexOf('const bvJob = api.backupList ? api.backupList().catch(() => null) : null;');
+  assert.ok(ask > 0 && ask < T.indexOf('await api.transferChoices()'));
+  assert.ok(has(T, 'const bv = await bvJob,'));
+});

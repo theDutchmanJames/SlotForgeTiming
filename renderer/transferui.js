@@ -259,6 +259,8 @@ async function renderTransferSettings(box) {
   const sharedStatus = api.libraryStatus ? await api.libraryStatus() : null,
     shared = sharedStatus?.available;
   if (shared) trState.bk = null;
+  // (2.4.0) the backups are asked for at the same time as the items to export (each waits on the database)
+  const bvJob = api.backupList ? api.backupList().catch(() => null) : null;
   const lists = api.transferChoices ? await api.transferChoices() : {};
   for (const [, es] of TR_GROUPS)
     for (const e of es) {
@@ -279,7 +281,7 @@ async function renderTransferSettings(box) {
   const pending = trState.pending,
     bk = trState.bk;
   const tf = (id, title, note, body) => folderHtml('transfer', id, title, note, `<div class="fbody"><div class="bv">${body}</div></div>`); // (.bv: the settings sheet leaves it as it is)
-  const bv = api.backupList ? await api.backupList().catch(() => null) : null,
+  const bv = await bvJob,
     abSt = bv ? bv.status : api.autoBackupStatus ? await api.autoBackupStatus().catch(() => null) : null,
     blist = (bv && bv.list) || [];
   // ---- Backups ----
