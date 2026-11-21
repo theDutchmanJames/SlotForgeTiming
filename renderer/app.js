@@ -1463,7 +1463,11 @@ function bootFailed(e) {
   const libraryState = api.libraryStatus ? await api.libraryStatus() : null;
   if (typeof PaddockCollection !== 'undefined' && !libraryState?.available) PaddockCollection.init(api);
   applyUiScale();
-  await render();
+  // (2.4.0) the window is shown when the first screen is drawn, at most 3 s after this: Home fills in its statistics afterwards. With a
+  // large history the statistics took minutes, and the opening gave up after 3 minutes ("The first screen is taking too long to open").
+  const firstScreen = render();
+  await Promise.race([firstScreen, new Promise(resolve => setTimeout(resolve, 3000))]);
+  firstScreen.catch(e => console.error('First screen:', e));
   if (libraryState?.available && typeof SharedLibraryWatch !== 'undefined') {
     const stop = SharedLibraryWatch.watch({
       initial: libraryState,

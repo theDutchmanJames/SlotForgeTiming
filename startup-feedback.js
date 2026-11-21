@@ -55,8 +55,30 @@ function create({ BrowserWindow, quit }) {
   // A feedback-page failure must not turn a successful database open into an
   // unhandled rejection. The main window remains the authority for startup.
   win.loadFile(path.join(__dirname, 'renderer', 'startup.html')).catch(() => settle(false));
+  // (2.4.0) a long step says how far it is: the status line and the window title. The page stays script-free: the words are set with a
+  // style from outside (the newest replaces the one before), and the title is the window's own.
+  let shownCss = null,
+    shownText = '';
+  const status = text => {
+    if (disposed || win.isDestroyed() || typeof text !== 'string' || text === shownText) return;
+    shownText = text;
+    win.setTitle(text ? 'Opening SlotForge Timing · ' + text : 'Opening SlotForge Timing');
+    const css = text ? `.status{font-size:0}.status::after{content:${JSON.stringify(text)};font-size:12.5px}` : '';
+    const before = shownCss;
+    shownCss = null;
+    if (before) win.webContents.removeInsertedCSS(before).catch(() => {});
+    if (css)
+      win.webContents
+        .insertCSS(css)
+        .then(key => {
+          if (disposed || win.isDestroyed() || shownText !== text) return win.webContents.removeInsertedCSS(key).catch(() => {});
+          shownCss = key;
+        })
+        .catch(() => {});
+  };
   return {
     ready,
+    status,
     dispose() {
       if (disposed) return;
       disposed = true;

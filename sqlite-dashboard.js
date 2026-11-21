@@ -67,7 +67,7 @@ const season = (s, o) =>
         *laps(id, p) {
           for (const row of s
             .statement(
-              "SELECT f.json FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id JOIN fields f ON f.entity='laps' AND f.id=l.id AND f.path='[]' WHERE l.sessionId=? AND (?=1 OR l.driverId=?) ORDER BY r.ordinal"
+              "SELECT f.json FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id JOIN fields f ON f.entity='laps' AND f.id=l.id AND f.path='[]' WHERE l.sessionId=? AND (?=1 OR l.driverId=?) ORDER BY r.ordinal"
             )
             .iterate(id, p.asTeam ? 1 : 0, p.driverId || '')) {
             const lap = JSON.parse(row.json);

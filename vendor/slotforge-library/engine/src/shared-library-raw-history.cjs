@@ -207,7 +207,8 @@ function read(store, input) {
         (input.carId !== undefined && !validId(input.carId))
       )
         fail('INVALID_QUERY', 'Invalid original history filters.');
-      let from = `FROM records r JOIN record_fields p ON p.record=r.key AND p.path='["projectionStatus"]' WHERE r.bucket='["libraryOrigins"]' AND p.json='"raw-only"'`,
+      // (Timing 2.4.0, speed) from the few "raw-only" origins through record_fields_lookup
+      let from = `FROM record_fields p CROSS JOIN records r ON r.key=p.record WHERE p.path='["projectionStatus"]' AND p.json='"raw-only"' AND length(p.json)<=512 AND r.bucket='["libraryOrigins"]'`,
         args = [];
       if (input.sourceId) {
         from += ` AND EXISTS(SELECT 1 FROM record_fields s WHERE s.record=r.key AND s.path='["sourceId"]' AND s.json=?)`;

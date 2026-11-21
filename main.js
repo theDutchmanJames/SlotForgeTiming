@@ -524,7 +524,9 @@ async function openStorageAndPaddock() {
       installationId: sourceId || 'legacy-' + descriptor.originKey,
       storage: paddock.storage,
       appData: app.getPath('appData'),
-      originKey: descriptor?.originKey
+      originKey: descriptor?.originKey,
+      // (2.4.0) the first start with a large history copies every race into the car library: the opening screen says how far it is
+      onProgress: p => startupFeedback?.status?.(libraryProgressText(p))
     };
     sharedLibrary = await require('./shared-library-client').SharedLibraryClient.open(libraryOptions);
     const recovery = require('./shared-library-restore');
@@ -1833,6 +1835,17 @@ function startUpdateCheck() {
   }
 }
 
+// (2.4.0) "Copying your race history into the car library: 340 of 2,500 races"
+function libraryProgressText(p) {
+  if (!p || typeof p !== 'object' || !Number.isFinite(p.done)) return '';
+  const n = x => Math.round(x).toLocaleString('en-GB'),
+    of = Number.isFinite(p.total) && p.total > 0 ? ' of ' + n(p.total) : '';
+  if (p.phase === 'cars') return `Copying your cars into the car library: ${n(p.done)}${of}`;
+  if (p.phase === 'sessions') return `Copying your race history into the car library: ${n(p.done)}${of} races`;
+  if (p.phase === 'laps') return 'Checking for laps without a race…';
+  if (p.phase === 'service') return `Setting the service counters of your cars: ${n(p.done)}${of}`;
+  return '';
+}
 const startupTask = app.whenReady().then(async () => {
   if (!gotLock) return;
   try {

@@ -664,7 +664,7 @@ class WorkingStore extends SqliteStore {
   }
   lapsFor(id) {
     return this.statement(
-      "SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal"
+      "SELECT l.id FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal"
     )
       .all(id)
       .map(r => this.get('laps', r.id, true).value);

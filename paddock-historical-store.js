@@ -254,7 +254,7 @@ function sqlAdapter(s) {
       // Only the selected session and indexed laps are hydrated. No catalogue/media scan.
       const ids = s
         .statement(
-          "SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal LIMIT 50001"
+          "SELECT l.id FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal LIMIT 50001"
         )
         .all(sessionId);
       if (ids.length > 50000) throw Error('Historical Review supports at most 50,000 laps per session.');

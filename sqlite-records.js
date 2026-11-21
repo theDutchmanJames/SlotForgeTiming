@@ -255,7 +255,7 @@ function removeRecord(s, { entity: table, recordId, expectedRevision }) {
         : `l.${lapKey}=?`;
     const args = table === 'tracks' ? [recordId, JSON.stringify(recordId)] : [recordId];
     data.laps = s
-      .statement(`SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE ${where} ORDER BY r.ordinal`)
+      .statement(`SELECT l.id FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id WHERE ${where} ORDER BY r.ordinal`)
       .all(...args)
       .map(r => s.get('laps', r.id, true).value);
   }
@@ -308,7 +308,7 @@ function mergeDrivers(s, { fromId, intoId, expectedFromRevision, expectedIntoRev
     before.set(dep, structuredClone(data[dep]));
   }
   data.laps = s
-    .statement("SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.driverId=? ORDER BY r.ordinal")
+    .statement("SELECT l.id FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.driverId=? ORDER BY r.ordinal")
     .all(fromId)
     .map(r => s.get('laps', r.id, true).value);
   const state = s.paddockState();

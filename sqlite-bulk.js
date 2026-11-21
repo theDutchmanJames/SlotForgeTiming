@@ -173,7 +173,9 @@ function reader(store) {
     customFields: store.get('@meta', 'customFields', true)?.value || {},
     *lapsFor(id) {
       for (const row of store
-        .statement("SELECT r.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal")
+        .statement(
+          "SELECT r.id FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal"
+        )
         .iterate(id))
         yield findRecord('laps', row.id);
     },

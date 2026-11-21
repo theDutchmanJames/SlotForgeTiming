@@ -10,21 +10,28 @@ function base(includeUnselected = false) {
   // Inclusion controls attribution to the main car, not the historical race.
   // Global Timing records retain all evidence under its original
   // identity. A car-filtered query and service counters use selected history.
-  const car = includeUnselected ? `json_extract(p.value,'$.carId')` : owner();
-  return `WITH physical AS (
- SELECT s.key sessionKey,s.source sourceId,s.session sessionId,s.json sessionJson,p.value participant,
+  // (Timing 2.4.0, speed) The values of a race are read from its stored text once per race (sess), and those of a car in it once per car
+  // (physical), not again for every lap: Home over 260,000 laps took 84 s. The same rows and values as before.
+  const ownerOf = includeUnselected ? `json_extract(p.value,'$.carId')` : owner('s', 'p');
+  return `WITH sess AS MATERIALIZED (
+ SELECT s.key,s.source,s.session,s.json,
  coalesce(json_extract(s.json,'$.format')='history-v1',0) rich,
  json_extract(s.json,'$.bundle.provenance.kind')='historical' historical,
  json_extract(s.json,'$.payload.name') sessionName,json_extract(s.json,'$.payload.type') sessionType,
  json_extract(s.json,'$.payload.startedAt') startedAt,json_extract(s.json,'$.bundle.context.savedAt') savedAt,
- coalesce(json_extract(s.json,'$.payload.startedAt'),json_extract(s.json,'$.bundle.context.savedAt')) effectiveDate,
- CASE WHEN json_extract(s.json,'$.payload.startedAt') IS NOT NULL THEN 'started' WHEN json_extract(s.json,'$.bundle.context.savedAt') IS NOT NULL THEN 'saved' ELSE 'unknown' END dateBasis,
- json_extract(s.json,'$.payload.track.id') trackId,json_extract(s.json,'$.payload.track.name') trackName,
- ${car} carId,json_extract(p.value,'$.id') participantId,
- coalesce((SELECT json_extract(f.json,'$') FROM record_fields f WHERE f.record=json_array('cars','id:'||${car}) AND f.path='["name"]'),json_extract(p.value,'$.displayName')) carName
- FROM query_sessions s JOIN json_each(s.json,'$.payload.participants') p
+ json_extract(s.json,'$.payload.track.id') trackId,json_extract(s.json,'$.payload.track.name') trackName
+ FROM query_sessions s
  WHERE json_extract(s.json,'$.payload.state')='active' AND coalesce(json_extract(s.json,'$._query.requiresCorrection'),0)=0
- AND json_extract(p.value,'$.kind')='physical' AND ${car} IS NOT NULL
+), owned AS MATERIALIZED (
+ SELECT s.*,p.value participant,${ownerOf} carId FROM sess s JOIN json_each(s.json,'$.payload.participants') p
+ WHERE json_extract(p.value,'$.kind')='physical'
+), physical AS MATERIALIZED (
+ SELECT o.key sessionKey,o.source sourceId,o.session sessionId,o.json sessionJson,o.participant,o.rich,o.historical,o.sessionName,o.sessionType,
+ o.startedAt,o.savedAt,coalesce(o.startedAt,o.savedAt) effectiveDate,
+ CASE WHEN o.startedAt IS NOT NULL THEN 'started' WHEN o.savedAt IS NOT NULL THEN 'saved' ELSE 'unknown' END dateBasis,
+ o.trackId,o.trackName,o.carId,json_extract(o.participant,'$.id') participantId,
+ coalesce((SELECT json_extract(f.json,'$') FROM record_fields f WHERE f.record=json_array('cars','id:'||o.carId) AND f.path='["name"]'),json_extract(o.participant,'$.displayName')) carName
+ FROM owned o WHERE o.carId IS NOT NULL
 ), samples AS (
  SELECT p.*,json_extract(l.json,'$.id') lapId,json_extract(l.json,'$.originLapId') originLapId,json_extract(l.json,'$.number') lapNumber,
  json_extract(l.json,'$.durationMs') durationMs,json_extract(l.json,'$.endedAtMs') endedAtMs,
@@ -38,6 +45,9 @@ function base(includeUnselected = false) {
  LEFT JOIN json_each(p.participant,'$.stints') st ON NOT p.rich AND json_extract(st.value,'$.id')=json_extract(l.json,'$.stintId')
 )`;
 }
+// (Timing 2.4.0, speed, serviceCount) A car's laps can only be in races one of its own cars (itself or a car merged into it) took part in,
+// and every race lists its cars in query_car_results. Counting the laps of one car went through every race and lap of the library: 15 s a
+// car with 2,500 races, so a first start spent hours on 800 cars, and the car list did it for every car it showed.
 const BASE = base();
 const VALID = 'durationMs IS NOT NULL AND valid=1 AND pit=0';
 const SUMMARY = `count(*) recordedLaps,count(DISTINCT sessionKey) acceptedSessions,
@@ -291,16 +301,32 @@ function read(store, input) {
     };
   }).value;
 }
+// The same laps as "SELECT count(*) FROM samples WHERE carId=?", read without the columns a count does not need: those read a dozen values
+// out of the stored text of the race for every car in it (about 100 ms a car with a large history).
+const SERVICE_COUNT = from => `WITH ss AS MATERIALIZED (
+ SELECT key,source,session,json,coalesce(json_extract(json,'$.format')='history-v1',0) rich FROM query_sessions
+ WHERE key IN (SELECT key FROM query_car_results WHERE car_id IN (SELECT value FROM json_each(?)))
+ AND json_extract(json,'$.payload.state')='active' AND coalesce(json_extract(json,'$._query.requiresCorrection'),0)=0${
+   from ? " AND (json_extract(json,'$.payload.startedAt') IS NULL OR julianday(json_extract(json,'$.payload.startedAt'))>=julianday(?))" : ''
+ }
+), pp AS MATERIALIZED (
+ SELECT s.key,s.rich,p.value pv,json_extract(p.value,'$.id') pid FROM ss s JOIN json_each(s.json,'$.payload.participants') p
+ WHERE json_extract(p.value,'$.kind')='physical' AND ${owner()}=?
+)
+SELECT count(*) n FROM pp JOIN query_laps l ON l.key=pp.key AND l.participant=pp.pid
+ LEFT JOIN json_each(pp.pv,'$.stints') st ON NOT pp.rich AND json_extract(st.value,'$.id')=json_extract(l.json,'$.stintId')`;
 function serviceCount(r, carId, from = null) {
-  return (
-    r.db
-      .prepare(
-        BASE +
-          ' SELECT count(*) n FROM samples WHERE carId=?' +
-          (from ? ' AND (startedAt IS NULL OR julianday(startedAt)>=julianday(?))' : '')
-      )
-      .get(...(from ? [carId, from] : [carId])).n + require('./shared-library-lap-counts.cjs').originals(r, carId, from)
-  );
+  const own = r.merges?.originalIds ? r.merges.originalIds(carId) : [];
+  const indexed = own.length
+    ? r.db.prepare(SERVICE_COUNT(!!from)).get(JSON.stringify(own), ...(from ? [from] : []), carId).n
+    : r.db
+        .prepare(
+          BASE +
+            ' SELECT count(*) n FROM samples WHERE carId=?' +
+            (from ? ' AND (startedAt IS NULL OR julianday(startedAt)>=julianday(?))' : '')
+        )
+        .get(...(from ? [carId, from] : [carId])).n;
+  return indexed + require('./shared-library-lap-counts.cjs').originals(r, carId, from);
 }
 // Paddock lap reminders: laps per reminder in one pass over the lap index.
 // wanted: [{key,carId,from}]. Only sessions with a known date count (a start time, or when

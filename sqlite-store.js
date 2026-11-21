@@ -268,7 +268,7 @@ class SqliteStore {
     if (typeof sessionId !== 'string' || !Number.isSafeInteger(after) || after < -1 || !Number.isInteger(limit) || limit < 1 || limit > 200)
       throw Error('Invalid lap query.');
     return this.statement(
-      "SELECT r.id,r.ordinal FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? AND r.ordinal>? ORDER BY r.ordinal LIMIT ?"
+      "SELECT r.id,r.ordinal FROM lap_index l CROSS JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? AND r.ordinal>? ORDER BY r.ordinal LIMIT ?"
     ).all(sessionId, after, limit);
   }
   asset(entity, id, parts) {
