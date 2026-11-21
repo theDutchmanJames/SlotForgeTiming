@@ -639,6 +639,7 @@ const SettingsRail = (() => {
             note.className = 'sn ss-intro';
             tile.className = 'sn-tile';
             tile.innerHTML = pic ? pic.innerHTML : '';
+            if (!tile.innerHTML) note.classList.add('sn-notile'); // (no picture: the words take the whole width)
             note.append(tile);
             lead.before(note);
             lead.classList.remove('ss-note');

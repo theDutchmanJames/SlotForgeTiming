@@ -47,8 +47,9 @@ const SystemSheet = (() => {
     const twice = !!(form.closest('.setuppage') && document.getElementById('setupnote')) && !form.classList.contains('sy-pop');
     const words = !twice && kindOf(form) !== 'race' && typeof SETUP_NOTES !== 'undefined' ? SETUP_NOTES[NOTE[kindOf(form)]] : null; // (2.4.0: a race setup says itself in one line, Setup Sheet)
     const tile = form.querySelector('#rstile');
-    const box = el('div', 'sn sy-note');
-    box.append(el('span', 'sn-tile', tile && !twice ? tile.innerHTML : ''));
+    const pic = tile && !twice ? tile.innerHTML : '';
+    const box = el('div', pic ? 'sn sy-note' : 'sn sy-note sn-notile'); // (sn-notile: no picture, the words take the whole width; a class, not :has(), which made every change on the race screen restyle the page)
+    box.append(el('span', 'sn-tile', pic));
     if (words && words[0]) box.append(el('p', 'sn-lead', esc(words[0])));
     say.classList.add('sn-more');
     say.before(box);

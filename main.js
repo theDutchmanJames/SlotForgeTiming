@@ -451,7 +451,13 @@ function openLiveWindow() {
     minHeight: 400,
     title: 'Live Race',
     autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
+    // (2.4.0) backgroundThrottling off: the second screen keeps its clock and timers at full speed when Windows thinks it is covered or it has no focus
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false
+    }
   });
   guardWindow(liveWin);
   if (other) liveWin.maximize(); // press F11 for full screen

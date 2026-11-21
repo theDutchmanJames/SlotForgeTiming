@@ -3776,8 +3776,10 @@ html #view .help-hub .help-heading h2:not(.x){font-size:20px}
 .sn:is(.sy-note,.ss-intro)>.sn-use{grid-column:2;display:flex;align-items:center;gap:7px;margin:7px 0 0;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font-size:12.5px;line-height:1.4}
 .sn:is(.sy-note,.ss-intro)>.sn-use::before{content:'\2192';color:var(--accent-text,var(--accent))}
 .sn:is(.sy-note,.ss-intro)>.sn-tile:empty{display:none}
-.sn:is(.sy-note,.ss-intro):has(>.sn-tile:empty){grid-template-columns:minmax(0,1fr)}
-.sn:is(.sy-note,.ss-intro):has(>.sn-tile:empty)>*{grid-column:1}
+/* (2.4.0) a note without a picture is marked sn-notile where it is made: this was a :has() rule on an empty tile, and that made every change of text on the
+   race screen restyle most of the page (190 ms of every second of a race with 8 cars, 27 without it) */
+.sn.sn-notile:is(.sy-note,.ss-intro){grid-template-columns:minmax(0,1fr)}
+.sn.sn-notile:is(.sy-note,.ss-intro)>*{grid-column:1}
 
 /* 2.4.0 System Sheet (systemsheet.js): the editor of a race system, race setup, championship or rotation as one calm page with a table of contents */
 /* the header: slim, the name is the title; the pills of the key settings are in the Page Note now */
@@ -7861,3 +7863,5 @@ html #side .sidegroup>summary::after{margin-top:-6px}
 html #side .field>.inline.geo{flex-wrap:wrap;gap:8px}
 html #side .field>.inline.geo>label{display:flex;flex-direction:column;gap:3px;flex:1 1 calc(50% - 8px);min-width:0;font-size:11.5px;color:var(--muted)}
 html #side .field>.inline.geo>label>input{width:100%!important;box-sizing:border-box}
+/* (2.4.0) the Status Lights button is its own pill: the holder of the older lights has no pill behind it (it stuck out on both sides) */
+html body.app-shell>header>#tabs .mb-lights.mb-lights-one{padding:0;background:none}

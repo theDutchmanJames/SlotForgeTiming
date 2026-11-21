@@ -102,6 +102,7 @@ const MainBar = (() => {
       const c = statusNow(list);
       const btn = RaceCheck.lightsHtml(c, statusOpen);
       if (el.innerHTML !== btn) el.innerHTML = btn;
+      el.classList.add('mb-lights-one'); // (the button is the pill: the holder of the older lights draws no pill of its own behind it)
       el.onclick = ev => {
         ev.stopPropagation();
         toggleStatus();
