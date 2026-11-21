@@ -1178,7 +1178,7 @@ const say = (m, c) => {
         'Tyres',
         'Weather',
         'Controls'
-      ].every(g => ed.includes('data-pal="' + g + '"><summary>' + g + '</summary>')) &&
+      ].every(g => ed.includes('data-pal="' + g + '"><summary><span class="pal-t">' + g + '</span>')) &&
       !ed.includes('data-pal="Driver" open')
   );
   const canvas = E('canvas').innerHTML;
@@ -16448,7 +16448,9 @@ const say = (m, c) => {
       types = ['dlaptime', 'davglap', 'dmedlap', 'dbestlap', 'drecordlap', 'dpitstop', 'dsessionrecord', 'dtrackrecord'];
     say(
       'the palette has a Delta Timers folder (closed) with the eight widgets, by name',
-      pal.includes('<details class="palgroup" data-pal="Delta Timers"><summary>Delta Timers</summary>') &&
+      pal.includes(
+        '<details class="palgroup" data-pal="Delta Timers"><summary><span class="pal-t">Delta Timers</span><span class="pal-n">9</span></summary>'
+      ) &&
         types.every(t => pal.includes('data-add="' + t + '"')) &&
         pal.includes('>Personal Best Delta</button>') &&
         pal.includes('>Pitstop Time Delta</button>') &&

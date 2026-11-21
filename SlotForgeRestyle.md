@@ -61,6 +61,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Season Calendar](#season-calendar) | Championship rounds with real dates and the season strip, Fill the dates, the calendar file; Adjustments in the standings | Race Setup › Championships, Results › Championships |
 | [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green; the lanes one at a time with a swap found, the pit lane, Track call and track power as checks, Connect | Test sensors (Home, Timing Desk, setup guide) |
 | [Pit Lights](#pit-lights) | A light per pit sensor in Lane Check that lights amber when a car is on it; click it and choose its lane, saved at once and used by the race | Lane Check (Arduino box) |
+| [Editor Panels](#editor-panels) | The widget list as a rail with Barlow folders and counts, the settings with a head (kind, name, the lane as eight buttons), Folders, slim rows, the arrange tools as pictures, explanations folded | Layout Editor, Leaderboard Editor |
 | [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
 | [Lane Desk](#lane-desk) | The race screen under the widgets: a card per lane with everything for that car, a race column, the tables as tabs, the keys as key caps | Race tab (with the lane cards on) |
 | [Race Sheet](#race-sheet) | The tables of a race: small grey capitals over the columns, quiet rows, numbers in Roboto Mono, notes as a grey line | The Lane Desk's tabs, the Race Director page |
@@ -2562,6 +2563,36 @@ html .lc-pitsensor.lc-lit .lc-pitlight{background:radial-gradient(circle at 40% 
 html .lc-pitpick{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px}
 ```
 
+## Editor Panels
+
+The two panels beside the canvas of the **Layout Editor** and the **Leaderboard Editor** (row designs): `renderer/editor.js` (the palette `folder`,
+`sideHtml` with its head, `ARR_ICON`, `foldSideHints`), styles under `.pal-`, `.ed-insp`, `.insp-`, `.arr-i`, `.hint-more` at the end of `styles.css`.
+
+- **The widget list** (left, `.ed-pal`) is a [Paddock Rail](#paddock-rail): *Find a widget*, then *WIDGETS* (and *YOURS* above Custom) in small
+  spaced capitals; each folder is a row with its name in Barlow, how many widgets it holds in Roboto Mono and a chevron; the open folder has the
+  accent mark on its left. The widgets are quiet rows (`.pal-it`, 13 px) that show a **+** under the pointer, not grey buttons.
+- **The head of the settings** (`.ed-insp`): the kind in Roboto Mono caps (*PER LANE · DRIVER*, *ONCE ON SCREEN · RACE*, *ROW CELL · …* in the
+  Leaderboard Editor, *SELECTION* for several), the name in Barlow, and the **lane as eight buttons** (`.insp-lanes`, the chosen one with the accent
+  edge). The Lane list is still there, hidden, and a button sets it, so the lane works as before.
+- **The settings folders** (`.sidegroup`) are [Folders](#folder): Barlow title, the group's icon, a chevron, the accent mark when open. A section in a
+  folder (`.ws-section`) has no coloured box any more: its name in small spaced capitals, then its rows.
+- **Slim rows**: a setting with a small control (a list, a number, a colour) has the name on the left and the control on the right; a long control
+  goes under its name. Rows are divided by thin lines.
+- **The arrange tools** are small pictures in a sunken strip (`.arr`): Align left / centre / right and top / middle / bottom, Spread across / down,
+  the four Layer moves; their words are the tooltip. Mirror keeps its words.
+- **Explanations** show one line (a note two) and *More* opens the rest (`.hint-more`, accent); measured when a folder opens.
+
+```css
+.pal-t{font:italic 700 15px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+.pal-n{font:500 11px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .ed-pal .palgroup[open]>summary{border-radius:0 8px 8px 0;box-shadow:inset 3px 0 0 var(--accent)}
+.insp-lanes>button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))}
+html #side .sidegroup[open]>summary{border-bottom:1px solid var(--line);box-shadow:inset 3px 0 0 var(--accent)}
+html #side .field{display:grid;grid-template-columns:minmax(0,1fr) auto;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+html #side .arr{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+html #side .hint{-webkit-line-clamp:1}
+```
+
 ## Choice Rows
 
 In a [Settings Sheet](#settings-sheet), a row that holds **only a radio button** is one big button: the whole row picks it, the chosen row is tinted
@@ -2738,3 +2769,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Design pass fixes | Small: the race bar status up to 260 px with the whole line as a tooltip; the Tracks bar on one line at 1366 px (the word *Sort* goes under 1500 px); the Results search says *Race or driver*; *Used in N layouts* under chart designs and picture sets (`.lt-usedline`); an amber warning line on a Widget Builder card with a word its text does not know (`.wk-warn`); no *(optional)* beside the track length |
 | 2026-11 | Quiet Pages | New: page notes folded to one line with More; explanations on two lines; one red button per page (Parallel Port, the standings, the Widget Builder; Delete muted on cards); Ready / Not ready on race setup cards and a legend for the list dot; values under their widget titles; the Plugins empty card; Display and units and Share the race on one page |
 | 2026-11 | Pit Lights | New: Lane Check shows a light per pit sensor (Arduino box); a car on it lights it amber, click it and choose its lane; saved at once (`abPitMap`) and the race uses the same lanes |
+| 2026-11 | Editor Panels | Restyled: the Layout Editor and the Leaderboard Editor panels (the widget list as a rail, the settings as Folders with a head and slim rows, the lane as eight buttons, Align and Layer as pictures, explanations on one line with More). Behaviour: the lane is chosen with buttons (the list is hidden), explanations start folded |

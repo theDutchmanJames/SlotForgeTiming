@@ -1524,6 +1524,53 @@ const ownPictures = w =>
       ? Widgets.FLAG_STATES.some(([k]) => (w.opt || {})['img_' + k])
       : false;
 
+// (2.4.0, "Editor Panels") the arrange tools as small pictures: a box against a line for Align, the box in a stack for Layer
+const ARR_SVG = body =>
+  `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">${body}</svg>`;
+const ARR_ICON = {
+  'align-left': ARR_SVG(
+    '<path d="M2.5 2v12"/><rect x="5" y="4" width="8" height="3" rx=".8"/><rect x="5" y="9" width="5" height="3" rx=".8"/>'
+  ),
+  'align-center': ARR_SVG(
+    '<path d="M8 2v12"/><rect x="3.5" y="4" width="9" height="3" rx=".8"/><rect x="5" y="9" width="6" height="3" rx=".8"/>'
+  ),
+  'align-right': ARR_SVG(
+    '<path d="M13.5 2v12"/><rect x="3" y="4" width="8" height="3" rx=".8"/><rect x="6" y="9" width="5" height="3" rx=".8"/>'
+  ),
+  'align-top': ARR_SVG(
+    '<path d="M2 2.5h12"/><rect x="4" y="5" width="3" height="8" rx=".8"/><rect x="9" y="5" width="3" height="5" rx=".8"/>'
+  ),
+  'align-middle': ARR_SVG(
+    '<path d="M2 8h12"/><rect x="4" y="3.5" width="3" height="9" rx=".8"/><rect x="9" y="5" width="3" height="6" rx=".8"/>'
+  ),
+  'align-bottom': ARR_SVG(
+    '<path d="M2 13.5h12"/><rect x="4" y="3" width="3" height="8" rx=".8"/><rect x="9" y="6" width="3" height="5" rx=".8"/>'
+  ),
+  'layer-front': ARR_SVG('<path d="M3 2.5h10"/><path d="M8 13.5V5.5M5 8.5l3-3 3 3"/>'),
+  'layer-forward': ARR_SVG('<path d="M8 12.5V3.5M5 6.5l3-3 3 3"/>'),
+  'layer-backward': ARR_SVG('<path d="M8 3.5v9M5 9.5l3 3 3-3"/>'),
+  'layer-back': ARR_SVG('<path d="M3 13.5h10"/><path d="M8 2.5v8M5 7.5l3 3 3-3"/>'),
+  'dist-x': ARR_SVG('<path d="M2 2v12M14 2v12"/><rect x="6" y="5" width="4" height="6" rx=".8"/>'),
+  'dist-y': ARR_SVG('<path d="M2 2h12M2 14h12"/><rect x="5" y="6" width="6" height="4" rx=".8"/>')
+};
+// (2.4.0, "Editor Panels") an explanation in the settings shows one line; More opens the rest, when there is more
+function foldSideHints(root) {
+  if (!root || !root.querySelectorAll) return;
+  root.querySelectorAll('.hint:not([data-fold]),.sidegroup p.muted:not([data-fold])').forEach(h => {
+    if (!h.offsetParent) return; // (in a closed folder: measured when it opens)
+    h.dataset.fold = '1';
+    if (h.scrollHeight <= h.clientHeight + 2) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'hint-more';
+    b.textContent = 'More';
+    b.onclick = ev => {
+      ev.stopPropagation();
+      b.textContent = h.classList.toggle('open') ? 'Less' : 'More';
+    };
+    h.after(b);
+  });
+}
 function sideHtml() {
   const sel = state.editing.sel;
   // The settings are grouped like folders (Title, Text, Background and border, the widget's own options); they start closed, and a folder stays as you left it
@@ -1747,18 +1794,24 @@ function sideHtml() {
     sameType && d0.type === 'clock'
       ? `<div class="field"><label for="o-style">Clock style</label><select id="o-style" data-opt="style">${Widgets.CLOCK_STYLES.map(([key, label]) => `<option value="${key}"${key === Widgets.clockStyleOf(w0) ? ' selected' : ''}>${label}</option>`).join('')}</select><p class="muted hint">Pit Wall hides secondary labels in small widgets. Follow flags controls the digits, preserving your background.</p></div>`
       : '';
-  const abtn = (k, t, tip) => `<button class="btn" data-arr="${k}"${tip ? ` title="${esc(tip)}"` : ''}>${t}</button>`,
+  const abtn = (k, t, tip) =>
+      ARR_ICON[k]
+        ? `<button type="button" class="arr-i" data-arr="${k}" title="${esc(tip || t)}" aria-label="${esc(t)}">${ARR_ICON[k]}</button>`
+        : `<button type="button" class="arr-t" data-arr="${k}"${tip ? ` title="${esc(tip)}"` : ''}>${t}</button>`,
     many = sel.length > 1;
   const sizeIn = (k, label) => {
     const v = common(w => w[k]);
     return `<label>${label} <input type="number" data-size="${k}" min="${Widgets.MIN}" step="1" value="${v === undefined ? '' : esc(v)}" placeholder="${v === undefined ? 'different' : ''}"></label>`;
   };
   const arrangeTools =
-    `<div class="field"><label>Align ${many ? 'with the selection' : 'with the page'}</label>
+    `<div class="field arrf"><label>Align ${many ? 'with the selection' : 'with the page'}</label>
       <div class="arr">${[
         ['left', 'Left'],
         ['center', 'Center'],
-        ['right', 'Right'],
+        ['right', 'Right']
+      ]
+        .map(([k, t]) => abtn('align-' + k, t))
+        .join('')}</div><div class="arr">${[
         ['top', 'Top'],
         ['middle', 'Middle'],
         ['bottom', 'Bottom']
@@ -1766,25 +1819,33 @@ function sideHtml() {
         .map(([k, t]) => abtn('align-' + k, t))
         .join('')}</div></div>` +
     (sel.length > 2
-      ? `<div class="field"><label>Spread out evenly (the outer two stay)</label><div class="arr">${abtn('dist-x', 'Across')}${abtn('dist-y', 'Down')}</div></div>`
+      ? `<div class="field arrf"><label>Spread out evenly (the outer two stay)</label><div class="arr">${abtn('dist-x', 'Across')}${abtn('dist-y', 'Down')}</div></div>`
       : '') +
     (many
       ? `<div class="field"><label>Same size for all</label><div class="arrsize">${sizeIn('w', 'Width')}${sizeIn('h', 'Height')}</div><span class="muted hint">A widget stops at the edge of the page. Drag a corner of the frame round the selection to resize them all together.</span></div>`
       : '') +
-    `<div class="field"><label>Mirror</label><div class="arr">${many ? abtn('mirror-sel', 'In the selection', 'Left to right inside the box that holds the selection') : ''}${abtn('mirror-page', 'Across the page', 'To the other side of the middle of the page')}${many ? abtn('flip-sel', 'Flip top to bottom', 'Top to bottom inside the box that holds the selection') : ''}</div>
+    `<div class="field arrf"><label>Mirror</label><div class="arr">${many ? abtn('mirror-sel', 'In the selection', 'Left to right inside the box that holds the selection') : ''}${abtn('mirror-page', 'Across the page', 'To the other side of the middle of the page')}${many ? abtn('flip-sel', 'Flip top to bottom', 'Top to bottom inside the box that holds the selection') : ''}</div>
       <span class="muted hint">Mirroring left to right also swaps left and right text alignment and flips the pictures that have a Mirror setting. Made copies for the next lane with Duplicate? Mirror them across the page.</span></div>` +
     (row
       ? ''
-      : `<div class="field"><label>Layer</label><div class="arr">${abtn('layer-front', 'Bring to front', 'Place over every other widget')}${abtn('layer-forward', 'Bring forward', 'Move one layer closer to the front')}${abtn('layer-backward', 'Send backward', 'Move one layer closer to the back')}${abtn('layer-back', 'Send to back', 'Place behind every other widget')}</div><span class="muted hint">Layers decide which widget and shadow is on top where widgets overlap. The same order is used on every live race screen.</span></div>`);
-  return `<h3>${single ? esc(d0.label) : sel.length + ' widgets selected'}</h3>
-    ${allLane ? `<div class="field"><label for="s-lane">Lane</label><select id="s-lane">${lane === undefined ? '<option value="" selected>(different)</option>' : ''}${Array.from({ length: Widgets.LANES }, (_, l) => `<option value="${l}"${l === lane ? ' selected' : ''}>Lane ${l + 1}</option>`).join('')}</select></div>` : ''}
+      : `<div class="field arrf"><label>Layer</label><div class="arr">${abtn('layer-front', 'Bring to front', 'Place over every other widget')}${abtn('layer-forward', 'Bring forward', 'Move one layer closer to the front')}${abtn('layer-backward', 'Send backward', 'Move one layer closer to the back')}${abtn('layer-back', 'Send to back', 'Place behind every other widget')}</div><span class="muted hint">Layers decide which widget and shadow is on top where widgets overlap. The same order is used on every live race screen.</span></div>`);
+  // (2.4.0, SlotForgeRestyle.md "Editor Panels") the head: what kind of widget, its name, and its lane as eight buttons (the Lane list stays, hidden, and does the work)
+  const kindLine = single ? `${row ? 'Row cell' : d0.perLane ? 'Per lane' : 'Once on screen'} · ${esc(d0.group || '')}` : 'Selection';
+  const laneBtns = allLane
+    ? `<div class="insp-lanes" role="group" aria-label="Lane">${Array.from(
+        { length: Widgets.LANES },
+        (_, l) => `<button type="button" data-lanebtn="${l}" aria-pressed="${l === lane}" title="Lane ${l + 1}">${l + 1}</button>`
+      ).join('')}</div>`
+    : '';
+  return `<header class="ed-insp"><span class="insp-k">${kindLine}</span><h3>${single ? esc(d0.label) : sel.length + ' widgets selected'}</h3>${laneBtns}</header>
+    ${allLane ? `<div class="field insp-lanefield" hidden><label for="s-lane">Lane</label><select id="s-lane">${lane === undefined ? '<option value="" selected>(different)</option>' : ''}${Array.from({ length: Widgets.LANES }, (_, l) => `<option value="${l}"${l === lane ? ' selected' : ''}>Lane ${l + 1}</option>`).join('')}</select></div>` : ''}
     ${group('arrange', 'Arrange', `${arrangeTools}${snapHint}<div class="row"><button class="btn" id="s-tidy">Tidy to grid</button></div>${tidyHint}`)}
     ${
       row && single
         ? group(
             'place',
             'Place in the row',
-            `<div class="field"><label>0 to ${Widgets.U} across, 0 to ${Widgets.heightOf(state.editing.draft)} down</label><div class="inline">${[
+            `<div class="field"><label>0 to ${Widgets.U} across, 0 to ${Widgets.heightOf(state.editing.draft)} down</label><div class="inline geo">${[
               ['x', 'Left'],
               ['y', 'Top'],
               ['w', 'Width'],
@@ -1874,6 +1935,7 @@ function edDrawing({ $, Hh, U, d, ed, hasGuides, mark, mounted, paintVersion, ro
   };
   const drawSide = () => {
     $('side').innerHTML = sideHtml();
+    foldSideHints($('side'));
     if (!row && typeof LayoutTry !== 'undefined') LayoutTry.refreshWarn(ed, $('side'));
     fitPanels();
     if (typeof WidgetFonts !== 'undefined')
@@ -2777,6 +2839,7 @@ function edSideInput({ $, Hh, U, d, drawCanvas, ed, hist, mark, side }) {
         if (g && g.dataset && g.dataset.side) {
           if (g.open) state.sideOpen.add(g.dataset.side);
           else state.sideOpen.delete(g.dataset.side);
+          if (g.open) foldSideHints(g); // (the hints of a folder are measured when it opens)
           fitPanels();
         }
       },
@@ -3081,6 +3144,16 @@ function edSideClick({ $, arrange, d, duplicateSel, ed, redraw, removeSel, side,
   side.onclick = async e => {
     const b = e.target.closest('button');
     if (!b) return;
+    if (b.dataset?.lanebtn !== undefined) {
+      // (2.4.0, "Editor Panels") a lane button sets the Lane list under it, which does what it always did
+      const pick = $('s-lane');
+      if (pick) {
+        pick.value = b.dataset.lanebtn;
+        side.querySelectorAll('[data-lanebtn]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        side.onchange({ target: pick });
+      }
+      return;
+    }
     if (b.dataset?.wdAction) {
       const action = b.dataset.wdAction,
         index = Number(b.dataset.index);
@@ -3338,8 +3411,9 @@ function renderEditor() {
   const savedWidgets = (ed.customWidgets || []).filter(r => !row || /lane$/.test(r.type));
   // the widget list: each group is a folder that can be opened and closed (it stays as you left it)
   state.palOpen = state.palOpen || new Set();
+  // (2.4.0, SlotForgeRestyle.md "Editor Panels") a folder: its name in Barlow, how many widgets it holds, a chevron; the widgets as quiet rows with a + on hover
   const folder = (name, buttons) =>
-    `<details class="palgroup" data-pal="${esc(name)}"${state.palOpen.has(name) ? ' open' : ''}><summary>${esc(name)}</summary>${buttons}</details>`;
+    `<details class="palgroup" data-pal="${esc(name)}"${state.palOpen.has(name) ? ' open' : ''}><summary><span class="pal-t">${esc(name)}</span><span class="pal-n">${(buttons.match(/<button /g) || []).length}</span></summary>${buttons}</details>`;
   const palette = () =>
     groups
       .map(g =>
@@ -3348,14 +3422,15 @@ function renderEditor() {
           REG.filter(x => x.group === g)
             .map(
               x =>
-                `<button class="btn" data-add="${x.type}">${esc(x.label)}</button>${x.type === 'fuel' ? '<button class="btn" data-add="fuel" data-preset="fuelstrip" title="The Fuel widget as a slim strip: FUEL, a bar and the value">Fuel Strip</button>' : ''}`
+                `<button class="pal-it" data-add="${x.type}">${esc(x.label)}</button>${x.type === 'fuel' ? '<button class="pal-it" data-add="fuel" data-preset="fuelstrip" title="The Fuel widget as a slim strip: FUEL, a bar and the value">Fuel Strip</button>' : ''}`
             )
             .join('')
         )
       )
       .join('') +
     (savedWidgets.length
-      ? folder('Custom', savedWidgets.map(r => `<button class="btn" data-addcw="${esc(r.id)}">${esc(r.name)}</button>`).join(''))
+      ? '<div class="pal-cap">Yours</div>' +
+        folder('Custom', savedWidgets.map(r => `<button class="pal-it" data-addcw="${esc(r.id)}">${esc(r.name)}</button>`).join(''))
       : '');
   const hasGuides = () => d.guides.v.length + d.guides.h.length > 0;
   const S = row ? Rows.settings(d) : null;
@@ -3433,7 +3508,7 @@ function renderEditor() {
     save: row ? 'Save row design' : 'Save layout',
     tools
   })}
-    <div class="ed-main"><aside class="ed-pal" aria-label="Widgets"><div class="pal-search"><input type="search" id="e-palsearch" placeholder="Find a widget" aria-label="Find a widget"></div>${palette()}</aside>
+    <div class="ed-main"><aside class="ed-pal" aria-label="Widgets"><div class="pal-search"><input type="search" id="e-palsearch" placeholder="Find a widget" aria-label="Find a widget"></div><div class="pal-cap">Widgets</div>${palette()}</aside>
       <div class="ed-stage">${row ? '' : '<div class="lt-bar" id="e-try" role="region" aria-label="Try it with a sample race"></div>'}<div class="canvas" id="canvas"></div>${row ? '<h4>Preview: leader, normal, in the pits, penalty, out</h4><div class="rowprev" id="e-preview"></div>' : ''}</div>
       <aside class="ed-side" id="side"></aside></div>`;
   const $ = id => document.getElementById(id);

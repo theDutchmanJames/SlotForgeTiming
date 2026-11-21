@@ -7785,3 +7785,79 @@ html .sn.sn-fold.ss-nest>.sn-tile{grid-column:1;grid-row:1}
 html .sn.sn-fold.ss-nest>.sn-lead{grid-column:2;grid-row:1;margin:0;color:var(--ink);font-weight:500}
 html .sn.sn-fold.ss-nest>.sn-more{grid-column:2}
 html #settingsbox .sn.sn-fold.ss-nest:not(.sn-open)>.sn-tile,html .sn.sn-fold:not(.sn-open)>.sn-tile{align-self:center;width:30px;height:30px}
+/* (2.4.0, SlotForgeRestyle.md "Editor Panels") the two panels of the Layout Editor and the Leaderboard Editor: the widget list as a Paddock Rail
+   (Barlow folders with a count and a chevron, the widgets as quiet rows with a + on hover), the settings as Folders with slim rows, a head with the
+   kind, the name and the lane as eight buttons, the arrange tools as small pictures, explanations on one line with More */
+html .ed-pal,html #side{padding:12px 10px;border-radius:10px;background:var(--panel);font-size:13px}
+html .ed-pal{background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+.pal-cap{margin:14px 8px 6px;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+html .ed-pal .palgroup{margin:0 0 2px}
+html .ed-pal .palgroup>summary{display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 30px 6px 10px;border-radius:8px;list-style:none;position:relative;cursor:pointer;font-weight:400}
+html .ed-pal .palgroup>summary::-webkit-details-marker{display:none}
+html .ed-pal .palgroup>summary::after{content:'';position:absolute;right:13px;top:50%;width:6px;height:6px;margin-top:-5px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg)}
+html .ed-pal .palgroup[open]>summary::after{transform:rotate(-135deg);margin-top:-1px}
+html .ed-pal .palgroup>summary:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html .ed-pal .palgroup[open]>summary{margin:0 0 2px;border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--ink) 7%,var(--panel));box-shadow:inset 3px 0 0 var(--accent)}
+.pal-t{flex:1;min-width:0;font:italic 700 15px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.pal-n{font:500 11px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .ed-pal .pal-it{display:flex;align-items:center;width:100%;min-height:30px;margin:0;padding:5px 10px 5px 14px;border:0;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13px;text-align:left;cursor:pointer}
+html .ed-pal .pal-it::after{content:'+';margin-left:auto;padding-left:8px;font-size:15px;line-height:1;color:var(--muted);opacity:0}
+html .ed-pal .pal-it:hover,html .ed-pal .pal-it:focus-visible{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+html .ed-pal .pal-it:hover::after,html .ed-pal .pal-it:focus-visible::after{opacity:1}
+html .ed-pal .palgroup[open]{padding-bottom:6px}
+/* the head of the settings */
+.ed-insp{margin:0 0 8px;padding:2px 4px 12px;border-bottom:1px solid var(--line)}
+.insp-k{display:block;font:500 10.5px 'SF Roboto Mono',Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+html #side .ed-insp>h3{margin:3px 0 0;font:italic 700 20px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.insp-lanes{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.insp-lanes>button{width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:color-mix(in srgb,var(--ink) 80%,var(--muted));font:500 12px 'SF Roboto Mono',Consolas,monospace;cursor:pointer}
+.insp-lanes>button:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line));color:var(--ink)}
+.insp-lanes>button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--ink)}
+/* the folders */
+html #side .sidegroup{margin:8px 0 0;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:clip}
+html #side .sidegroup>summary{position:relative;display:flex;align-items:center;gap:9px;padding:10px 34px 10px 12px;list-style:none;cursor:pointer;font:italic 700 15px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+html #side .sidegroup>summary::-webkit-details-marker{display:none}
+html #side .sidegroup>summary>svg{flex:none;color:var(--muted)}
+html #side .sidegroup>summary::after{content:'';position:absolute;right:15px;top:50%;width:6px;height:6px;margin-top:-5px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg)}
+html #side .sidegroup[open]>summary::after{transform:rotate(-135deg);margin-top:-1px}
+html #side .sidegroup>summary:hover{background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html #side .sidegroup[open]>summary{border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,var(--panel));box-shadow:inset 3px 0 0 var(--accent)}
+html #side .sidegroup>.field,html #side .sidegroup>p,html #side .sidegroup>.row,html #side .sidegroup>.hint,html #side .sidegroup>.hint-more{margin-left:12px;margin-right:12px}
+/* slim rows: the name on the left, a small control on the right; a long control or a group of buttons under it */
+html #side .field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px;margin:0;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+html #side .sidegroup>.field:first-of-type,html #side .ws-fields>.field:first-child{border-top:0}
+html #side .field>label:first-child{font-size:12.5px;font-weight:600;color:var(--ink)}
+html #side .field>:not(label:first-child){grid-column:1/-1}
+html #side .field>label:first-child+:is(select,input[type=number],input[type=color]){grid-column:2;width:auto;max-width:140px}
+html #side .hint{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;font-size:11.5px;line-height:1.45;color:var(--muted)}
+html #side .hint.open{-webkit-line-clamp:unset}
+.hint-more{display:inline-block;margin:2px 0 4px;padding:0;border:0;background:none;color:var(--accent-text);font:inherit;font-size:11.5px;cursor:pointer}
+.hint-more:hover{text-decoration:underline}
+/* the arrange tools: small pictures in a sunken strip */
+html #side .arr{display:inline-flex;flex-wrap:wrap;gap:2px;margin:0 6px 0 0;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+html #side .arr>button{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:26px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:color-mix(in srgb,var(--ink) 75%,var(--muted));font:inherit;font-size:12px;cursor:pointer}
+html #side .arr>button.arr-i{width:28px;padding:0}
+html #side .arr>button:hover{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink)}
+html #side .field.arrf{display:block}
+html #side .field.arrf>label:first-child{display:block;margin-bottom:6px}
+html #side .field.arrf>.hint{margin-top:4px}
+html #side .ed-insp{display:block}
+html #side .sidegroup>summary{border-left:0;color:var(--ink)}
+html #side .sidegroup>summary:after{content:'';margin:0}
+html #side .sidegroup>summary>svg{color:var(--ws-group,var(--muted))}
+/* a section inside a folder: no coloured box, its name in small spaced capitals, then its rows */
+html #side .ws-section{margin:0;padding:10px 12px 4px;border:0;border-top:1px solid var(--line);border-radius:0;background:none}
+html #side .sidegroup>.ws-section:first-of-type{border-top:0}
+html #side .ws-section>h4{margin:2px 0 4px;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #side .ws-section>h4>svg{width:13px;height:13px;color:var(--ws-box,var(--muted))}
+html #side .ws-fields{gap:0}
+html #side .insp-lanes{flex-wrap:nowrap;gap:3px}
+html #side .insp-lanes>button{flex:1 1 0;min-width:0;width:auto;max-width:30px}
+html #side .sidegroup p.muted{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:11.5px;line-height:1.45}
+html #side .sidegroup p.muted.open{-webkit-line-clamp:unset}
+html #side .hint-more{margin-top:0}
+html #side .hint-more{display:block;width:max-content;text-align:left}
+html #side .sidegroup>summary::after{margin-top:-6px}
+html #side .field>.inline.geo{flex-wrap:wrap;gap:8px}
+html #side .field>.inline.geo>label{display:flex;flex-direction:column;gap:3px;flex:1 1 calc(50% - 8px);min-width:0;font-size:11.5px;color:var(--muted)}
+html #side .field>.inline.geo>label>input{width:100%!important;box-sizing:border-box}
