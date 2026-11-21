@@ -468,7 +468,7 @@
       type = !!w.typography,
       a = appearance(w, l),
       t = typography(w),
-      scale = (el.getBoundingClientRect?.().width || w.w) / (w.w || 1000);
+      scale = ((el._sfBox ? el._sfBox.width : el.getBoundingClientRect?.().width) || w.w) / (w.w || 1000);
     if (enhanced) {
       el.classList.add('ws-appearance');
       el.dataset.wsDepth = a.depth;
@@ -659,9 +659,11 @@
     if (!el?.querySelector || !root.getComputedStyle || !el.getBoundingClientRect) return false;
     const v = el.querySelector(':scope > .lw-val');
     if (v) v._sfDigitsFit = null; // (set again below when this fit holds while only digits change)
-    if (!v || !el.clientWidth || !el.clientHeight) return false;
+    // (2.4.0) the editor measures all its widgets before it fits any (el._sfBox): reading a size after the last widget's fit made the browser lay out again
+    const box = el._sfBox || { width: el.getBoundingClientRect().width, cw: el.clientWidth, ch: el.clientHeight };
+    if (!v || !box.cw || !box.ch) return false;
     const t = typography(w),
-      scale = el.getBoundingClientRect().width / (w.w || el.clientWidth);
+      scale = box.width / (w.w || box.cw);
     const rowHeader = el.classList.contains('rcell') && el.parentElement?.classList.contains('rrow-head');
     const rowSize = el.classList.contains('rcell') && Number.isFinite(w.rowTextSize) ? Math.max(1, w.rowTextSize) : null;
     // Row headers already scale with their saved design. A widget-size floor

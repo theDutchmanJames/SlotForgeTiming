@@ -36,12 +36,14 @@
   const signature = w => JSON.stringify(Object.fromEntries(Object.entries(w).filter(([k]) => !['x', 'y', 'w', 'h'].includes(k))));
   function create({ canvas, layout, html, fit }) {
     const records = new Map();
-    let layoutKey;
+    let layoutKey,
+      canvasHeight = null; // (read once per sync or move: reading it after each widget's style change made the browser lay out the page again for every widget)
+    const height = () => (canvasHeight !== null ? canvasHeight : (canvasHeight = canvas.clientHeight));
     const labelGeometry = (r, w) => {
       if (!r.badge) return;
       r.badge.style.left = ((w.x + w.w) / root.Widgets.U) * 100 + '%';
       // At the top edge there is no space above the card. Use its lower edge.
-      const below = (w.y / root.Widgets.heightOf(layout)) * canvas.clientHeight < 20;
+      const below = (w.y / root.Widgets.heightOf(layout)) * height() < 20;
       r.badge.style.top = ((below ? w.y + w.h : w.y) / root.Widgets.heightOf(layout)) * 100 + '%';
       r.badge.style.transform = below ? 'translate(-100%, 2px)' : 'translate(-100%, calc(-100% - 2px))';
     };
@@ -82,6 +84,7 @@
         layoutKey = undefined;
       },
       sync(selected, changed) {
+        canvasHeight = canvas.clientHeight;
         // Layout defaults affect every widget. Pictures stay in their existing
         // background element and do not invalidate widget content.
         const key = JSON.stringify(
@@ -132,6 +135,7 @@
         if (fitting.length) fit(fitting);
       },
       geometry(widgets, selected) {
+        canvasHeight = canvas.clientHeight;
         const fitting = [];
         for (const w of widgets) {
           const r = records.get(w);

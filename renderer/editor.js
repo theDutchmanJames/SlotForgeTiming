@@ -15,8 +15,18 @@ function fitEditorWidgets(elements) {
   const ed = state.editing,
     canvas = document.getElementById('canvas');
   if (!canvas) return;
-  for (const el of elements || canvas.querySelectorAll('.lw[data-i]')) {
-    if (!canvas.contains(el)) continue;
+  // (2.4.0) every widget's box is measured first, before any is fitted: a widget's size does not follow what it shows (.canvas>.lw contain:size), so the
+  // sizes hold through the fits, and the browser lays the canvas out once instead of once per widget
+  const list = [...(elements || canvas.querySelectorAll('.lw[data-i]'))].filter(el => canvas.contains(el));
+  for (const el of list) el._sfBox = { width: el.getBoundingClientRect().width, cw: el.clientWidth, ch: el.clientHeight };
+  try {
+    fitEach(ed, list);
+  } finally {
+    for (const el of list) el._sfBox = null;
+  }
+}
+function fitEach(ed, list) {
+  for (const el of list) {
     const w = ed.draft.widgets[Number(el.dataset.i)],
       val = el.querySelector(':scope > .lw-val');
     if (!w || !val) continue;

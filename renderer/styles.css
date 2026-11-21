@@ -193,6 +193,8 @@ details .fields{margin:10px 0}
 .lw{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--muted);border-radius:4px;
   background:var(--panel);color:var(--ink);cursor:move;user-select:none;text-align:center;line-height:1.1}
 .lw.sel{outline:2px solid #4c9aff;z-index:5;overflow:visible}
+/* (2.4.0) a widget on a canvas is sized by its box, never by what it shows: fitting the text of one widget lays out that widget alone, not the whole canvas (a big layout in the editor and the sample race were slow) */
+.canvas>.lw{contain:size layout style}
 /* A rounded border edge, as on .rshd, on a decoration layer. Keeping the lane
    edge separate from the configurable frame prevents frame colour/thickness and
    live-view rules from replacing it. It takes no space from centred values.

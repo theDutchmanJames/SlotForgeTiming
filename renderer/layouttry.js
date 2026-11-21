@@ -53,23 +53,62 @@ const LayoutTry = (() => {
       p.speed
     )}<button type="button" class="btn sm ghost lt-stop" data-lt="stop">Stop</button>`;
   }
-  // a frame of the race: only the widgets whose content changed are painted and fitted again (a full redraw of a big layout takes most of a second)
+  // (2.4.0) the numbers of a widget changed, nothing else (most frames of the sample race): the new numbers are written into the widget as it stands, so the
+  // sizes its last fit set are kept and it is not measured again. -> false when anything else changed (then it is drawn and fitted afresh)
+  const shapeOf = h => h.replace(/\d/g, '0');
+  const nodesOf = root => {
+    const out = [],
+      walk = root.ownerDocument.createTreeWalker(root, 5); // (elements and text)
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) out.push(n);
+    return out;
+  };
+  function patchDigits(val, last, html) {
+    if (typeof last !== 'string' || last.length !== html.length || shapeOf(last) !== shapeOf(html)) return false;
+    const parse = h => {
+      const t = val.ownerDocument.createElement('template');
+      t.innerHTML = h;
+      return nodesOf(t.content);
+    };
+    const live = nodesOf(val),
+      a = parse(last),
+      b = parse(html);
+    if (live.length !== a.length || a.length !== b.length || live.some((n, i) => n.nodeName !== a[i].nodeName)) return false;
+    for (let i = 0; i < b.length; i++) {
+      if (b[i].nodeType === 3) {
+        if (a[i].data !== b[i].data) live[i].data = b[i].data;
+      } else
+        for (const at of b[i].attributes) if (a[i].getAttribute(at.name) !== at.value) live[i].setAttribute(at.name, at.value);
+    }
+    return true;
+  }
+  // a plain text whose last fit holds for any digits (a font with equal-width digits, as on the race screen) needs no new fit; the others are fitted again
+  const fitHolds = (val, w) =>
+    !(typeof WidgetView !== 'undefined' && WidgetView.kind?.(w) === 'text') ||
+    (val._sfDigitsFit != null && typeof Frame !== 'undefined' && val._sfDigitsFit === Frame.fontEpoch?.());
+  // a frame of the race: only the widgets whose content changed are painted, and only those whose shape or colour changed are fitted again
   function paintFrame(ed) {
     const canvas = document.getElementById('canvas');
     if (!canvas || typeof previewOf !== 'function') return 0;
-    const changed = [];
+    const changed = [],
+      ctx = typeof editorPreviewContext === 'function' ? editorPreviewContext(ed) : null;
     canvas.querySelectorAll('.lw[data-i]').forEach(el => {
       const w = ed.draft.widgets[Number(el.dataset.i)],
         val = el.querySelector(':scope > .lw-val'),
         def = w && Widgets.def(w.type);
       if (!val || !def || def.button) return;
-      const html = previewOf(def, w);
-      if (el._ltHtml === html) return;
+      // (one content() call gives the words and the colour; previewOf would make the same call for the words alone)
+      const o = ctx && typeof WidgetPreview !== 'undefined' ? WidgetPreview.content({ ...w, lane: w.lane || 0, previewContext: ctx }) : null,
+        html = o ? o.html : previewOf(def, w),
+        look = o ? [o.color, o.bg, o.disabled].join('|') : ''; // (a car in the pits or under a penalty: the colour changes, the text may not)
+      if (el._ltHtml === html && el._ltLook === look) return;
+      const last = el._ltHtml,
+        sameLook = el._ltLook === look;
       el._ltHtml = html;
-      if (val.innerHTML !== html) {
-        val.innerHTML = html;
-        changed.push(el);
-      }
+      el._ltLook = look;
+      if (sameLook && patchDigits(val, last, html) && fitHolds(val, w)) return;
+      if (!sameLook && last === html) return changed.push(el); // (the colour alone)
+      val.innerHTML = html;
+      changed.push(el);
     });
     if (changed.length && typeof fitEditorWidgets === 'function') fitEditorWidgets(changed);
     return changed.length;
@@ -294,6 +333,7 @@ const LayoutTry = (() => {
     MOMENTS,
     uses,
     paintFrame,
+    patchDigits,
     lanesOf,
     start,
     compute,
