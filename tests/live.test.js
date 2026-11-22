@@ -1058,7 +1058,9 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     for (const id of ['timing', 'board', 'results', 'driver', 'rules']) { run('LiveView.go')(id); say(`...and the ${id} page keeps the plain header`, host.innerHTML.includes('class="lv-head"') && !host.innerHTML.includes('lv-badge')); }
     run('LiveView.go')('board');
     // the status line is filled in a moment after the page is drawn: wait for it (up to 3 s on a busy computer)
-    for (let i = 0; i < 150 && !(E('lv-stline') && E('lv-stline').innerHTML.includes('lv-st-ph')); i++) await wait(20);
+    const stWant = '<span class="lv-st-t">Shared · Race on Living room · 9 laps</span><span class="lv-st-ph" data-phase="finished">Finished</span>';
+    for (let i = 0; i < 150 && !(E('lv-stline') && E('lv-stline').innerHTML === stWant); i++) await wait(20);
+    if (!E('lv-stline') || E('lv-stline').innerHTML !== stWant) console.log('the status line was:', E('lv-stline') && E('lv-stline').innerHTML, '| status:', E('lv-status') && E('lv-status').textContent);
     say('2.4.0 Live Pages: the bar of a page has the page over the race (the words of the status for a screen reader, a line with the phase as a pill for the eye: "Finished")', host.innerHTML.includes('<div class="lv-titles"><strong class="lv-title">Leaderboard</strong><span class="lv-sr" id="lv-status" role="status">') && host.innerHTML.includes('id="lv-stline" aria-hidden="true"') && E('lv-stline').innerHTML === '<span class="lv-st-t">Shared · Race on Living room · 9 laps</span><span class="lv-st-ph" data-phase="finished">Finished</span>' && E('lv-status').textContent === 'Shared · Race on Living room · 9 laps · Finished');
     run('LiveView.go')('driver'); say('...on Driver stats every driver is a pill with the number of the lane in its lane colour (Alex lane 1 red, Sam lane 2 blue)', body().innerHTML.includes('<button class="btn" data-lane="0" aria-pressed="true" style="--c:#e5484d" aria-label="Alex, lane 1"><i>1</i>Alex</button>') && body().innerHTML.includes('style="--c:#3b82f6" aria-label="Sam, lane 2"><i>2</i>Sam</button>'));
     run('LiveView.go')('tiles');
