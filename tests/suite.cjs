@@ -346,4 +346,5 @@ module.exports = [
   ['backupspeed.test.js', 'node-test'],
   ['pitlights.test.js', 'node-test'],
   ['mainclock.test.js', 'node-test'],
+  ['sqlitejson.test.js', 'node-test'],
 ];

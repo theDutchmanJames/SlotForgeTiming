@@ -141,7 +141,9 @@ test('the page: how safe the backups are, what a restore loses, the file name', 
   const list = [{ date: new Date(2026, 10, 20, 21, 4).toISOString() }];
   const ok = T.bvHealth({ on: true, every: 'week', keep: 5, next: new Date(2026, 10, 27, 20, 4).toISOString() }, list, now);
   assert.equal(ok.tone, 'ok');
-  assert.match(ok.title, /^Backed up today, 21:04$/);
+  // the time as this computer writes it: 21:04 on a Dutch computer, 09:04 PM on an English one
+  const at = new Date(2026, 10, 20, 21, 4).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  assert.equal(ok.title, 'Backed up today, ' + at);
   assert.match(ok.line, /^Every week by itself, the newest 5 kept\. The next one is due on /);
   assert.equal(T.bvHealth({ on: true, ok: false, error: 'Disk full' }, list, now).tone, 'bad');
   assert.equal(T.bvHealth({ on: true, next: new Date(2026, 10, 10).toISOString() }, list, now).tone, 'late');

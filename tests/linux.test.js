@@ -59,7 +59,7 @@ exit 0
   { // the whole run, installing
     const t = mk('full'), r = run(t, ['--install']), e = read(entry(t)), app = path.join(installed(t), 'SlotForgeTiming-9.9.9-linux-x86_64.AppImage');
     ok('the build runs the steps in order: building blocks, flag icons, the tests, the Linux build', r.status === 0 && JSON.stringify(t.log()) === JSON.stringify(['install --save-dev electron electron-builder', 'install flag-icons', 'test', 'run dist:linux']));
-    ok('it says where the files are and how to install the .deb', /dist\/SlotForgeTiming-9\.9\.9\.AppImage/.test(r.stdout) && /sudo apt install/.test(r.stdout) && fs.existsSync(path.join(t.proj, 'dist', 'SlotForgeTiming-9.9.9.deb')));
+    ok('it says where the files are and how to install the .deb', /dist\/SlotForgeTiming-9\.9\.9-linux-x86_64\.AppImage/.test(r.stdout) && /sudo apt install "[^"]*dist\/SlotForgeTiming-9\.9\.9-linux-amd64\.deb"/.test(r.stdout) && fs.existsSync(path.join(t.proj, 'dist', 'SlotForgeTiming-9.9.9-linux-amd64.deb')));
     ok('--install copies the AppImage to the user\'s own folder and makes it runnable', fs.existsSync(app) && (fs.statSync(app).mode & 0o100) !== 0 && fs.existsSync(path.join(installed(t), 'icon.png')));
     ok('the menu entry starts that AppImage, shows the icon and names the app (nothing extra on a normal system)', e.includes('[Desktop Entry]') && e.includes('Name=SlotForge Timing') && e.includes(`Exec="${app}"\n`) && e.includes(`Icon=${path.join(installed(t), 'icon.png')}`) && e.includes('Terminal=false') && e.includes('Categories=Utility;') && !e.includes('--no-sandbox') && !e.includes('APPIMAGE_EXTRACT_AND_RUN'));
     const d = path.join(t.home, 'Desktop', 'slotforge-timing.desktop');
