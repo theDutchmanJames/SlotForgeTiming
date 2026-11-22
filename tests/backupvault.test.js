@@ -153,7 +153,7 @@ test('the page: how safe the backups are, what a restore loses, the file name', 
       { drivers: 35, racesetups: 14 },
       { drivers: 36, racesetups: 15 },
       { races: 22, last: { name: 'QA heats', date: '2026-11-20T19:00:00Z' } }
-    ).replace(/\(the last on [^,]+,/, '(the last on X,'),
+    ).replace(/\(the last on [^“]+“/, '(the last on X, “'), // the date as this computer writes it ("Thu 20 Nov", "Thu, Nov 20")
     '22 races raced since then (the last on X, “QA heats”), 1 driver added since, 1 race setup added since.'
   );
   assert.equal(T.bvHolds({ drivers: 1, tracks: 9, sessions: 418 }), '1 driver · 9 tracks · 418 races');
