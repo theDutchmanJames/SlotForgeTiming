@@ -723,11 +723,15 @@
     },
     {
       "path": "engine/src/query-index.cjs",
-      "sha256": "2b046f3b8dbbefcf11151d83f5fdf93f368575da853b72a7fd9a62c6542c2fe5"
+      "sha256": "9f8402fb70547f8179022fae4eaafb2c9ad2434f69fa0233fc82cbc0427ddce5"
     },
     {
       "path": "engine/src/query-indexes.cjs",
       "sha256": "c51ced0f4427d9bfa5e0c9d0e10d10140beae9c6612c0f2be3f60cc66a51fc1d"
+    },
+    {
+      "path": "engine/src/query-lap-values.cjs",
+      "sha256": "36b92d9857f8e32d61877dd567cc60abe0c38730a4731064ecd5970f3e785a5a"
     },
     {
       "path": "engine/src/query-local-library.cjs",
@@ -903,7 +907,7 @@
     },
     {
       "path": "engine/src/shared-library-timing-read.cjs",
-      "sha256": "56b5d0cf707b9022a18bfc2d193cec77c1f030ee5595b502b79e1a8d2de5afa7"
+      "sha256": "4ebe45b0fbb6731d45bdc326b5513a662c286d434203d18c5d536471cc49d140"
     },
     {
       "path": "engine/src/shared-library-worker.cjs",
