@@ -107,6 +107,21 @@ function upgrade(s) {
 function sync(s) {
   for (const { entity, id } of s.changed.values()) index(s, entity, id);
 }
+// (2.4.0, speed) The record of each track (or track and driver) is its first lap in the lap index, which holds them in the order of their
+// time; and the first lap ever run there is the smallest ordinal of the group. Ranking every lap took 3 s a list with 450,000 laps, and
+// a Results page asks for both lists three times. The same laps in the same order. (?1 the token list, ?2 the order of a deleted track,
+// ?3 and ?4 the page)
+function RECORDS(group, field, token) {
+  const extra = token && field === 'personal' ? " AND driverId<>''" : '',
+    same = group
+      .split(',')
+      .map(k => `l.${k}=g.${k}`)
+      .join(' AND ');
+  return `WITH g AS MATERIALIZED (SELECT ${group},min(ordinal) firstOrdinal FROM history_laps WHERE token=?1 AND ${field}=1 AND time>0${extra} GROUP BY ${group}),
+ w AS (SELECT g.trackId,g.firstOrdinal,(SELECT l.id FROM history_laps l WHERE l.token=?1 AND l.${field}=1 AND l.time>0 AND ${same} ORDER BY l.time,l.ordinal LIMIT 1) id FROM g)
+ SELECT w.id FROM w JOIN history_laps b ON b.id=w.id LEFT JOIN catalogue_index c ON c.entity='tracks' AND c.id=w.trackId
+ ORDER BY COALESCE(c.sortKey,?2),b.time,w.firstOrdinal LIMIT ?3 OFFSET ?4`;
+}
 function page(s, pool, value) {
   const opts = H.options(pool, value);
   return s.transaction(() => {
@@ -128,9 +143,7 @@ function page(s, pool, value) {
         const field = section === 'tracks' ? 'track' : 'personal',
           group = section === 'tracks' ? 'trackId' : 'trackId,driverId';
         rows = s
-          .statement(
-            `WITH winners AS (SELECT *,ROW_NUMBER() OVER(PARTITION BY ${group} ORDER BY time,ordinal) AS place,MIN(ordinal) OVER(PARTITION BY ${group}) AS firstOrdinal FROM history_laps WHERE token=? AND ${field}=1 AND time>0 ${token && field === 'personal' ? "AND driverId<>''" : ''}) SELECT w.id FROM winners w LEFT JOIN catalogue_index c ON c.entity='tracks' AND c.id=w.trackId WHERE w.place=1 ORDER BY COALESCE(c.sortKey,?),w.time,w.firstOrdinal LIMIT ? OFFSET ?`
-          )
+          .statement(RECORDS(group, field, token))
           .all(token, Order.key('(deleted)'), limit + 1, offset)
           .map(r => C.read(s, 'laps', r.id, []));
       }
@@ -163,4 +176,4 @@ function session(s, pool, id, value) {
 function car(s, id) {
   return require('./sqlite-car-statistics').read(s, id);
 }
-module.exports = { upgrade, sync, page, session, car, sessionValue, selected };
+module.exports = { upgrade, sync, page, session, car, sessionValue, selected, RECORDS };

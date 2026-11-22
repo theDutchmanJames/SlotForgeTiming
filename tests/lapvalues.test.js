@@ -126,7 +126,10 @@ test('an existing car library gets the lap values when it opens, and its statist
 test('a statistics request builds its cars in races and laps once, and a car looks only at the races of its own cars', () => {
   const T = code('vendor/slotforge-library/engine/src/shared-library-timing-read.cjs');
   assert.ok(has(T, 'JOIN query_lap_values v ON v.key=p.sessionKey AND v.participant=p.participantId'));
-  assert.ok(has(T, "'CREATE TEMP TABLE timing_physical AS ' + physical(!input.carId, own.length > 0)"));
+  assert.ok(has(T, "'CREATE TEMP TABLE timing_physical AS ' + physical(!input.carId, own.length > 0, narrow)"));
+  assert.ok(
+    has(T, 'if (input.trackId !== undefined) (narrow += " AND json_extract(s.json,\'$.payload.track.id\')=?"), args.push(input.trackId);')
+  );
   assert.ok(has(T, "r.db.prepare('CREATE TEMP TABLE timing_page AS ' + q.sql + sql).run(...q.args, ...args);"));
   assert.ok(!T.includes("json_extract(l.json,'$.durationMs')"), 'no lap value is read from its stored text');
   assert.ok(

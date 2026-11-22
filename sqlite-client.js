@@ -166,6 +166,9 @@ class SqliteClient {
   historyReferences(rows) {
     return this.request('historyReferences', rows);
   }
+  historyKnown(ids) {
+    return this.request('historyKnown', ids);
+  }
   historyPage(pool, options) {
     return this.request('historyPage', pool, options);
   }

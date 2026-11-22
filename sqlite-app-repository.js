@@ -175,6 +175,7 @@ for (const name of [
   'referencePage',
   'referenceDetails',
   'historyReferences',
+  'historyKnown',
   'historyPage',
   'historySession',
   'carStatistics',

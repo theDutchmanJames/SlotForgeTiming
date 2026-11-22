@@ -6,7 +6,7 @@ const fail = message => {
   throw Object.assign(Error(message), { code: 'INVALID_QUERY' });
 };
 const owner = require('./car-merge-query.cjs').owner;
-function physical(includeUnselected = false, restricted = false) {
+function physical(includeUnselected = false, restricted = false, narrow = '') {
   // Inclusion controls attribution to the main car, not the historical race.
   // Global Timing records retain all evidence under its original
   // identity. A car-filtered query and service counters use selected history.
@@ -23,7 +23,7 @@ function physical(includeUnselected = false, restricted = false) {
  FROM query_sessions s
  WHERE json_extract(s.json,'$.payload.state')='active' AND coalesce(json_extract(s.json,'$._query.requiresCorrection'),0)=0${
    restricted ? ' AND s.key IN (SELECT key FROM query_car_results WHERE car_id IN (SELECT value FROM json_each(?)))' : ''
- }
+ }${narrow}
 ), owned AS MATERIALIZED (
  SELECT s.key,s.source,s.session,s.rich,s.historical,s.sessionName,s.sessionType,s.startedAt,s.savedAt,s.trackId,s.trackName,
  p.value participant,p.key participantIndex,${ownerOf} carId FROM sess s JOIN json_each(s.json,'$.payload.participants') p
@@ -69,9 +69,26 @@ const SMALL = `sessionKey,sourceId,sessionId,participantIndex,rich,historical,se
 function prepare(r, input) {
   const own = input.carId && r.merges?.originalIds ? r.merges.originalIds(input.carId) : [];
   r.db.exec('DROP TABLE IF EXISTS temp.timing_physical; DROP TABLE IF EXISTS temp.timing_laps;');
+  // (Timing 2.4.0, speed) A request about one source, track or period only builds the races it can match; the request's own filter still
+  // decides (filtered), on the same values: Home asks about the track and each driver of the grid, which built the whole library each time.
+  let narrow = '';
+  const args = own.length ? [JSON.stringify(own)] : [];
+  if (input.sourceId !== undefined) (narrow += ' AND s.source=?'), args.push(input.sourceId);
+  if (input.trackId !== undefined) (narrow += " AND json_extract(s.json,'$.payload.track.id')=?"), args.push(input.trackId);
+  const dated = "julianday(coalesce(json_extract(s.json,'$.payload.startedAt'),json_extract(s.json,'$.bundle.context.savedAt')))";
+  if (input.from !== undefined) (narrow += ` AND ${dated}>=julianday(?)`), args.push(input.from);
+  if (input.to !== undefined) (narrow += ` AND ${dated}<julianday(?)`), args.push(input.to);
   r.db
-    .prepare('CREATE TEMP TABLE timing_physical AS ' + physical(!input.carId, own.length > 0) + ' SELECT ' + SMALL + ',participant FROM physical')
-    .run(...(own.length ? [JSON.stringify(own)] : []));
+    .prepare(
+      'CREATE TEMP TABLE timing_physical AS ' +
+        physical(!input.carId, own.length > 0, narrow) +
+        ' SELECT ' +
+        SMALL +
+        ',participant FROM physical'
+    )
+    .run(...args);
+  // (records ask one question: their laps are joined as they are read, not copied first, see DIRECT)
+  if (input.kind === 'records') return;
   // The unary + keeps each value exactly as stored: a column of a table made this way would otherwise turn text such as "12" into a number.
   r.db.exec(
     'CREATE TEMP TABLE timing_laps AS WITH ' +
@@ -82,6 +99,9 @@ function prepare(r, input) {
       JOIN_LAPS('p.rowid')
   );
 }
+// (Timing 2.4.0, speed) A lap of a records question is known by its car in the race (pid) and its place in the race (lpos).
+const DIRECT = `WITH physical AS (SELECT * FROM temp.timing_physical), ${laps('temp.timing_physical', 'p.rowid')},
+ samples AS (SELECT p.*,${lapColumns()},p.rowid pid,v.position lpos FROM temp.timing_physical p ${JOIN_LAPS('p.rowid')})`;
 const PREPARED = `WITH physical AS (SELECT * FROM temp.timing_physical),
  samples AS (SELECT p.*,l.lapId,l.originLapId,l.lapNumber,l.durationMs,l.endedAtMs,l.valid,l.pit,l.countsDistance,l.distanceM,
  l.personalEligible,l.trackEligible,l.lane,l.driverId,l.pid,l.rowid lid FROM temp.timing_laps l JOIN temp.timing_physical p ON p.rowid=l.pid)`;
@@ -107,7 +127,10 @@ const NARROW = `sourceId,sessionId,sessionName,startedAt,savedAt,effectiveDate,d
 const RECORD = `${NARROW},
  (SELECT json_extract(d.value,'$.name') FROM temp.timing_physical x JOIN json_each(x.participant,'$.drivers') d WHERE x.rowid=pid AND json_extract(d.value,'$.id')=driverId LIMIT 1) driverName`;
 function query(input) {
-  if (!input || !['home', 'records', 'carStatistics', 'classes', 'resultSessions', 'sessionState'].includes(input.kind))
+  if (
+    !input ||
+    !['home', 'records', 'carStatistics', 'classes', 'resultSessions', 'sessionState', 'sessionIds'].includes(input.kind)
+  )
     fail('Choose a Timing projection.');
   const allowed = [
     'kind',
@@ -125,7 +148,9 @@ function query(input) {
     'scope',
     'weekStart',
     'sort',
-    'grouping'
+    'grouping',
+    'excludeSourceId',
+    'keepSessionIds'
   ];
   if (Object.keys(input).some(k => !allowed.includes(k))) fail('Unknown Timing projection option.');
   if (input.kind === 'classes' && Object.keys(input).some(k => !['kind', 'offset', 'limit', 'token'].includes(k)))
@@ -174,9 +199,31 @@ function query(input) {
     fail('Unknown record grouping.');
   if (input.sessionId !== undefined && input.kind !== 'sessionState')
     fail('Session identity is only supported by sessionState.');
-  if (['resultSessions', 'sessionState'].includes(input.kind)) {
-    if (Object.keys(input).some(k => !['kind', 'sourceId', 'sessionId', 'offset', 'limit', 'token'].includes(k)))
+  if (['resultSessions', 'sessionState', 'sessionIds'].includes(input.kind)) {
+    if (
+      Object.keys(input).some(
+        k =>
+          !['kind', 'sourceId', 'sessionId', 'offset', 'limit', 'token']
+            .concat(input.kind === 'resultSessions' ? ['excludeSourceId', 'keepSessionIds'] : [])
+            .includes(k)
+      )
+    )
       fail('Invalid session projection option.');
+    // (Timing 2.4.0, speed) Timing lists its own races itself and the library's other races beside them: the races of one source can be left
+    // out (excludeSourceId), except the ones it names (keepSessionIds, those Timing does not hold). Skipping them one by one walked the
+    // whole library for every page: 167 s with 2,500 races.
+    if (input.excludeSourceId !== undefined && (typeof input.excludeSourceId !== 'string' || !/^[\w-]{1,100}$/.test(input.excludeSourceId)))
+      fail('Invalid excludeSourceId');
+    if (
+      input.keepSessionIds !== undefined &&
+      (input.excludeSourceId === undefined ||
+        !Array.isArray(input.keepSessionIds) ||
+        input.keepSessionIds.length > 100000 ||
+        input.keepSessionIds.some(x => typeof x !== 'string' || !x || x.length > 200))
+    )
+      fail('Invalid keepSessionIds');
+    if (input.kind === 'sessionIds' && (!input.sourceId || input.offset !== undefined || input.limit !== undefined))
+      fail('Choose the source whose session identities to list.');
     if (
       input.kind === 'sessionState' &&
       (!input.sourceId || typeof input.sessionId !== 'string' || !input.sessionId || input.sessionId.length > 200)
@@ -187,7 +234,7 @@ function query(input) {
   }
   return {
     sql:
-      PREPARED +
+      (input.kind === 'records' ? DIRECT : PREPARED) +
       ', filtered AS (SELECT * FROM samples WHERE ' +
       (terms.length ? terms.join(' AND ') : '1') +
       ')',
@@ -233,7 +280,7 @@ function read(store, input) {
   const q = query(input);
   return Q.read(store, input.token, r => {
     const identity = { version: 1, databaseId: r.id, recoveryId: r.epoch, token: r.token };
-    if (['resultSessions', 'sessionState'].includes(input.kind)) {
+    if (['resultSessions', 'sessionState', 'sessionIds'].includes(input.kind)) {
       // Timing's Results restoration relies on these small metadata reads. Keep
       // session/evidence identities independent of merge contribution selections.
       const field = name =>
@@ -254,8 +301,20 @@ function read(store, input) {
               .prepare('SELECT * FROM (' + sql + ') WHERE sourceId=? AND sessionId=?')
               .get(input.sourceId, input.sessionId) || null
         };
-      const where = "state='active'" + (input.sourceId ? ' AND sourceId=?' : ''),
-        args = input.sourceId ? [input.sourceId] : [];
+      if (input.kind === 'sessionIds')
+        return {
+          ...identity,
+          ids: r.db
+            .prepare("SELECT sessionId FROM (" + sql + ") WHERE state='active' AND sourceId=? ORDER BY sessionId")
+            .all(input.sourceId)
+            .map(x => x.sessionId)
+        };
+      let where = "state='active'" + (input.sourceId ? ' AND sourceId=?' : '');
+      const args = input.sourceId ? [input.sourceId] : [];
+      if (input.excludeSourceId !== undefined) {
+        where += ' AND (sourceId IS NOT ? OR sessionId IN (SELECT value FROM json_each(?)))';
+        args.push(input.excludeSourceId, JSON.stringify(input.keepSessionIds || []));
+      }
       const rows = r.db
         .prepare(
           'SELECT * FROM (' +
@@ -292,7 +351,18 @@ function read(store, input) {
             : scope === 'personal'
               ? 'sourceId,trackId,carId,driverId,lane'
               : 'sourceId,trackId,lane';
-      const sql = `SELECT ${RECORD} FROM (SELECT lid FROM (SELECT lid,row_number() OVER(PARTITION BY ${groups} ORDER BY durationMs,coalesce(effectiveDate,'9999'),coalesce(endedAtMs,1e20),sessionId,participantId,lapId) winner FROM filtered WHERE ${VALID} AND ${scope}Eligible=1 AND trackId IS NOT NULL) WHERE winner=1) w JOIN samples x ON x.lid=w.lid ORDER BY ${input.sort === 'time' ? 'durationMs,' : ''}trackName,sourceId,trackId,lane,carId,driverId`;
+      // (Timing 2.4.0, speed) the best time of each group first, then the order among the laps with that time only
+      const counted = `${VALID} AND ${scope}Eligible=1 AND trackId IS NOT NULL`,
+        countedTied = `f.durationMs IS NOT NULL AND f.valid=1 AND f.pit=0 AND f.${scope}Eligible=1 AND f.trackId IS NOT NULL`,
+        same = groups
+          .split(',')
+          .map(g => `f.${g} IS m.${g}`)
+          .join(' AND ');
+      const sql = `, best AS MATERIALIZED (SELECT ${groups},min(durationMs) time FROM filtered WHERE ${counted} GROUP BY ${groups}),
+ tied AS (SELECT f.* FROM filtered f CROSS JOIN best m ON ${same} AND f.durationMs=m.time WHERE ${countedTied})
+ SELECT ${RECORD} FROM (SELECT p.*,${lapColumns()},p.rowid pid FROM (SELECT pid wpid,lpos wpos FROM (SELECT pid,lpos,row_number() OVER(PARTITION BY ${groups} ORDER BY durationMs,coalesce(effectiveDate,'9999'),coalesce(endedAtMs,1e20),sessionId,participantId,lapId) winner FROM tied) WHERE winner=1) w
+ JOIN temp.timing_physical p ON p.rowid=w.wpid JOIN query_lap_values v ON v.key=p.sessionKey AND v.participant=p.participantId AND v.position=w.wpos
+ LEFT JOIN stints st ON NOT p.rich AND st.pid=p.rowid AND st.id=v.stint_id) ORDER BY ${input.sort === 'time' ? 'durationMs,' : ''}trackName,sourceId,trackId,lane,carId,driverId`;
       return { ...identity, scope, ...page(r, q, sql) };
     }
     if (input.kind === 'carStatistics')

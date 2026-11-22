@@ -83,6 +83,12 @@ function refs(get, laps, sessions = []) {
     ])
   );
 }
+// (2.4.0, speed) the race identities whose presence on this computer is asked about at once (historyKnown)
+function knownRequest(ids) {
+  if (!Array.isArray(ids) || ids.length > 100000 || ids.some(id => typeof id !== 'string' || !id || id.length > 500))
+    throw Error('Invalid race identities.');
+  return ids;
+}
 function referenceRequest(rows) {
   if (
     !Array.isArray(rows) ||
@@ -249,6 +255,7 @@ function jsonCar(db, id) {
   );
 }
 module.exports = {
+  knownRequest,
   referenceRequest,
   jsonReferences,
   TRACK,

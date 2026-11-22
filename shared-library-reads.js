@@ -479,7 +479,8 @@ async function homeStatistics(base, client, options) {
         }));
     }
     last.emptyReason = 'No verified classification was supplied for this session.';
-    await read(client, { kind: 'home', limit: 1, token });
+    // (still the same library: a small read with the token. 2.4.0, speed: it was a whole Home statistics read again, 2 to 5 s with a large history)
+    await read(client, { kind: 'resultSessions', limit: 1, token });
   }
   // (2.4.0) the new cards (Lane balance, Grid form, Head to head, Milestones, Heat standings) and the races a week of At a glance: from the sessions and laps
   // that are kept on this computer, as without a shared library

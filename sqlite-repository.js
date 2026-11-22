@@ -32,6 +32,9 @@ class SqliteRepository {
   referenceDetails(entity, ids, revision) {
     return this.client.referenceDetails(entity, ids, revision);
   }
+  historyKnown(ids) {
+    return this.client.historyKnown(ids);
+  }
   historyPage(pool, options) {
     return this.client.historyPage(pool, options);
   }

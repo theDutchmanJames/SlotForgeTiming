@@ -18,6 +18,19 @@ function identity(id, own) {
     throw Error('Invalid session identity.');
   return { sourceId: pair[0], sessionId: pair[1] };
 }
+// (2.4.0, speed) The races of this computer that the library holds and this computer does not (restored from an older backup, for example):
+// normally none. Read once for each library and Timing revision: the race list used to skip this computer's races in the library one by one,
+// which walked all of them for every page (167 s with 2,500 races).
+const missingCache = new WeakMap(); // (for each Timing store)
+async function ownMissing(base, client, localRevision, token, read) {
+  const key = JSON.stringify([client.installationId, localRevision, token]);
+  if (missingCache.get(base)?.key === key) return missingCache.get(base).ids;
+  const ids = (await read(client, { kind: 'sessionIds', sourceId: client.installationId, token })).ids,
+    held = new Set(await base.historyKnown(ids)),
+    missing = ids.filter(id => !held.has(id));
+  missingCache.set(base, { key, ids: missing });
+  return missing;
+}
 async function sessions(base, client, pool, cursor, localRevision, token, read) {
   let lo = cursor?.localOffset ?? cursor?.offset ?? 0,
     so = cursor?.sharedOffset ?? 0;
@@ -47,17 +60,27 @@ async function sessions(base, client, pool, cursor, localRevision, token, read) 
       return row;
     }
   }
+  // (a library without the sessionIds read, or a Timing store without historyKnown: each race of this computer is asked about, as before)
+  const missing =
+    typeof base.historyKnown === 'function' ? await ownMissing(base, client, localRevision, token, read).catch(() => null) : null;
   async function sharedHead() {
     for (;;) {
       if (!shared.length) {
         if (sharedEnd) return null;
-        const p = await read(client, { kind: 'resultSessions', offset: so, limit: 12, token });
+        const p = await read(client, {
+          kind: 'resultSessions',
+          offset: so,
+          limit: 12,
+          token,
+          ...(missing ? { excludeSourceId: client.installationId, keepSessionIds: missing } : {})
+        });
         shared = p.rows;
         sharedEnd = p.nextOffset === null;
         if (!shared.length) return null;
       }
       const r = shared[0];
       if (
+        !missing &&
         r.sourceId === client.installationId &&
         (await base.historySession(pool, r.sessionId, { revision: localRevision, summaryOnly: true }))
       ) {

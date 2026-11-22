@@ -50,6 +50,13 @@ class DataRepository {
   historyReferences(rows) {
     return require('./history-read').jsonReferences(this.db, rows);
   }
+  // (2.4.0, speed) which of these races this computer holds, in either list (racing or tokens)
+  historyKnown(ids) {
+    const held = new Set(this.db.data.sessions.map(s => s.id));
+    return require('./history-read')
+      .knownRequest(ids)
+      .filter(id => held.has(id));
+  }
   historyPage(pool, options) {
     return require('./history-read').jsonPage(this.db, pool, options);
   }

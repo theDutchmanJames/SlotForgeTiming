@@ -60,6 +60,7 @@ parentPort.on('message', ({ id, operation, args }) => {
           'catalogue',
           'cataloguePicture',
           'historyReferences',
+          'historyKnown',
           'historyPage',
           'historySession',
           'carStatistics',

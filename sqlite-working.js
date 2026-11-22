@@ -193,6 +193,15 @@ class WorkingStore extends SqliteStore {
       )
     );
   }
+  // (2.4.0, speed) which of these races this computer holds, in either list (racing or tokens)
+  historyKnown(ids) {
+    const asked = require('./history-read').knownRequest(ids);
+    return this.transaction(() =>
+      this.statement('SELECT id FROM history_sessions WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id')
+        .all(JSON.stringify(asked))
+        .map(r => r.id)
+    );
+  }
   historyPage(pool, options) {
     return History.page(this, pool, options);
   }
