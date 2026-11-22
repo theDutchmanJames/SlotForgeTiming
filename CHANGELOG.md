@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.4.0 — 2026-11-22
+
+- **A new look on every page:**
+  - Home as a broadcast-style page with seven new cards, Start a race for up to 8 lanes and the club logo.
+  - Race Setup, Database, Customization and App Settings with a side list of sections and calmer cards.
+  - The screens after a race as broadcast graphics, also on the second screen for the audience.
+  - Race Control: a window of its own while a race is on.
+  - Live Race: the classic board, driver stats as tiles, and a Lane Desk under the widgets.
+  - Race report PDF with a page for every driver, in colour or monochrome.
+- **Find everything:** every kind of thing, a preview with actions, and Recent.
+- **Help:** "?" and F1 on every page.
+- **Lap explorer:** after the race, on the Race Director page and in the race window.
+- **Finalize results:** the heat named, your changes with undo, and a heat can be run again.
+- **Championships:** real round dates, a season strip, a calendar file and a points tally.
+- **Rotation setups:** lanes from the track, participants from an entry list, and lane fairness.
+- **Multi-Class** classes from the entry list; a **virtual rival** can be added in a lane.
+- **Balance of Power and Time Tokens** as named profiles.
+- **Import and Export:** every backup listed with Restore; an import can replace or skip.
+- **Database:** Track, Driver and Team sheets, and a safer driver delete.
+- **Layout Editor:** try a layout with a sample race, and see which setups use it.
+- **Trackmate:** a Live monitor with lap times, and Track power with its state and rules.
+- **Pit Lights:** choose each pit sensor's lane in Lane Check.
+- **Shared library:** a race that failed can be retried or removed.
+- **Update check:** the same one every SlotForge app has.
+- **Much faster with a large history** (measured with 2,500 races, 450,000 laps and 800 cars):
+  - Home statistics 88 s → 2 s, a car's statistics 70 s → under 0.1 s, records 77 s → 1.4 s.
+  - Results and Records 167 s → 5 s, a page of the car list 3 s → 0.2 s.
+  - A backup 261 s → 162 s, and Timing keeps working meanwhile.
+  - The first start with a big history is 4x faster and shows progress.
+  - The Layout Editor and the race screens are faster.
+  - Updated shared-library engine with faster statistics, lookups, backup and restore.
+- **Fixes:**
+  - A full code review, with fixes in every area.
+  - Penalties, disqualification, yellow flags and pit time during a pause.
+  - Arduino after a reboot or a late connect.
+  - DS split packets.
+  - Hardware lap times on the window's own clock.
+
 ## 2.3.0 — 2026-11-17
 
 - **Problems are visible:**
@@ -61,26 +99,29 @@
 - Reset DS counter tracking for new Time Token stints and ignore unpaid lanes. Keep disconnect handling working if an observer fails.
 - Expand protocol, race-system, catalogue and desktop regression coverage. Physical DS hardware qualification remains outstanding.
 
-
 ## 2.2.0 — 2026-11-10
 
 ### Shared car library and racing history
+
 - Use a common same-computer car library with Paddock for car browsing, editing and race selection. Preserve Timing identities and race history when bringing existing collections together.
 - Save finalised results, corrections and withdrawals through durable operations with retry, acknowledgement and restore protection. Support resumable history uploads and explicit historical approval in compatible Paddock versions.
 - Respect car merges and source-specific simulation settings, reject stale or retired selections, and retain original raced identities and historical evidence.
 - Restore the original Results and Records presentation and track/personal-best grouping. Preserve recorded dates, totals, penalties and lap details without duplicate history panels.
 
 ### Storage and reliability
+
 - Read paginated SQLite lap history and indexed per-car/session statistics without loading full histories. Repair disposable indexes and summaries while preserving authoritative records.
 - Retain editor-save identities across lost replies and reloads, fence stale writes after restore, and drain accepted writes safely when closing.
 - Fix Layout Editor opening failures caused by oversized unrelated records; load targeted choices and preview assets.
 
 ### Interface and race systems
+
 - Compact Race Setup cards with system icons, expose frequently used system tabs, and improve Home lane/class spacing and Database navigation.
 - Make Push & Save the sole pace-related tyre-wear control for new races, preserve frozen legacy race rules, and clarify temperature wear modifiers.
 - Update theme-aware SlotForge header/footer branding and related Help guidance.
 
 ### Distribution
+
 - Exclude local handoffs, audit reports and design previews from release source and desktop packages. Keep build tools, regression tests, licences and user guides.
 
 ## 2.1.0 — 2026-11-03
@@ -220,7 +261,6 @@
 - Clarified Tyre Performance, system guidance and calculation options, with linked visual explanations.
 
 ### Pit overviews and fixes
-
 
 - Added independent Needs Attention and Recent Events widgets under Pit Stops, with lane/category filters, shared styling, readable compact layouts and second-display support. Flag changes and fuel warning transitions are logged independently of audio, with pause-safe race timestamps.
 - Fuel Bar widgets now blend from green when full through yellow to red as fuel runs low, independently of the app theme. Saved warning and critical colours and thresholds remain supported.
