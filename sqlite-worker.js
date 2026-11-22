@@ -77,8 +77,16 @@ parentPort.on('message', ({ id, operation, args }) => {
         ].includes(operation);
       if (!reads.has(operation) && !working) throw Error('Unsupported SQLite worker operation.');
       if (!store) throw Error('No SQLite copy is open.');
-      value = store[operation](...args);
+      // (2.4.0, speed) a backup through the worker is checked in a helper thread
+      value =
+        operation === 'backupSnapshot' && store instanceof WorkingStore ? store.backupSnapshotAside(...args) : store[operation](...args);
     }
+    // (2.4.0, speed) a request that finishes later (a backup being checked in a helper thread): the worker answers others meanwhile
+    if (value && typeof value.then === 'function')
+      return value.then(
+        v => parentPort.postMessage({ id, value: v }),
+        error => parentPort.postMessage({ id, error: { message: error.message, code: error.code } })
+      );
     parentPort.postMessage({ id, value });
   } catch (error) {
     parentPort.postMessage({ id, error: { message: error.message, code: error.code } });

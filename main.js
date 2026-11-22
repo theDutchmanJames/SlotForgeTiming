@@ -533,6 +533,8 @@ async function openStorageAndPaddock() {
     const pendingLibraryRestore = recovery.read(app.getPath('userData'));
     if (pendingLibraryRestore && !['complete', 'held'].includes(pendingLibraryRestore.phase)) {
       let held = false;
+      // (2.4.0) a restore of a large history takes minutes: the opening screen says what it is doing (it showed nothing for 10 minutes)
+      startupFeedback?.status?.('Restoring the car library from your backup. With a large race history this takes several minutes…');
       try {
         await recovery.run(sharedLibrary, app.getPath('userData'));
       } catch (error) {
@@ -551,6 +553,7 @@ async function openStorageAndPaddock() {
         held = true;
       }
       libraryOptions.installationId = sharedLibrary.installationId;
+      startupFeedback?.status?.('Opening the restored car library…');
       await sharedLibrary.close();
       sharedLibrary = await require('./shared-library-client').SharedLibraryClient.open(libraryOptions);
       if (!held) await recovery.complete(sharedLibrary, app.getPath('userData'));

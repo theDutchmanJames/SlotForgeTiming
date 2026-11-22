@@ -691,7 +691,7 @@
     },
     {
       "path": "engine/src/portable-backup.cjs",
-      "sha256": "406ad9389cfa8377105edebbc18d44a60cdb22d7b09d8d61653509cdc9c81902"
+      "sha256": "8f0ef56a4422cdf6a6ace301fc1e31da2a85b0abb6c4bbb15ce8ade76ed06b90"
     },
     {
       "path": "engine/src/portal-photo.cjs",
@@ -899,7 +899,7 @@
     },
     {
       "path": "engine/src/shared-library-restore.cjs",
-      "sha256": "aa1984535c3b2151f331c1f462049b51420c2e79d7059e09ce31d0b09e17d6ca"
+      "sha256": "a1362865ae9c5d6d0eccb3166d7df4f962610ab2c04936e435f9924a8a167491"
     },
     {
       "path": "engine/src/shared-library-service.cjs",

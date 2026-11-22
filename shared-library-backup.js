@@ -27,26 +27,40 @@ async function create({ client, destination, privateBackup, version = '', backen
   // mistaken for a verified backup, and no existing backup can be overwritten.
   await fs.promises.mkdir(destination);
   const privatePath = path.join(destination, backend === 'sqlite' ? 'timing-private.sqlite-backup' : 'timing-private.json');
-  await privateBackup(privatePath);
-  if (profile)
-    for (const name of ['shared-library-import.json', 'shared-library-restore.json']) {
-      const source = path.join(profile, name);
-      if (!fs.existsSync(source)) continue;
-      const stat = fs.lstatSync(source);
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024 * 1024) throw Error('Invalid recovery journal.');
-      const before = await digest(source),
-        target = path.join(destination, name);
-      await fs.promises.copyFile(source, target, fs.constants.COPYFILE_EXCL);
-      if ((await digest(target)) !== before || (await digest(source)) !== before)
-        throw Error('A recovery journal changed during backup. Try again after the operation finishes.');
-    }
-  const s = await client.status();
-  const common = await client.handle.backup({
-    databaseId: s.databaseId,
-    recoveryId: s.recoveryId,
-    revision: s.revision,
-    destination: path.join(destination, 'library.sfpbackup')
-  });
+  // (2.4.0, speed) Timing's own part (its copy is taken at once, then checked in a helper thread for minutes with a large history) and the
+  // library's part run side by side, not one after the other. The folder holds a backup only once both are done (the manifest below).
+  const timingPart = Promise.resolve().then(() => privateBackup(privatePath));
+  timingPart.catch(() => {}); // (its failure is reported below, after the library's part)
+  let common, s;
+  try {
+    ({ common, s } = await libraryPart());
+  } catch (e) {
+    await timingPart.catch(() => {});
+    throw e;
+  }
+  await timingPart;
+  async function libraryPart() {
+    if (profile)
+      for (const name of ['shared-library-import.json', 'shared-library-restore.json']) {
+        const source = path.join(profile, name);
+        if (!fs.existsSync(source)) continue;
+        const stat = fs.lstatSync(source);
+        if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024 * 1024) throw Error('Invalid recovery journal.');
+        const before = await digest(source),
+          target = path.join(destination, name);
+        await fs.promises.copyFile(source, target, fs.constants.COPYFILE_EXCL);
+        if ((await digest(target)) !== before || (await digest(source)) !== before)
+          throw Error('A recovery journal changed during backup. Try again after the operation finishes.');
+      }
+    const s = await client.status();
+    const common = await client.handle.backup({
+      databaseId: s.databaseId,
+      recoveryId: s.recoveryId,
+      revision: s.revision,
+      destination: path.join(destination, 'library.sfpbackup')
+    });
+    return { common, s };
+  }
   if (common.databaseId !== s.databaseId || common.recoveryId !== s.recoveryId || common.revision !== s.revision)
     throw Error('Shared backup identity changed.');
   const manifest = {

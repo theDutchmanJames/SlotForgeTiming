@@ -247,6 +247,10 @@ class WorkingStore extends SqliteStore {
   backupSnapshot(destination, info) {
     return require('./sqlite-bulk').snapshot(this, destination, info);
   }
+  // (2.4.0, speed) the same backup, checked in a helper thread: the database worker answers Timing meanwhile (sqlite-worker.js)
+  backupSnapshotAside(destination, info) {
+    return require('./sqlite-bulk').snapshotAside(this, destination, info);
+  }
   exportLegacy(file, info) {
     return require('./sqlite-bulk').exportLegacy(this, file, info);
   }

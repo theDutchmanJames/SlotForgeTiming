@@ -343,6 +343,7 @@ module.exports = [
   ['firststart.test.js', 'node-test'],
   ['lapvalues.test.js', 'node-test'],
   ['historyspeed.test.js', 'node-test'],
+  ['backupspeed.test.js', 'node-test'],
   ['pitlights.test.js', 'node-test'],
   ['mainclock.test.js', 'node-test'],
 ];

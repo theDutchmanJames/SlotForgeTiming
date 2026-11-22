@@ -92,7 +92,24 @@ function verify(file) {
     store.close();
   }
 }
-function snapshot(store, destination, info = {}, checkpoint = () => {}) {
+// (2.4.0, speed) The copy of a backup: the write log is moved into the database file and the file copied, a few seconds for 1.2 GB.
+// VACUUM INTO (still used when the log cannot be emptied) rebuilt every index: 54 s, while Timing could not read or save anything.
+// A database with much free space (more than a tenth of its pages) is still copied with VACUUM INTO, so a backup stays compact.
+function copyInto(store, staging) {
+  const free = store.statement('PRAGMA freelist_count').get().freelist_count,
+    pages = store.statement('PRAGMA page_count').get().page_count;
+  const done = free * 10 <= pages ? store.statement('PRAGMA wal_checkpoint(TRUNCATE)').get() : null;
+  if (done && done.busy === 0 && done.log <= 0) {
+    fs.copyFileSync(store.file, staging, fs.constants.COPYFILE_EXCL);
+    const copy = new (require('node:sqlite').DatabaseSync)(staging);
+    try {
+      copy.exec('PRAGMA journal_mode=DELETE'); // (a sealed file: no write log beside it)
+    } finally {
+      copy.close();
+    }
+  } else store.db.prepare('VACUUM INTO ?').run(staging); // Includes committed WAL contents, not just the main file.
+}
+function begin(store, destination) {
   // Exclusive directory: errors or worker cancellation leave an unpublished staging copy.
   require('./storage-space').check(
     destination,
@@ -100,13 +117,32 @@ function snapshot(store, destination, info = {}, checkpoint = () => {}) {
     'SQLite backup'
   );
   fs.mkdirSync(destination);
-  const staging = path.join(destination, 'snapshot.pending'),
-    file = path.join(destination, 'snapshot.sqlite');
-  store.db.prepare('VACUUM INTO ?').run(staging); // Includes committed WAL contents, not just the main file.
+  const staging = path.join(destination, 'snapshot.pending');
+  copyInto(store, staging);
+  return staging;
+}
+function snapshot(store, destination, info = {}, checkpoint = () => {}) {
+  const staging = begin(store, destination);
   checkpoint('snapshot-written');
   sync(staging);
-  const counts = verify(staging),
-    sha256 = digest(staging);
+  return publish(destination, staging, verify(staging), digest(staging), info, checkpoint);
+}
+// (2.4.0, speed) The same backup, checked in a helper thread: the full check of a 1.1 GB copy takes over two minutes, and the database
+// worker answers Timing meanwhile (it only reads the copy, never the open database). Published only when every check passed, as before.
+async function snapshotAside(store, destination, info = {}) {
+  const staging = begin(store, destination);
+  sync(staging);
+  const { Worker } = require('node:worker_threads');
+  const checked = await new Promise((resolve, reject) => {
+    const w = new Worker(path.join(__dirname, 'sqlite-bulk-check.js'), { workerData: { file: staging } });
+    w.once('message', m => (m.error ? reject(Object.assign(Error(m.error.message), { code: m.error.code })) : resolve(m)));
+    w.once('error', reject);
+    w.once('exit', code => code && reject(Error('The backup check stopped unexpectedly.')));
+  });
+  return publish(destination, staging, checked.counts, checked.sha256, info);
+}
+function publish(destination, staging, counts, sha256, info, checkpoint = () => {}) {
+  const file = path.join(destination, 'snapshot.sqlite');
   fs.renameSync(staging, file);
   checkpoint('before-publish');
   const manifest = {
@@ -300,6 +336,7 @@ function restoreLegacy(file, destination) {
 }
 module.exports = {
   FORMAT,
+  snapshotAside,
   MAX_TRANSFER,
   MAX_LEGACY,
   snapshot,
