@@ -4155,6 +4155,10 @@ html .hm-grid .hm-weather .hm-sky strong{font:italic 700 20px 'SF Barlow Condens
 html .hm-grid .hm-weather .hm-sky small{color:color-mix(in srgb,var(--ink) 80%,transparent)}
 html .hm-grid .hm-weather .hm-ctile{border:0;background:rgba(0,0,0,.24);box-shadow:none}
 html .hm-grid .hm-weather .hm-ctile small{color:color-mix(in srgb,var(--ink) 75%,transparent)}
+/* the sky is dark in every theme, so its words are light in every theme (2.4.1); on a light page it does not fade into the white card but stays a sky */
+html .hm-grid .hm-weather{--ink:#f3f6fb;--muted:#c5d0de;color:var(--ink)}
+:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .hm-grid .hm-weather{background:linear-gradient(170deg,#3a6ea5 0%,#1f3a5c 60%,#172c46 100%)}
+:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .hm-grid .hm-weather:is(.hm-wx-wet,.hm-wx-rain,.hm-wx-cloudy,.hm-wx-clearing){background:linear-gradient(170deg,#3c4655 0%,#252c37 60%,#1c222b 100%)}
 
 /* Tyres available: sidewalls */
 html .hm-grid .hm-tyres:not(.hm-ty-column){display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}

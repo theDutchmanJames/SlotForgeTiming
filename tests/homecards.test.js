@@ -176,5 +176,10 @@ ok('...no car has a service interval yet: where to set one, and no tag; d with n
   const ch = C.html('champ', { ...e, champ: { c: { name: 'Winter <Cup>' }, p: { rounds: [{ state: 'done' }, { state: 'next' }, { state: 'todo' }], complete: false }, st: { drivers: [{ id: 'a', name: 'Anna', pos: 1, total: 86 }, { id: 'b', name: 'Bjorn', pos: 2, total: 79 }] }, next: { label: 'Round 2', track: 'Garage', date: '2026-11-24' } } }, board('champ'));
   ok('2.4.0 Championship: the rounds as a strip, the standings with the gap to the leader, the next round; no championship says where to make one', ch.includes('<span class="hm-tag">Winter &lt;Cup&gt;</span>') && ch.includes('1 of 3 rounds') && ch.includes('<i class="done"></i><i class="next"></i><i class="todo"></i>') && ch.includes('<strong>Bjorn</strong><b>79</b><span class="g">−7</span>') && ch.includes('Next: <b>Round 2</b> · Garage · S:11-24') && C.html('champ', { ...e, champ: null }, board('champ')).includes('Race Setup › Championships'));
 }
+{
+  // the sky is dark in every theme: its words are light, also on the light themes (dark words on a dark sky before)
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '../renderer/styles.css'), 'utf8');
+  ok('Weather: light words on the sky in every theme, and on the light themes the sky does not fade to white', css.includes('html .hm-grid .hm-weather{--ink:#f3f6fb;--muted:#c5d0de;color:var(--ink)}') && css.includes(':is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .hm-grid .hm-weather{background:'));
+}
 console.log(fails ? fails + ' HOME CARD TESTS FAILED' : 'ALL HOME CARD TESTS PASSED');
 process.exit(fails ? 1 : 0);

@@ -1275,7 +1275,7 @@ their lane (`d.laneOf`, `.hm-lane`, `.hm-stripe`); purple is the fastest, gold, 
 | Top drivers | **Hall of fame**: the leader as a gold banner with the wins, the others as bars |
 | Rules of this race | **Race brief**: a tile per rule in its own colour; a system that is off fades |
 | Shortcuts | **Launch pad**: tiles with a picture, the first one twice as wide |
-| Weather | **The sky**: the card takes the colour of the weather, the air temperature big |
+| Weather | **The sky**: the card takes the colour of the weather, the air temperature big; the sky is dark in every theme, so its words are light (`--ink:#f3f6fb`), and on the light themes it stays a sky to the bottom instead of fading into the white card |
 | Tyres available | **Sidewalls** with the sets as small blocks |
 | Notes | **Race control board**: more lines become numbered points, a strip of tape on top |
 | Car mileage | **Odometers**: the value in mono, a thin bar |
@@ -2770,3 +2770,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Quiet Pages | New: page notes folded to one line with More; explanations on two lines; one red button per page (Parallel Port, the standings, the Widget Builder; Delete muted on cards); Ready / Not ready on race setup cards and a legend for the list dot; values under their widget titles; the Plugins empty card; Display and units and Share the race on one page |
 | 2026-11 | Pit Lights | New: Lane Check shows a light per pit sensor (Arduino box); a car on it lights it amber, click it and choose its lane; saved at once (`abPitMap`) and the race uses the same lanes |
 | 2026-11 | Editor Panels | Restyled: the Layout Editor and the Leaderboard Editor panels (the widget list as a rail, the settings as Folders with a head and slim rows, the lane as eight buttons, Align and Layer as pictures, explanations on one line with More). Behaviour: the lane is chosen with buttons (the list is hidden), explanations start folded |
+| 2026-11 | Home Weather card | Fixed: on the light themes (Light, Ocean, light tone) the sky card had dark words on its dark sky; its words are now light in every theme and the sky no longer fades to white at the bottom |
