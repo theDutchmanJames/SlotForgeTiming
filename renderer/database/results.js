@@ -424,7 +424,7 @@ async function renderResultsPool(box, pool, supplied = null) {
           case 'team':
             return esc(x.teamName || '');
           case 'car':
-            return esc(x.carName);
+            return esc(x.carName || (typeof SwapSeats !== 'undefined' ? SwapSeats.drivenText(s, x.participant) : ''));
           case 'laps':
             return esc(x.laps) + (Stats.sectorText(x) ? ` <span class="muted">+ ${esc(Stats.sectorText(x))}</span>` : '');
           case 'points':
@@ -547,10 +547,17 @@ async function renderResultsPool(box, pool, supplied = null) {
             s.heatResults
               .map(
                 h =>
-                  `<div class="rr-heat"><strong>${esc(Heats.raceName(h))}${h.checked && h.checked.reruns ? ` <span class="rr-tag">${h.checked.reruns === 1 ? 'Run twice' : 'Run ' + (h.checked.reruns + 1) + ' times'}</span>` : ''}${h.checked && (h.checked.changes || []).length ? ` <span class="rr-tag">${h.checked.changes.length} ${h.checked.changes.length === 1 ? 'change' : 'changes'}</span>` : ''}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<ol>${h.rows.map(r => `<li>${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})</li>`).join('')}</ol></div>`
+                  `<div class="rr-heat"><strong>${esc(Heats.raceName(h))}${h.checked && h.checked.reruns ? ` <span class="rr-tag">${h.checked.reruns === 1 ? 'Run twice' : 'Run ' + (h.checked.reruns + 1) + ' times'}</span>` : ''}${h.checked && (h.checked.changes || []).length ? ` <span class="rr-tag">${h.checked.changes.length} ${h.checked.changes.length === 1 ? 'change' : 'changes'}</span>` : ''}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<ol>${h.rows.map(r => `<li>${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)}${r.carName && s.laneCars ? ' in ' + esc(r.carName) : ''} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})</li>`).join('')}</ol></div>`
               )
               .join('') +
-            '</div>'
+            '</div>' +
+            (typeof SwapSeats !== 'undefined' && SwapSeats.cars(s).length
+              ? '<h4>Lane cars</h4>' +
+                SwapSeats.carsTable(s, esc, ms => RaceEngine.fmtTime(ms)).replace(
+                  '<table class="ss-cars">',
+                  '<table class="fields ss-cars">'
+                )
+              : '')
           : '') +
         tyreStintsSection(s) +
         `<h4 class="rr-laphead">${supplied ? 'Lap times on this page' : 'All lap times'}</h4>` +

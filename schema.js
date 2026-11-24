@@ -754,6 +754,24 @@ module.exports = {
         hint: 'Teams are made under Database > Teams. On Home you choose a team and a car for every team, and the drivers of a team take turns, one driver in every heat. With a rotation setup the rotation says whether the participants are drivers or teams.'
       },
       {
+        key: 'heatCars',
+        group: 'heats',
+        label: 'The cars',
+        ui: 'cards',
+        type: 'select',
+        default: 'driver',
+        options: [
+          ['driver', 'Every driver brings a car', 'Each driver races their own car, on every lane.'],
+          [
+            'lanes',
+            'Swap Seats',
+            'Each lane has its own car, and it stays there. The drivers move from lane to lane, so they drive every car.'
+          ]
+        ],
+        showIf: [{ sessionType: ['heats'] }],
+        hint: 'Swap Seats: you choose the car of every lane on Home, and the drivers have no car of their own. With "Every lane once" every driver drives every car once. Not with a Multi-Class System or virtual rivals.'
+      },
+      {
         key: 'teamDriver',
         group: 'heats',
         label: 'Which driver of a team drives a heat',

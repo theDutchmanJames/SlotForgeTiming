@@ -7,6 +7,7 @@
   const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
   const IC = typeof module !== 'undefined' ? require('./icons.js') : root.Icons;
   const VR = typeof module !== 'undefined' ? require('./virtualrival.js') : root.VirtualRival;
+  const SS = typeof module !== 'undefined' ? require('./heats/swapseats.js') : root.SwapSeats; // (2.5.0: Swap Seats, the cars of the lanes)
   const RR = typeof module !== 'undefined' ? require('./racereport.js') : root.RaceReport; // (2.4.0: the look of the race report on paper)
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const LABEL = {
@@ -60,7 +61,7 @@
         case 'team':
           return e(x.teamName || '');
         case 'car':
-          return e(x.carName);
+          return e(x.carName || (SS ? SS.drivenText(session, x.participant) : ''));
         case 'laps':
           return e(x.laps) + (ST.sectorText(x) ? ` + ${e(ST.sectorText(x))}` : '');
         case 'points':
@@ -127,9 +128,10 @@
           session.heatResults
             .map(
               h =>
-                `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${ST.sectorText(r) ? ' + ' + esc(ST.sectorText(r)) : ''}${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`
+                `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)}${r.carName && session.laneCars ? ' in ' + esc(r.carName) : ''} (${esc(r.laps)} laps${ST.sectorText(r) ? ' + ' + esc(ST.sectorText(r)) : ''}${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`
             )
-            .join('');
+            .join('') +
+          (SS && SS.cars(session).length ? '<h2>Lane cars</h2>' + SS.carsTable(session, esc, ms => E.fmtTime(ms)) : '');
     const stintSheet =
       !opt.results || !ST.stintLines(session, distUnit).length
         ? ''

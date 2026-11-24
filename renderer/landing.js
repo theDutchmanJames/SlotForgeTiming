@@ -224,7 +224,10 @@ async function renderHome() {
   // 1.8.0: the participants of a heat race can be teams (a team and a car; the drivers of the team take turns in the heats). The rotation says so, or the race setup when there is no rotation.
   const byTeam = heats && (rot ? Rot.isTeams(rot) : setup.participants === 'teams');
   const withTeam = byTeam || enduSingle; // (the team is the participant: it has to be chosen)
-  const allowRival = !tokens && !withTeam && !endu;
+  // 2.5.0 Swap Seats: every lane has its own car, chosen here (the setting laneCars, by race setup); the participants have no car of their own
+  const seats = heats && typeof SwapSeats !== 'undefined' && SwapSeats.on(setup);
+  const laneCarIds = seats ? SwapSeats.laneIds((saved.laneCars || {})[setupId], lanes, id => cars.some(c => c.id === id)) : [];
+  const allowRival = !tokens && !withTeam && !endu && !seats;
   const laneDrivers = allowRival ? allDrivers.filter(d => !d.retired) : drivers; // (2.4.0 review: the virtual rivals, but no retired driver)
   if (!withTeam)
     rows.forEach(r => {
@@ -359,7 +362,7 @@ async function renderHome() {
     if (byTeam)
       rows.forEach((r, i) => {
         if (rot && r.absent) return;
-        if (!r.teamId || !r.carId) rowMsg(i, label(i) + ' needs a team and a car.');
+        if (!r.teamId || (!seats && !r.carId)) rowMsg(i, label(i) + (seats ? ' needs a team.' : ' needs a team and a car.'));
         else if (!membersOf(teamOf(r.teamId)).length)
           issues.push(`The team ${titleOf('teams', teamOf(r.teamId))} has no drivers. Add them in Database > Teams.`);
         else if (endu && membersOf(teamOf(r.teamId)).length < 2)
@@ -386,7 +389,7 @@ async function renderHome() {
               i,
               label(i) + (rivalRowErr[i] ? ': ' + rivalRowErr[i].replace(/^[^:]+: /, '') : ' needs a valid Rival Setup for this track.')
             ); // (2.4.0: why, in its lane)
-        } else if (!r.driverId || !r.carId) rowMsg(i, label(i) + ' needs a driver and a car.');
+        } else if (!r.driverId || (!seats && !r.carId)) rowMsg(i, label(i) + (seats ? ' needs a driver.' : ' needs a driver and a car.'));
       });
     mcRowErrors.forEach((message, i) => {
       if (message && !rowMsgs[i]) rowMsg(i, message);
@@ -401,8 +404,12 @@ async function renderHome() {
     if (withTeam) {
       if (dup('teamId')) issues.push('A team is used more than once.');
     } else if (dup('driverId')) issues.push('A driver is used more than once.');
-    if (dup('carId')) issues.push('A car is used more than once.');
-    if (rows.some(r => !isRival(r) && cars.find(c => c.id === r.carId)?.paddock?.archived))
+    if (!seats && dup('carId')) issues.push('A car is used more than once.');
+    if (seats) {
+      issues.push(...SwapSeats.problems(laneCarIds));
+      if (setup.multiClass) issues.push('Swap Seats does not go with a Multi-Class System. Turn one of the two off in Race Setup.');
+    }
+    if ((seats ? laneCarIds.map(carId => ({ carId })) : rows).some(r => !isRival(r) && cars.find(c => c.id === r.carId)?.paddock?.archived))
       issues.push('A selected Paddock car is no longer available. Choose another car.');
   }
 
@@ -609,11 +616,28 @@ async function renderHome() {
   const sel2 = (ico, html) =>
     `<div class="hs-sel${ico ? '' : ' hs-noico'}">${ico ? `<span class="hs-sico" aria-hidden="true">${Icons.svg(ico, { size: ico === 'car' ? 22 : 17 })}</span>` : ''}${html}<span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div>`;
   const onLane = c => (/^#[0-9a-f]{6}$/i.test(c) && typeof AdjustPad !== 'undefined' ? AdjustPad.textOn(c) : '#ffffff'); // (the number on a lane colour: dark or white, whichever reads better)
+  // Swap Seats: how many heats a participant races, and how many of the lane cars that makes (the plan on Home; a rotation counts the participants who are here)
+  const seatNote = i => {
+    if (!seats || !heatPlan || rot) return '';
+    const mine = heatPlan.schedule.flat().filter(e => e.p === i);
+    if (!mine.length) return '';
+    const k = new Set(mine.map(e => e.lane)).size;
+    return `<span class="muted hs-seat">${mine.length} ${mine.length === 1 ? 'heat' : 'heats'} · ${k === lanes ? `all ${lanes} cars` : `${k} of ${lanes} cars`}</span>`;
+  };
+  // Swap Seats: the car of every lane, above the participants
+  const laneCarsHtml = () =>
+    `<div class="hs-sub hs-csub"><span class="hs-label hs-muted">Lane cars</span><span class="muted">The car on each lane for the whole race. The drivers swap seats.</span></div><div class="hs-lanes hs-cars" data-cols="${laneCols(lanes)}" role="group" aria-label="Lane cars">${laneCarIds
+      .map(
+        (id, l) =>
+          `<div class="lane${id ? '' : ' need'}" data-lanecar-row="${l}" style="--c:${esc(laneHue(l))}"><strong class="hs-num" style="--on:${onLane(laneHue(l))}" title="Lane ${l + 1}"><span class="hs-vh">Lane ${l + 1}</span><span aria-hidden="true">${l + 1}</span></strong><div class="hs-fields">${sel2('car', `<select data-lanecar="${l}" aria-label="Car for lane ${l + 1}"${raceOn ? ' disabled' : ''}>${optionsOf('slotcars', cars, id, '(choose a car)')}</select>`)}<small class="muted hs-seat">Lane car</small></div><span class="hs-tick ${id ? 'ok' : 'warn'}" role="img" aria-label="${id ? 'Ready' : 'No car yet'}">${Icons.svg(id ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span></div>`
+      )
+      .join('')}</div>`;
   const rowHtml = (r, i) => {
     const gone = away(r),
       ready = rowOk.has(i) ? rowOk.get(i) : true, // (an away row is in no lamp, and has no message: it is never marked)
       who = (heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane ') + (i + 1) + (rot && rot.names[i] ? ' · ' + rot.names[i] : '');
     const note = [
+      seatNote(i),
       classChoice(r, i),
       isRival(r)
         ? `<span class="muted">Virtual Rival · ${rivalFor(r) ? esc(rivalFor(r).profile.name) + (mc ? ' · comparison only' : '') : 'choose a saved replay'}</span>`
@@ -642,8 +666,8 @@ async function renderHome() {
       (heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '');
     return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
       <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
-      <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r) && allowRival ? rivalSelect(r, i) : sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r, mc, { cars, drivers, teams }), r.carId, mc?.assignment === 'roster' ? (MultiClass.assignedClass(r, mc, { cars, drivers, teams }) ? 'Choose a matching car' : 'Choose a class first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
-      ${more || (!isRival(r) && typeof PaddockBrowser !== 'undefined') ? `<div class="hs-more">${more}${!isRival(r) && typeof PaddockBrowser !== 'undefined' ? `<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r) || raceOn ? ' disabled' : ''} title="Browse available slotcars">Browse cars</button>` : ''}</div>` : ''}
+      <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r) && allowRival ? rivalSelect(r, i) : seats ? '' : sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r, mc, { cars, drivers, teams }), r.carId, mc?.assignment === 'roster' ? (MultiClass.assignedClass(r, mc, { cars, drivers, teams }) ? 'Choose a matching car' : 'Choose a class first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
+      ${more || (!isRival(r) && !seats && typeof PaddockBrowser !== 'undefined') ? `<div class="hs-more">${more}${!isRival(r) && !seats && typeof PaddockBrowser !== 'undefined' ? `<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r) || raceOn ? ' disabled' : ''} title="Browse available slotcars">Browse cars</button>` : ''}</div>` : ''}
       ${r.driverId && !gone && !byTeam ? `<span class="hs-avatar" aria-hidden="true" data-avatar-driver="${esc(r.driverId)}"><img src="${esc(homeAvatarCache.get(r.driverId) || (typeof Avatars !== 'undefined' ? Avatars.forLane(null, i) : ''))}" alt=""${homeAvatarCache.get(r.driverId) ? ' class="own"' : ''}></span>` : ''}
       ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
       ${note ? `<div class="hs-note">${note}</div>` : ''}</div>`;
@@ -766,7 +790,7 @@ async function renderHome() {
   const laneSub = tokens
     ? 'A lane can have no driver (a Guest) and no car.'
     : heats
-      ? `${rows.length} ${byTeam ? 'teams' : 'participants'} race on ${lanes} lanes. Pick who takes part.`
+      ? `${rows.length} ${byTeam ? 'teams' : 'participants'} race on ${lanes} lanes. ${seats ? 'No car to choose: they drive the car of the lane.' : 'Pick who takes part.'}`
       : enduSingle
         ? 'Every lane is a team with its starting driver.'
         : 'Choose a human driver and car, or a Virtual Rival and its replay.';
@@ -789,7 +813,7 @@ async function renderHome() {
       ['resourceSystem', 'Resources'],
       ['multiClass', 'Multi-Class']
     ];
-    const filled = rows.filter(r => !r.absent && (r.driverId || r.teamId) && (r.carId || byTeam || tokens));
+    const filled = rows.filter(r => !r.absent && (r.driverId || r.teamId) && (r.carId || byTeam || tokens || seats));
     state.raceCheckInput = {
       hasSetup: !!setup,
       setupName: setup ? setup.name || '' : '',
@@ -920,7 +944,7 @@ async function renderHome() {
     ${customHtml()}
     ${resumeHtml}
     <div id="hm-detect" hidden></div>
-    <section class="card hm-start" id="hmc-start">` +
+    <section class="card hm-start${seats ? ' seats' : ''}" id="hmc-start">` +
     (setups.length
       ? `
       <div class="hs-head"><span class="hs-tile" aria-hidden="true">${Icons.svg('racesetups', { size: 24 })}</span>
@@ -938,6 +962,7 @@ async function renderHome() {
           : ''
       }
       ${rotHtml}
+      ${seats && track && lanes ? laneCarsHtml() : ''}
       ${track && lanes ? `${heats || tokens || enduSingle ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div>` : ''}<div class="hs-lanes" data-cols="${laneCols(rows.length)}" role="group" aria-label="${esc(laneSub)}">${rows.map(rowHtml).join('')}</div>` : ''}
       ${heats && track && !rot ? `<button class="btn" id="addrow">${byTeam ? 'Add team' : 'Add participant'}</button>` : ''}
       ${mcHtml}${heatPlanHtml}
@@ -1199,6 +1224,26 @@ async function renderHome() {
         else delete r.absent;
         persist();
       }
+      return;
+    }
+    if (ev.target.dataset && ev.target.dataset.lanecar !== undefined) {
+      // Swap Seats: the car of a lane (a Paddock car is linked first, as for a driver)
+      const l = Number(ev.target.dataset.lanecar);
+      let v = ev.target.value;
+      if (v.startsWith('shared:')) {
+        try {
+          v = (await api.paddockLink(v.slice(7))).id;
+        } catch (error) {
+          Dialog.alert(error.message);
+          ev.target.value = laneCarIds[l] || '';
+          return;
+        }
+        if (state.tab !== 'home' || draw !== homeDraw) return;
+      }
+      const next = laneCarIds.slice();
+      next[l] = v;
+      state.settings = await api.setSettings({ lastSetupId: setupId, laneCars: { ...(saved.laneCars || {}), [setupId]: next } });
+      renderHome();
       return;
     }
     const row = ev.target.closest('[data-row]');
@@ -1510,6 +1555,7 @@ async function renderHome() {
         setup: resume.race.setup,
         track: resume.race.track,
         rows: resume.race.rows,
+        ...(resume.race.laneCars ? { laneCars: resume.race.laneCars } : {}),
         ...(resume.race.byTeam ? { byTeam: true } : {}),
         ...(resume.race.schedule ? { schedule: resume.race.schedule, ...(resume.race.labels ? { labels: resume.race.labels } : {}) } : {}),
         ...(resume.race.champ ? { champ: resume.race.champ } : {}),
@@ -1576,7 +1622,12 @@ async function renderHome() {
           multiclass: mc,
           setup: rawSetup,
           track: fullTrack,
-          rows: go.map(row => ({ ...row, raceClass: MultiClass.resolve(row, mc, { cars, drivers, teams }) })),
+          rows: go.map(row => ({
+            ...row,
+            ...(seats ? { carId: '' } : {}),
+            raceClass: MultiClass.resolve(row, mc, { cars, drivers, teams })
+          })),
+          ...(seats ? { laneCars: laneCarIds } : {}),
           virtualRivals: rivalSelection.entries,
           ...(byTeam ? { byTeam: true } : {}),
           ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}),

@@ -35,7 +35,7 @@ test('R3: nothing starts a token session while the question about the earlier on
 test('R4: Run again takes the laps of the run that was set aside out of the bests', () => {
   const c = race(),
     rerun = c.slice(c.indexOf('function rerunHeat()'), c.indexOf('async function discardAll()'));
-  assert(has(rerun, "live.phase = 'between'; eng = mk(heat.entries()); recomputeBests();"));
+  assert(has(rerun, "live.phase = 'between'; eng = mk(seated(heat.entries())); recomputeBests();"));
 });
 
 test('R5: the notes of the title fight are text, never markup', () => {

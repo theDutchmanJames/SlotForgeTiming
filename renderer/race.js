@@ -29,18 +29,11 @@ function raceEntrants({
   weatherSystems,
   bopSource // (2.4.0: the Balance of Power profile of the setup, else the club default)
 }) {
-  const people = r.rows.map(x0 => {
-    const x = byTeam ? { ...x0, driverId: '' } : x0,
-      d = find(allDrivers, x.driverId) || {},
-      tm = find(teams, x.teamId);
-    const mates = (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)),
-      asRace = enduOn && !!tm && mates.length >= 2; // (a team of two drivers or more swaps)
+  // what the race knows of a car: its name, picture, tyre and how fragile it is (a car of a driver, or the car of a lane in Swap Seats)
+  const carBits = id => {
+    const x = { carId: id };
     return {
-      ...(isRival(x) ? { virtualRival: true } : {}),
-      raceClass: x.raceClass || '',
-      driverId: x.driverId || '',
       carId: x.carId || '',
-      driverName: nameOf('drivers', allDrivers, x.driverId) || (tokenSession ? 'Guest' : ''),
       carName: nameOf('slotcars', cars, x.carId),
       carPicture: (find(cars, x.carId) || {}).picture || '',
       carScale: (find(cars, x.carId) || {}).scale || '',
@@ -54,7 +47,21 @@ function raceEntrants({
       Number.isFinite(Number(find(cars, x.carId).failureFactor)) &&
       String(find(cars, x.carId).failureFactor).trim() !== ''
         ? { failureFactor: Math.max(0, Number(find(cars, x.carId).failureFactor)) }
-        : {}), // (a tired old car has more failures, see failures.js)
+        : {}) // (a tired old car has more failures, see failures.js)
+    };
+  };
+  const people = r.rows.map(x0 => {
+    const x = byTeam ? { ...x0, driverId: '' } : x0,
+      d = find(allDrivers, x.driverId) || {},
+      tm = find(teams, x.teamId);
+    const mates = (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)),
+      asRace = enduOn && !!tm && mates.length >= 2; // (a team of two drivers or more swaps)
+    return {
+      ...(isRival(x) ? { virtualRival: true } : {}),
+      raceClass: x.raceClass || '',
+      driverId: x.driverId || '',
+      ...carBits(x.carId),
+      driverName: nameOf('drivers', allDrivers, x.driverId) || (tokenSession ? 'Guest' : ''),
       nickname: d.nickname || '',
       callsign: d.callsign || '',
       flag: d.flag || '',
@@ -79,6 +86,11 @@ function raceEntrants({
     };
   });
   const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
+  // Swap Seats (2.5.0): a heat race where every lane has its own car and the drivers move from car to car; the people have no car, the lane gives it
+  const laneCars =
+    heats && SwapSeats.on(setup) && Array.isArray(r.laneCars)
+      ? Array.from({ length: lanes }, (_, l) => carBits(r.laneCars[l] || ''))
+      : null;
   const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
   const fuelCfg = RaceEngine.fuelConfig(setup, find(fuelRules, setup.fuelRules), r.track),
     pitMs = fuelCfg.pitHold; // fuel on/off, tank, use per lap, refuel speed and the resolved pace reference; pit stop hold time
@@ -95,7 +107,7 @@ function raceEntrants({
   // Weather: only for a race or a timed race, with the weather system the setup has. Every engine (every heat) gets the settings with a seed for the random choices: the same one in every heat, unless the system says every heat has new weather
   const wxRec = !tokenSession && (engineType === 'race' || engineType === 'timed') ? find(weatherSystems, setup.weather) : null,
     wxSeed = (r.resume && r.resume.wxSeed) || Heats.newSeed();
-  return { bopCfg, damCfg, engineType, fuelCfg, lanes, penCfg, people, pitMs, wxRec, wxSeed };
+  return { bopCfg, damCfg, engineType, fuelCfg, lanes, laneCars, penCfg, people, pitMs, wxRec, wxSeed };
 }
 // the race before this one is let go; the records to beat are read
 function raceLetGoAndBase() {
@@ -557,7 +569,8 @@ async function renderRace() {
     if (api.raceInputs)
       inputs = await api.raceInputs({
         setup: r.setup,
-        rows: r.rows,
+        rows:
+          SwapSeats.on(r.setup) && Array.isArray(r.laneCars) ? r.rows.concat(r.laneCars.filter(Boolean).map(carId => ({ carId }))) : r.rows, // (Swap Seats: the cars of the lanes are read too)
         trackId: r.track.id,
         championship: !!r.champ,
         revision: r.catalogueRevision,
@@ -686,7 +699,7 @@ async function renderRace() {
       return render();
     }
   }
-  const { bopCfg, damCfg, engineType, fuelCfg, lanes, penCfg, people, pitMs, wxRec, wxSeed } = raceEntrants({
+  const { bopCfg, damCfg, engineType, fuelCfg, lanes, laneCars, penCfg, people, pitMs, wxRec, wxSeed } = raceEntrants({
     bopSource: (setup.bopSystem && find(bopProfiles || [], setup.bopSystem)) || null,
     allDrivers,
     byTeam,
@@ -706,6 +719,8 @@ async function renderRace() {
     tokenSession,
     weatherSystems
   }); // (a race that is carried on after an interruption has the weather it had)
+  const carRows = laneCars ? r.rows.concat(r.laneCars.filter(Boolean).map(carId => ({ driverId: '', carId }))) : r.rows; // (the rows with a car: in Swap Seats the lanes have the cars)
+  const seated = list => (laneCars ? list.map(e => ({ ...e, ...(laneCars[e.lane] || {}), seat: true })) : list); // (Swap Seats: the driver of a heat gets the car of the lane)
   // wxLast: the seed of the race that was made last (kept in the snapshot of an interrupted race); wxForce: the seed of the race that was interrupted, so the weather goes on as it was planned (1.24.0)
   let wxLast = 0,
     wxForce =
@@ -736,10 +751,10 @@ async function renderRace() {
     !r.resume &&
     !paddockJournal &&
     api.paddockPrepare &&
-    cars.some(c => (c.sharedLibrary || (!tokenSession && c.paddock)) && r.rows.some(x => x.carId === c.id))
+    cars.some(c => (c.sharedLibrary || (!tokenSession && c.paddock)) && carRows.some(x => x.carId === c.id))
   ) {
     try {
-      paddockJournal = await api.paddockPrepare(r.rows.filter(x => !isRival(x)).map(x => x.carId));
+      paddockJournal = await api.paddockPrepare(carRows.filter(x => !isRival(x)).map(x => x.carId));
       if (paddockJournal.timingSettings)
         for (const [id, binding] of Object.entries(paddockJournal.timingSettings)) {
           const car = cars.find(c => c.id === id),
@@ -1007,7 +1022,7 @@ async function renderRace() {
       ...RaceEngine.finalsOf(setup)
     });
     assignDrivers();
-    eng = mk(heat.entries());
+    eng = mk(seated(heat.entries()));
   } else if (tokenSession)
     eng = mk(
       Array.from({ length: lanes }, (_, i) => ({
@@ -2235,6 +2250,16 @@ async function renderRace() {
         .join('')}</tbody></table>`;
   };
   // (2.4.0, SlotForgeRestyle.md "Heat Board") the heat that is next, on top while the race waits for it: its name, its drivers by lane, and Start
+  // Swap Seats (2.5.0): the car of the lane stays, the driver changes: the car, who gets in, and who drove it in the heat before
+  const seatOf = d => {
+    const car = Number.isInteger(d.lane) && laneCars[d.lane] ? laneCars[d.lane].carName : '',
+      last = heat.results.length ? heat.results[heat.results.length - 1].rows.find(y => y.lane === d.lane) : null;
+    return { car, was: last && last.driverName && last.driverName !== d.name ? last.driverName : '' };
+  };
+  const seatText = d => {
+    const { car, was } = seatOf(d);
+    return `<span class="hn-seat"><small>${esc(car || 'Lane car')}</small><b>${esc(d.name)}</b>${was ? `<small class="hn-was">after ${esc(was)}</small>` : ''}</span>`;
+  };
   const drawHeatNext = () => {
     const box = ui('heatnext');
     if (!heats || !box) return;
@@ -2261,7 +2286,7 @@ async function renderRace() {
       nx.drivers
         .map(
           d =>
-            `<span class="hn-lane"${Number.isInteger(d.lane) ? ` style="--c:${esc(HomeStats.laneColor(layout, d.lane))}"` : ''}><i>${Number.isInteger(d.lane) ? d.lane + 1 : '–'}</i>${esc(d.name)}</span>`
+            `<span class="hn-lane${laneCars ? ' seat' : ''}"${Number.isInteger(d.lane) ? ` style="--c:${esc(HomeStats.laneColor(layout, d.lane))}"` : ''}><i>${Number.isInteger(d.lane) ? d.lane + 1 : '–'}</i>${laneCars ? seatText(d) : esc(d.name)}</span>`
         )
         .join('') || '<span class="muted">The lanes are chosen below.</span>'
     }</div><div class="hn-go">${live.phase === 'between' && !heat.picksDone() ? '<span class="muted">Choose the lanes of the final first.</span>' : `<button type="button" class="btn primary" data-hn="start">Start ${esc(nx.name.replace(/^Heat/, 'heat').replace(/^Final/, 'final'))}</button><span class="muted"><kbd>Space</kbd> starts it too</span>`}</div>`;
@@ -2528,7 +2553,7 @@ async function renderRace() {
   // ---- before a final: the drivers choose their lanes, the best-placed driver first ----
   // The race is built again after every choice, so the grid, the widgets and the other screens always show the lanes as chosen so far.
   const regrid = () => {
-    eng = mk(heat.entries());
+    eng = mk(seated(heat.entries()));
     live.ann = mkAnn();
     live.flash = new Map();
     live.fpKey = null;
@@ -2768,7 +2793,7 @@ async function renderRace() {
       if (heat.hasNext() && !live.stopping) {
         assignDrivers();
         live.phase = 'between';
-        eng = mk(heat.entries());
+        eng = mk(seated(heat.entries()));
         startBreak(); // (a final: the grid shows the lanes in the order of the heat result until the drivers have chosen)
         live.ann = mkAnn();
         live.flash = new Map();
@@ -2807,7 +2832,7 @@ async function renderRace() {
     closeReview();
     Review.reset();
     live.phase = 'between';
-    eng = mk(heat.entries());
+    eng = mk(seated(heat.entries()));
     recomputeBests(); // (2.4.0 review: the laps of the run that was set aside are no bests or records any more)
     live.ann = mkAnn();
     live.flash = new Map();
@@ -3104,7 +3129,7 @@ async function renderRace() {
         line: `${limit}${nx.final ? ' · decides the places' : ''}`,
         drivers: nx.drivers.map(d => ({
           name: d.name,
-          car: (people[d.p] || {}).carName || '',
+          car: laneCars ? seatOf(d).car : (people[d.p] || {}).carName || '', // (Swap Seats: the car of the lane)
           avatar: (people[d.p] || {}).avatar || '',
           lane: Number.isInteger(d.lane) ? d.lane : null,
           total: totals.get(d.p)
@@ -3676,7 +3701,9 @@ async function renderRace() {
     }
     if (paddockJournal) {
       const totals = heats
-        ? new Map(heat.spentBy().map(x => [people[x[0]]?.carId, x[1]]))
+        ? laneCars
+          ? SwapSeats.carTimes(heat.results) // (Swap Seats: the time of every lane car, over all its drivers)
+          : new Map(heat.spentBy().map(x => [people[x[0]]?.carId, x[1]]))
         : new Map(eng.cars.map(c => [c.carId, eng.spentOf(c, eng.endAt, true)]));
       paddockJournal.classifiedTimes = Object.fromEntries(totals);
     }
@@ -3701,6 +3728,7 @@ async function renderRace() {
         wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
       if (wxAll) session.weatherNote = wn[0];
       if (rivalEntries.length) session.virtualRivals = live.rivalHeats || [];
+      if (laneCars) session.laneCars = SwapSeats.keep(laneCars); // (Swap Seats: the car of every lane)
       session.heatResults = heat.results.map(h => ({
         heat: h.heat,
         ...(h.rulesSnapshot ? { rulesSnapshot: h.rulesSnapshot } : {}),
@@ -5101,6 +5129,7 @@ async function renderRace() {
             setup: lean(r.setup),
             track: lean(r.track),
             rows: r.rows,
+            ...(laneCars ? { laneCars: r.laneCars } : {}),
             ...(r.champ ? { champ: r.champ } : {}),
             ...(byTeam ? { byTeam: true } : {}),
             ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {})
@@ -5186,7 +5215,7 @@ async function renderRace() {
       finishAll();
       return false;
     }
-    eng = mk(heat.entries());
+    eng = mk(seated(heat.entries()));
     live.ann = mkAnn();
     live.flash = new Map();
     live.fpKey = null;

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Swap Seats:** a heat race where every lane has its own car and the drivers move from lane to lane, so everyone drives every car. Choose it under Race Setup › Heats › The cars, pick the car of every lane on Home, and the results show how every car did.
 - **A new app icon:** two crossed chequered flags in red and white, in the style of the other SlotForge apps.
 - **Fixed:** the Weather card on Home had dark words on its dark sky in the light themes.
 

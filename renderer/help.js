@@ -412,6 +412,18 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'swapseats',
+          title: 'Swap Seats',
+          note: 'The cars stay on their lane, the drivers move',
+          body: `
+        <ul>
+          <li>In a heat race, set <b>The cars</b> (Race Setup, Heats) to <b>Swap Seats</b>. Every lane then has its own car for the whole race, and the drivers move from lane to lane, so they drive every car. The car is no excuse.</li>
+          <li>On Home, <b>Lane cars</b> asks for the car of every lane; the participants have no car of their own. Every participant shows how many heats they race and how many of the cars that is. With <b>Every lane once</b> every driver drives every car once.</li>
+          <li>Between the heats the line-up shows the car of every lane and who gets in. The saved race keeps the car of every lane with each heat, and the results show <b>Lane cars</b>: the laps, the best lap and who drove it, for every car. Each lap is saved with the car that drove it, so the car records stay right.</li>
+          <li>Swap Seats does not go with a Multi-Class System or with virtual rivals. Teams work: one driver of the team in each heat.</li>
+        </ul>`
+        },
+        {
           id: 'heatplan',
           title: 'Heat plan and break',
           note: 'See, change and time the heats',

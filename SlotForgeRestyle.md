@@ -40,6 +40,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Toggle Chips](#toggle-chips) | Checkboxes as pill switches | View settings, Hide unused systems |
 | [Broadcast Hero](#broadcast-hero) | A header picture across the page with big titles on it | Home |
 | [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
+| [Lane Cars](#lane-cars) | Swap Seats: a row of Grid Slots for the car of every lane, above the participants; the line-up between heats names the lane car | Home › Start a race, the break between heats |
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket; connect inside, cars from the library, Commentary, Back to the guide | The setup guide on Home |
@@ -1257,6 +1258,22 @@ a lane spans 12 / lanes in its row), so there is never an empty place.
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"n f" ". m" "w w";min-height:116px;padding:16px 18px 14px;overflow:hidden}
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar{display:block;position:absolute;top:0;right:0;bottom:0;width:var(--gs-pic,132px);mask-image:linear-gradient(90deg,transparent 0,#000 38%)}
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-tick{position:absolute;top:12px;right:12px}
+```
+
+## Lane Cars
+
+**Swap Seats** (2.5.0, a heat race where the cars stay on their lane): **Start a race** gets a row of its own, *Lane cars*, between its head and the
+participants. Each lane is a [Grid Slot](#grid-slot) with the lane number, the car as the big Barlow line (the car picker) and *LANE CAR* in small
+capitals under it, and the ready tick; no portrait. The bar is always in its stacked layout then (head and Start on top, Lane cars, Participants).
+The participants have no car picker and say *4 heats · all 4 cars*. Between heats the lane tiles of the break show the car of the lane under the driver,
+and the Next Up pills of the race page show the car, the driver who gets in (Barlow) and *after* the driver before.
+
+```css
+#hmc-start.seats{grid-template-columns:minmax(0,1fr) minmax(190px,max-content);grid-template-areas:"head go" "csub csub" "cars cars" "sub sub" "lanes lanes"}
+#hmc-start.seats>.hs-lanes.hs-cars{grid-area:cars;border-top:0}
+#hmc-start .hs-cars .hs-seat{text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
+html .hn-lane.seat{border-radius:10px;padding:4px 12px 4px 4px}
+html .hn-seat>b{font:italic 700 17px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
 ```
 
 ## Home Cards
@@ -2771,4 +2788,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Pit Lights | New: Lane Check shows a light per pit sensor (Arduino box); a car on it lights it amber, click it and choose its lane; saved at once (`abPitMap`) and the race uses the same lanes |
 | 2026-11 | Editor Panels | Restyled: the Layout Editor and the Leaderboard Editor panels (the widget list as a rail, the settings as Folders with a head and slim rows, the lane as eight buttons, Align and Layer as pictures, explanations on one line with More). Behaviour: the lane is chosen with buttons (the list is hidden), explanations start folded |
 | 2026-11 | Home Weather card | Fixed: on the light themes (Light, Ocean, light tone) the sky card had dark words on its dark sky; its words are now light in every theme and the sky no longer fades to white at the bottom |
+| 2026-11 | Lane Cars | New: Swap Seats — a Lane cars row on Start a race (a Grid Slot per lane with the car picker), participants without a car (*4 heats · all 4 cars*), the lane car in the break tiles and the Next Up pills, and a Lane cars table in the results |
 | 2026-11 | App icon | New: two crossed chequered flags in white on the SlotForge red tile (#e5484d), red and white only (no charcoal); also the logo at the top left of the app and on the startup window (`build/icon.svg`, made with `tools/build-icon.cjs`) |

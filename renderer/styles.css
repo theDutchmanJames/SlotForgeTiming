@@ -2527,6 +2527,17 @@ dialog.ss-choose{width:min(620px,94vw)}
 #hmc-start:has(>.hs-lanes>.lane:nth-child(5))>.hs-head{clip-path:none;padding-right:26px}
 #hmc-start:has(>.hs-lanes>.lane:nth-child(5))>.hs-sub{border-top:1px solid var(--line)}
 @media (max-width:1000px){#hmc-start,#hmc-start:has(>.hs-lanes>.lane:nth-child(5)){grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "sub" "lanes" "go"}#hmc-start>.hs-head{clip-path:none;padding-right:26px}#hmc-start>.hm-go{flex-direction:row;flex-wrap:wrap;align-items:center;border-left:0;border-top:1px solid var(--line)}#hmc-start>.hm-go #start{order:2;margin-left:auto}}
+/* 2.5.0 Swap Seats: the cars of the lanes get a row of their own above the participants, so the bar is always stacked */
+#hmc-start.seats,#hmc-start.seats:has(>.hs-lanes>.lane:nth-child(5)){grid-template-columns:minmax(0,1fr) minmax(190px,max-content);grid-template-areas:"head go" "csub csub" "cars cars" "sub sub" "lanes lanes"}
+#hmc-start.seats>.hs-head{clip-path:none;padding-right:26px}
+#hmc-start.seats>.hs-sub{border-top:1px solid var(--line)}
+#hmc-start.seats>.hs-csub{grid-area:csub}
+#hmc-start.seats>.hs-lanes.hs-cars{grid-area:cars;border-top:0}
+#hmc-start.seats>.hs-lanes:not(.hs-cars){border-top:0}
+#hmc-start .hs-cars .lane{grid-template-areas:"n f t" "n f t"}
+#hmc-start .hs-seat{font-size:12px;letter-spacing:.02em}
+#hmc-start .hs-cars .hs-seat{text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
+@media (max-width:1000px){#hmc-start.seats,#hmc-start.seats:has(>.hs-lanes>.lane:nth-child(5)){grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "csub" "cars" "sub" "lanes" "go"}}
 /* the lanes: driver cards, side by side with a thin line between them */
 #hmc-start .hs-lanes{container:hs-lanes/inline-size;grid-area:lanes;margin:0;display:grid;grid-template-columns:repeat(var(--hs-cols,1),minmax(0,1fr));gap:1px;background:var(--line);border-top:0}
 #hmc-start>.hs-sub{border-bottom:1px solid var(--line)}
@@ -5353,6 +5364,11 @@ html .hn-head>b{font:italic 700 24px/1 "Barlow Condensed","Segoe UI",sans-serif;
 html .hn-head>b small{font:600 12px "Segoe UI",system-ui,sans-serif;font-style:normal;text-transform:none;color:var(--muted)}
 html .hn-lanes{display:flex;flex-wrap:wrap;gap:6px}
 html .hn-lane{--c:var(--muted);display:inline-flex;align-items:center;gap:7px;padding:3px 11px 3px 3px;border:1px solid var(--line);border-radius:16px;background:var(--panel);font-size:13px;font-weight:600}
+html .hn-lane.seat{border-radius:10px;padding:4px 12px 4px 4px;align-items:center}
+html .hn-seat{display:flex;flex-direction:column;line-height:1.15}
+html .hn-seat>small{font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:.04em}
+html .hn-seat>b{font:italic 700 17px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
+html .hn-lane.seat>i{width:26px;height:26px;font-size:15px;border-radius:6px}
 html .hn-lane>i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--c);color:#0f1216;font:700 12px/1 "Barlow Condensed","Segoe UI",sans-serif;font-style:normal}
 html .hn-go{display:flex;align-items:center;gap:10px;justify-content:flex-end}
 html .hn-go .btn.primary{min-height:36px;padding:0 16px;font-size:13.5px}

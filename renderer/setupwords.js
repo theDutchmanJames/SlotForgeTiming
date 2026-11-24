@@ -301,6 +301,7 @@
         add('. ');
       } else if (plan) add(plan + ' ');
       if (!s.rotation && t === 'heats' && s.participants === 'teams') add('The teams race, and the drivers of a team take turns. ');
+      if (t === 'heats' && s.heatCars === 'lanes') add('Swap Seats: every lane has its own car, and the drivers move from car to car. ');
       if (seed) add(seed + ' ');
       if (swaps) add(swapText(s, c) + ' ');
       add('Each heat is over after ');
@@ -506,10 +507,16 @@
         sd = inOr(s.heatSeeding, ['random', 'mixed', 'speed'], 'random');
       const seedRail = seeded ? { random: 'shuffled', mixed: 'mixed by qualifying', speed: 'fastest together' }[sd] : '',
         seedRow = seeded ? { random: 'shuffled', mixed: 'mixed fast and slow', speed: 'fastest together, best heat last' }[sd] : '';
+      const seats = s.sessionType === 'heats' && s.heatCars === 'lanes'; // (Swap Seats: the cars stay on their lane)
       out.heats = heated
         ? make(
-            cleanParts([planRail, seedRail]),
-            cleanParts([planRow, seedRow, br ? `a break of ${plural(br, 'second', 'seconds')}` : '']),
+            cleanParts([planRail, seats ? 'Swap Seats' : '', seedRail]),
+            cleanParts([
+              planRow,
+              seats ? 'Swap Seats, the cars stay on their lane' : '',
+              seedRow,
+              br ? `a break of ${plural(br, 'second', 'seconds')}` : ''
+            ]),
             own && ((plan === 'manual' && !n) || (plan === 'perdriver' && !e)) ? 'todo' : 'ok'
           )
         : make([], [], 'plain');

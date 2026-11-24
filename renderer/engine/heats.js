@@ -305,6 +305,9 @@
           outOfFuel: !!r.car.outOfFuel,
           participant: r.car.participant,
           pos: r.pos,
+          ...(r.car.seat
+            ? { lane: r.car.lane, carId: r.car.carId || '', carName: r.car.carName || '', driverName: r.car.driverName || '' }
+            : {}), // (2.5.0 Swap Seats: the car of the lane this participant drove in this heat)
           laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length,
           total:
             race.timeOf && Number.isFinite(race.timeOf(r.car))

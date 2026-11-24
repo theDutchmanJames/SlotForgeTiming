@@ -122,7 +122,7 @@ test('the race: Run again sets the run aside and waits for it; Finalize keeps th
   assert(has(race, "if (c.op === 'rerun') return heats ? rerunHeat() : undefined;"));
   assert(has(race, 'else Review.record(eng, c, live.rvChanges);'));
   assert(has(race, 'function rerunHeat()'));
-  assert(has(race, 'eng = mk(heat.entries());'));
+  assert(has(race, 'eng = mk(seated(heat.entries()));'));
   assert(!/function rerunHeat\(\)[\s\S]{0,1600}heat\.record\(/.test(race), 'a run that is set aside is not recorded');
   assert(has(race, 'res.checked = {'));
   assert(has(race, "...(h.checked ? { checked: h.checked } : {}),"));

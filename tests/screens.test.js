@@ -6507,8 +6507,8 @@ const say = (m, c) => {
       '...and every setting of the form is still in it, once, as a field with its own id (including plugin race rules)',
       run('state.schema.racesetups.fields')
         .filter(f => f.type !== 'trackcallsummary')
-        .every(f => (h.match(new RegExp('id="f-' + f.key + '"', 'g')) || []).length === 1) && (h.match(/data-key="/g) || []).length === 102
-    ); // (2.4.0: + the Balance of Power and Time Token profiles)
+        .every(f => (h.match(new RegExp('id="f-' + f.key + '"', 'g')) || []).length === 1) && (h.match(/data-key="/g) || []).length === 103
+    ); // (2.4.0: + the Balance of Power and Time Token profiles; 2.5.0: + The cars, Swap Seats)
     g('f-sessionType').value = 'race';
     g('f-raceBy').value = 'time';
     g('f-heatBy').value = 'laps';
@@ -6806,7 +6806,7 @@ const say = (m, c) => {
       }; // (the group a setting is drawn in: the last group opened before it)
       say(
         'every setting is in its own group, once, and nowhere else (the name is in the header, above the sections)',
-        sch.fields.length === 102 &&
+        sch.fields.length === 103 &&
           sch.fields.every(
             k =>
               (f.match(new RegExp('data-key="' + k.key + '"', 'g')) || []).length === 1 &&
