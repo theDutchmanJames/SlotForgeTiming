@@ -70,7 +70,7 @@ ok('build-windows.bat has the quick way: it skips the check of the app (npm test
 }
 ok('the flag icons (stylesheet and the flag pictures) are in the installer, and build-windows.bat installs them', /node_modules\/flag-icons\/css\//.test(html) && covered('node_modules/flag-icons/css/flag-icons.min.css') && covered('node_modules/flag-icons/flags/4x3/nl.svg') && /npm install flag-icons/.test(bat));
 ok('the app icon exists as a square picture of at least 256 pixels', (() => { const b = fs.existsSync(path.join(root, 'build', 'icon.png')) ? fs.readFileSync(path.join(root, 'build', 'icon.png')) : Buffer.alloc(0); return b.length > 24 && b.readUInt32BE(16) >= 256 && b.readUInt32BE(16) === b.readUInt32BE(20); })());
-{ // The approved family icon is a rounded red tile with a white/charcoal flag.
+{ // The approved family icon (2.4.1): a rounded red tile with two crossed chequered flags, in red and white only.
   const zlib = require('zlib');
   const decode = b => { // an 8-bit picture with colour and see-through (RGBA), not interlaced: what the icon is made as
     if (b.length < 33 || b.readUInt32BE(0) !== 0x89504e47) return null;
@@ -103,7 +103,8 @@ ok('the app icon exists as a square picture of at least 256 pixels', (() => { co
   const icon = decode(fs.readFileSync(path.join(root, 'build', 'icon.png')));
   ok('the app icon has a solid rounded tile and transparent outer corners', roundedTile(icon) && icon.w >= 256);
   const sample = (x, y) => icon.colour(Math.floor(icon.w * x / 256), Math.floor(icon.h * y / 256));
-  ok('the flag has contrasting chequers and a white pole on the SlotForge red tile', sample(128, 40).join() === '233,67,73' && sample(84, 110).join() === '34,41,49' && sample(110, 110).every(c => c === 255) && sample(65, 180).every(c => c === 255));
+  const red = c => c.join() === '229,72,77', white = c => c.every(v => v === 255);
+  ok('two crossed chequered flags in white on the SlotForge red tile: red and white squares on both flags, the poles white where they cross', red(sample(128, 30)) && red(sample(44, 101)) && white(sample(60, 96)) && red(sample(68, 114)) && red(sample(212, 101)) && white(sample(196, 96)) && white(sample(128, 141)));
   ok('the window icon is included in the packaged application', covered('build/icon.png'));
   const ico = fs.readFileSync(path.join(root, 'build', 'icon.ico')), count = ico.readUInt16LE(4), entries = Array.from({ length: count }, (_, i) => { const o = 6 + i * 16; return { size: ico[o] || 256, bytes: ico.readUInt32LE(o + 8), at: ico.readUInt32LE(o + 12) }; });
   ok('the Windows icon holds the picture in the sizes Windows asks for (16, 32, 48, 256 and more)', ico.readUInt16LE(0) === 0 && ico.readUInt16LE(2) === 1 && [16, 32, 48, 256].every(n => entries.some(e => e.size === n)));

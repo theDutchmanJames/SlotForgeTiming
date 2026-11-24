@@ -1,6 +1,7 @@
 SlotForge Timing application icon
 
-Design: a flat red rounded tile with a white and charcoal chequered flag.
+Design: a flat red rounded tile (#e5484d, like the other SlotForge apps) with two
+crossed chequered flags in white; the squares are red and white only.
 The transparent outer margin and rounded corners match the SlotForge family.
 
 icon.svg is the editable vector master (256 x 256 viewBox).
@@ -13,5 +14,8 @@ macOS packaging converts icon.png for the application and disk image.
 The PNG is also included in the packaged application and assigned to the main
 and Live Race windows, so source builds use the same design.
 
-When changing the design, export both PNG and ICO from icon.svg, preserving
-transparency. Inspect the small sizes before replacing the generated files.
+When changing the design, edit icon.svg and run: npx electron tools/build-icon.cjs
+It writes icon.png and icon.ico with transparent corners. Copy icon.png to
+renderer/assets/brand/timing-icon.png (the logo inside the app) and run
+npx electron tools/build-startup-splash.cjs for the installer's startup picture.
+Inspect the small sizes before committing.

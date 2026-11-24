@@ -9,7 +9,7 @@ const timer=setTimeout(()=>app.exit(2),15000);
 app.whenReady().then(async()=>{
  nativeTheme.themeSource='dark';const win=new BrowserWindow({width:460,height:270,useContentSize:true,show:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});
  await win.loadFile(path.join(root,'renderer/startup.html'));
- await win.webContents.executeJavaScript(`document.querySelector('.status').textContent='Unpacking the portable application…';document.querySelector('.note').textContent='Timing will open automatically when it is ready.';document.querySelector('.progress').style.background='#ee414c';`);
+ await win.webContents.executeJavaScript(`document.querySelector('.status').textContent='Unpacking the portable application…';document.querySelector('.note').textContent='Timing will open automatically when it is ready.';const bar=document.querySelector('.progress');if(bar)bar.style.background='#ee414c';`);
  await win.webContents.insertCSS('.progress:before{animation:none;transform:none;width:100%}');
  await new Promise(resolve=>setTimeout(resolve,150));
  const image=await win.webContents.capturePage(),png=image.toPNG(),{width,height}=image.getSize(),data=image.toBitmap();

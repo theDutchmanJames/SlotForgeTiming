@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="build/icon.png" alt="SlotForge Timing chequered-flag icon" width="96" align="right">
+  <img src="build/icon.png" alt="SlotForge Timing icon: two crossed chequered flags" width="96" align="right">
   <img src="docs/images/slotforge-brand.png" alt="SlotForge — Slotcar App Collection" width="400">
 </p>
 <br clear="both">

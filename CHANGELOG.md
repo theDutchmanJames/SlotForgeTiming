@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **A new app icon:** two crossed chequered flags in red and white, in the style of the other SlotForge apps.
+- **Fixed:** the Weather card on Home had dark words on its dark sky in the light themes.
+
 ## 2.4.0 — 2026-11-22
 
 - **A new look on every page:**
