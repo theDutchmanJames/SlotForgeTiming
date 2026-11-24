@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.5.1 — 2026-11-24
 
 - **The second screen before a race:** your Home page for the audience (banner, the next race with its line-up, your cards, "Starting soon"). It switches to Race timing by itself when you press Start race, and back to Home when you leave the race. Move the mouse for the Live Race pages.
 
