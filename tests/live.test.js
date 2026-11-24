@@ -1057,14 +1057,14 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     for (const id of ['director', 'tokens']) { run('LiveView.go')(id); say(`...the ${id} page has a tinted header with the Control badge and a way back`, host.innerHTML.includes('class="lv-head special"') && host.innerHTML.includes(badge) && host.innerHTML.includes('id="lv-back"')); }
     for (const id of ['timing', 'board', 'results', 'driver', 'rules']) { run('LiveView.go')(id); say(`...and the ${id} page keeps the plain header`, host.innerHTML.includes('class="lv-head"') && !host.innerHTML.includes('lv-badge')); }
     run('LiveView.go')('board');
-    // the shared race of this test may still be racing or have finished by now (it depends on how fast the computer is): the line shows
-    // whichever phase it is in, as a pill, and the screen reader gets the same words
+    // the shared race of this test may still be racing, be in its review (over, not saved yet) or have finished by now (it depends on how fast
+    // the computer is; 2.5.0: a slow Mac on GitHub was in the review): the line shows whichever phase it is in, as a pill, and the screen reader gets the same words
     const stLine = () => E('lv-stline'), stSr = () => E('lv-status');
-    const stParts = () => (stLine() && stLine().innerHTML.match(/^<span class="lv-st-t">Shared · Race on Living room · 9 laps<\/span><span class="lv-st-ph" data-phase="(running|finished)">(Racing|Finished)<\/span>$/)) || null;
+    const stParts = () => (stLine() && stLine().innerHTML.match(/^<span class="lv-st-t">Shared · Race on Living room · 9 laps<\/span><span class="lv-st-ph" data-phase="(running|review|finished)">(Racing|Race review|Finished)<\/span>$/)) || null;
     for (let i = 0; i < 150 && !stParts(); i++) await wait(20);
     const stM = stParts();
-    const stOk = host.innerHTML.includes('<div class="lv-titles"><strong class="lv-title">Leaderboard</strong><span class="lv-sr" id="lv-status" role="status">') && host.innerHTML.includes('id="lv-stline" aria-hidden="true"') && !!stM && (stM[1] === 'running') === (stM[2] === 'Racing') && stSr().textContent === 'Shared · Race on Living room · 9 laps · ' + stM[2];
-    say('2.4.0 Live Pages: the bar of a page has the page over the race (the words of the status for a screen reader, a line with the phase as a pill for the eye: "Racing" or "Finished")' + (stOk ? '' : ` [line: ${stLine() && stLine().innerHTML} | status: ${stSr() && stSr().textContent}]`), stOk);
+    const stOk = host.innerHTML.includes('<div class="lv-titles"><strong class="lv-title">Leaderboard</strong><span class="lv-sr" id="lv-status" role="status">') && host.innerHTML.includes('id="lv-stline" aria-hidden="true"') && !!stM && ({ running: 'Racing', review: 'Race review', finished: 'Finished' })[stM[1]] === stM[2] && stSr().textContent === 'Shared · Race on Living room · 9 laps · ' + stM[2];
+    say('2.4.0 Live Pages: the bar of a page has the page over the race (the words of the status for a screen reader, a line with the phase as a pill for the eye: "Racing", "Race review" or "Finished")' + (stOk ? '' : ` [line: ${stLine() && stLine().innerHTML} | status: ${stSr() && stSr().textContent}]`), stOk);
     run('LiveView.go')('driver'); say('...on Driver stats every driver is a pill with the number of the lane in its lane colour (Alex lane 1 red, Sam lane 2 blue)', body().innerHTML.includes('<button class="btn" data-lane="0" aria-pressed="true" style="--c:#e5484d" aria-label="Alex, lane 1"><i>1</i>Alex</button>') && body().innerHTML.includes('style="--c:#3b82f6" aria-label="Sam, lane 2"><i>2</i>Sam</button>'));
     run('LiveView.go')('tiles');
     say('...and the Database and Racing rules tiles show the same pictures as the Database and Racing Rules tabs', ['database', 'rules'].every(id => tiles.includes(run(`Icons.PATHS.${id}`)) && run(`TAB_ICONS.${id}`) === id));
