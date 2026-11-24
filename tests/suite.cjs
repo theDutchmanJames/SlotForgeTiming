@@ -347,4 +347,6 @@ module.exports = [
   ['pitlights.test.js', 'node-test'],
   ['mainclock.test.js', 'node-test'],
   ['sqlitejson.test.js', 'node-test'],
+  ['swapseats.test.js', 'node-test'],
+  ['secondhome.test.js', 'node-test'],
 ];

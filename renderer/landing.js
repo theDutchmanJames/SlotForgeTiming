@@ -109,7 +109,10 @@ async function timingReady(lanes) {
     { title: 'Timing hardware not connected', ok: 'Start anyway', cancel: 'Do not start' }
   );
 }
-async function renderHome() {
+// 2.5.0: opts.into: Home drawn read-only into that element for the audience (the second screen, liveview.js): no controls, no handlers, nothing saved
+async function renderHome(opts = {}) {
+  const into = opts.into || null,
+    display = !!into;
   const draw = ++homeDraw;
   if (state.homeCustom) clearTimeout(state.homeCustom.timer); // (a drawing that was waiting is this one)
   const entities = [
@@ -128,7 +131,7 @@ async function renderHome() {
   const readEntities = entities.filter(e => e !== 'sessions' || !api.homeSessions);
   // (2.4.0 review, speed) the other lists are asked for at the same time as the main ones, not one after another
   const extraLists = Promise.all(['multiclasssystems', 'raceclasses', 'virtualrivalsystems'].map(e => api.list(e)));
-  const sharedRead = api.paddockCatalogue ? api.paddockCatalogue(false).catch(() => null) : Promise.resolve(null);
+  const sharedRead = api.paddockCatalogue && !display ? api.paddockCatalogue(false).catch(() => null) : Promise.resolve(null); // (the second screen does not offer Paddock cars)
   const resumeRead =
     api.getResume && !(typeof raceActive === 'function' && raceActive()) ? api.getResume().catch(() => null) : Promise.resolve(null);
   extraLists.catch(() => {});
@@ -459,9 +462,10 @@ async function renderHome() {
       seed = Heats.newSeed();
       seeds[setupId] = seed;
       saved.heatSeeds = seeds;
-      api.setSettings({ heatSeeds: seeds }).then(s => {
-        state.settings = s;
-      });
+      if (!display)
+        api.setSettings({ heatSeeds: seeds }).then(s => {
+          state.settings = s;
+        });
     } // (kept, so the plan is the same next time as well)
     // the latest qualifying on this track, when the setup wants the heats seeded by it (only the plans that choose who races together)
     let ranks = null;
@@ -937,7 +941,16 @@ async function renderHome() {
     heroCls = headerHtml
       ? ` has-pic${typeof Banner !== 'undefined' && Banner.logoOn(state.settings) && Banner.logoLeft(state.settings) ? ' logo-left' : ''}`
       : '';
-  view.innerHTML =
+  // (2.5.0) the second screen: the line-up waits for the start; the race computer's own buttons are not drawn
+  const waitHtml = display
+    ? (() => {
+        const n = rows.filter(r => !r.absent && (r.driverId || r.teamId)).length,
+          who = byTeam ? ['team', 'teams'] : ['driver', 'drivers'];
+        return `<div class="hm-wait" role="status"><b><i aria-hidden="true"></i>Starting soon</b><small>${n} ${n === 1 ? who[0] : who[1]} on the grid</small></div>`;
+      })()
+    : '';
+  if (into) into.classList.add('hm-display');
+  (into || view).innerHTML =
     `<div class="hm-hero${heroCls}">${headerHtml}
     <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><button type="button" class="btn hm-customize-btn" id="hmcustom" aria-expanded="${hc.open}" aria-controls="hm-customize" title="Choose the cards of Home and where they sit">Customize</button><h2>${esc(welcomeOf())}</h2>
       <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p></div></div>
@@ -948,7 +961,7 @@ async function renderHome() {
     (setups.length
       ? `
       <div class="hs-head"><span class="hs-tile" aria-hidden="true">${Icons.svg('racesetups', { size: 24 })}</span>
-        <div class="hs-ht"><label class="hs-label" for="setup">Start a race</label>
+        <div class="hs-ht"><label class="hs-label" for="setup">${display ? 'Next race' : 'Start a race'}</label>
           <div class="hs-title"><select id="setup" aria-label="Race setup or championship"><optgroup label="Race setups">${setups.map(s => `<option value="${esc(s.id)}"${!champShown && s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</optgroup>${champs.length ? `<optgroup label="Championships">${champs.map(c => `<option value="champ:${esc(c.id)}"${champShown && c.id === champShown.id ? ' selected' : ''}>${esc(c.name || '(unnamed championship)')}</option>`).join('')}</optgroup>` : ''}</select><span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div>
           <div class="hs-chips">${chipsHtml}</div></div></div>
       ${champHtml}
@@ -970,7 +983,7 @@ async function renderHome() {
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${homeMsg ? `<p class="hint2 hm-msg" role="status">${esc(homeMsg)}</p>` : ''}
       ${otherIssues.length ? `<ul class="issues">${otherIssues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="hm-go">${lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
+      <div class="hm-go">${display ? waitHtml : lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p><div class="row"><button type="button" class="btn primary" id="guideagain">Start the setup guide</button></div>') +
     `</section>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))">${otherCells}</div>`;
@@ -994,7 +1007,9 @@ async function renderHome() {
         })
         .catch(() => homeAvatarCache.delete(id)); // (2.4.0 review: read again the next time)
     });
-  if (typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
+  // (2.5.0) display: the second screen only shows Home; what changes something, listens to the hardware or saves is left out below (marked !display)
+  if (!display && api.homeChanged) api.homeChanged(); // (2.5.0: the second screen draws its Home again)
+  if (!display && typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
   {
     // (2.4.0) the pill by Start race opens the drop-down of the status lights: the check before the start
     const pill = document.querySelector('[data-open-status]');
@@ -1005,7 +1020,7 @@ async function renderHome() {
       };
   }
   // the automatic backup (asked after the page is drawn, as below)
-  if (api.autoBackupStatus)
+  if (api.autoBackupStatus && !display)
     api
       .autoBackupStatus()
       .then(st => {
@@ -1017,7 +1032,7 @@ async function renderHome() {
       })
       .catch(() => {});
   // finished races that could not reach the shared library (asked after the page is drawn: the chip follows when the answer comes)
-  if (api.libraryResults && api.libraryStatus)
+  if (api.libraryResults && api.libraryStatus && !display)
     api
       .libraryStatus()
       .then(st => (st && st.available ? api.libraryResults() : null))
@@ -1065,7 +1080,7 @@ async function renderHome() {
       });
   };
   // (the next session of the championship that is picked, loaded by itself: once for each session, so a session that cannot be loaded is not asked for again and again)
-  if (champAuto) {
+  if (champAuto && !display) {
     const key = champNow.c.id + ':' + champAuto.ri + ':' + champAuto.si;
     if (homeChampAuto !== key) {
       homeChampAuto = key;
@@ -1125,12 +1140,13 @@ async function renderHome() {
     clearTimeout(hc.timer);
     hc.timer = setTimeout(homeSoftDraw, HOME_SOFT_MS);
   };
-  view.oninput = ev => {
+  const hv = display ? {} : view; // (the second screen: no handlers on its page)
+  hv.oninput = ev => {
     const c = state.homeCustom;
     if (c) c.typing = homeFocusId(ev.target) !== '';
   }; // (typing in such a field: Home is left alone until the field is left)
   let sharedSelecting = false;
-  view.onchange = async ev => {
+  hv.onchange = async ev => {
     if (sharedSelecting) return;
     if (ev.target.dataset?.mcEntry !== undefined) {
       rows[Number(ev.target.dataset.mcEntry)].raceClass = ev.target.value;
@@ -1293,7 +1309,7 @@ async function renderHome() {
       persist();
     }
   };
-  view.onclick = async ev => {
+  hv.onclick = async ev => {
     if (sharedSelecting) return;
     const b = ev.target.closest('button');
     if (!b) return;
@@ -1665,73 +1681,75 @@ async function renderHome() {
   };
   const run = ++homeRun;
   let netError = '';
-  if (homeOffTm) {
-    homeOffTm();
-    homeOffTm = null;
-  }
-  if (typeof Trackmate !== 'undefined' && Trackmate.link && Trackmate.link.onStatus) {
-    const off = Trackmate.link.onStatus(() => {
-      if (run !== homeRun || !setChips({ netError })) {
-        off();
-        if (homeOffTm === off) homeOffTm = null;
-      }
-    });
-    homeOffTm = off;
-  }
-  // (the box connects by itself a moment after the app starts, or when the virtual box is ticked: the same chip follows it)
-  if (homeOffAb) {
-    homeOffAb();
-    homeOffAb = null;
-  }
-  if (abLink && abLink.onStatus) {
-    const off = abLink.onStatus(() => {
-      if (run !== homeRun || !setChips({ netError })) {
-        off();
-        if (homeOffAb === off) homeOffAb = null;
-      }
-    });
-    homeOffAb = off;
-  }
+  if (!display) {
+    if (homeOffTm) {
+      homeOffTm();
+      homeOffTm = null;
+    }
+    if (typeof Trackmate !== 'undefined' && Trackmate.link && Trackmate.link.onStatus) {
+      const off = Trackmate.link.onStatus(() => {
+        if (run !== homeRun || !setChips({ netError })) {
+          off();
+          if (homeOffTm === off) homeOffTm = null;
+        }
+      });
+      homeOffTm = off;
+    }
+    // (the box connects by itself a moment after the app starts, or when the virtual box is ticked: the same chip follows it)
+    if (homeOffAb) {
+      homeOffAb();
+      homeOffAb = null;
+    }
+    if (abLink && abLink.onStatus) {
+      const off = abLink.onStatus(() => {
+        if (run !== homeRun || !setChips({ netError })) {
+          off();
+          if (homeOffAb === off) homeOffAb = null;
+        }
+      });
+      homeOffAb = off;
+    }
 
-  if (homeOffDs) {
-    homeOffDs();
-    homeOffDs = null;
-  }
-  if (typeof DsTiming !== 'undefined') {
-    const off = DsTiming.link.onStatus(() => {
-      if (run !== homeRun || !setChips({ netError })) {
-        off();
-        if (homeOffDs === off) homeOffDs = null;
-      }
-    });
-    homeOffDs = off;
-  }
-  if (homeOffPt) {
-    homeOffPt();
-    homeOffPt = null;
-  }
-  if (typeof pt !== 'undefined') {
-    const off = pt.link.onStatus(() => {
-      if (run !== homeRun || !setChips({ netError })) {
-        off();
-        if (homeOffPt === off) homeOffPt = null;
-      }
-    });
-    homeOffPt = off;
-  }
-  if (homeOffPp) {
-    homeOffPp();
-    homeOffPp = null;
-  }
-  if (typeof ParallelPort !== 'undefined') {
-    const off = ParallelPort.link.onStatus(() => {
-      if (run !== homeRun || !setChips({ netError })) {
-        off();
-        if (homeOffPp === off) homeOffPp = null;
-      }
-    });
-    homeOffPp = off;
-  }
+    if (homeOffDs) {
+      homeOffDs();
+      homeOffDs = null;
+    }
+    if (typeof DsTiming !== 'undefined') {
+      const off = DsTiming.link.onStatus(() => {
+        if (run !== homeRun || !setChips({ netError })) {
+          off();
+          if (homeOffDs === off) homeOffDs = null;
+        }
+      });
+      homeOffDs = off;
+    }
+    if (homeOffPt) {
+      homeOffPt();
+      homeOffPt = null;
+    }
+    if (typeof pt !== 'undefined') {
+      const off = pt.link.onStatus(() => {
+        if (run !== homeRun || !setChips({ netError })) {
+          off();
+          if (homeOffPt === off) homeOffPt = null;
+        }
+      });
+      homeOffPt = off;
+    }
+    if (homeOffPp) {
+      homeOffPp();
+      homeOffPp = null;
+    }
+    if (typeof ParallelPort !== 'undefined') {
+      const off = ParallelPort.link.onStatus(() => {
+        if (run !== homeRun || !setChips({ netError })) {
+          off();
+          if (homeOffPp === off) homeOffPp = null;
+        }
+      });
+      homeOffPp = off;
+    }
+  } // (!display: the status chips follow the hardware on the race computer only)
   // ---- the other cards of the grid (1.25.0). The cards that need races come when the laps are in; Rules of this race needs the names of the rule sets of the setup. ----
   const dateText = iso => {
     const d = iso ? new Date(iso) : null;

@@ -1253,7 +1253,7 @@ const Help = (() => {
           body: `
         <ul>
           <li>The Live Race tab follows the race that is running, with a tile per page: <b>Race timing</b>, <b>Leaderboard</b>, <b>Race results</b>, <b>Driver stats</b>, <b>Database</b> (read only), <b>Racing rules</b>, and the control pages <b>Race Director</b> and <b>Tokens</b>.</li>
-          <li><b>Open on a second screen</b> puts the pages in their own window, for a TV. <b>Full screen</b> fills it.</li>
+          <li><b>Open on a second screen</b> puts the pages in a window for a TV: <b>Home</b> until a race starts. <b>Full screen</b> fills it.</li>
           <li>The <b>Race timing</b> page shows only the widget layout. Move the mouse or touch the screen to bring back the bar.</li>
           <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design or the classic table). A board can cover more cells and show only some places (5 to 8). <b>Order by</b> sorts a board by a value (best lap for a fastest laps board, laps, points, penalties), best or worst first. <b>Count over</b> set to <i>All heats and rounds so far</i> lets a heat race or championship board show all drivers in the overall order, with time, laps, best and average lap, points added up.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>

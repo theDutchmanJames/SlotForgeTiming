@@ -1614,6 +1614,7 @@ function registerResumeAndLiveHandlers() {
     safe('live:static', (e, s) => {
       live.stat = s;
       live.dyn = null;
+      live.closed = false;
       relay('live:static', s, null);
       if (net.server) net.server.broadcast('static', s);
     })
@@ -1635,7 +1636,24 @@ function registerResumeAndLiveHandlers() {
     'live:command',
     safe('live:command', (e, c) => relay('live:command', c, null))
   ); // Include the sender: the main window can show Race Director while its race is parked.
-  ipcMain.handle('live:get', () => ({ stat: live.stat, dyn: live.dyn }));
+  ipcMain.handle('live:get', () => ({ stat: live.stat, dyn: live.dyn, ...(live.closed ? { closed: true } : {}) }));
+  // (2.5.0) the race computer left its race (back to Home): the second screen shows Home again; a window that opens later is told so by live:get
+  ipcMain.on(
+    'live:closed',
+    safe('live:closed', e => {
+      if (!mainWin || e.sender !== mainWin.webContents) return;
+      live.closed = true;
+      relay('live:closed', null, e.sender);
+    })
+  );
+  // (2.5.0) Home was drawn again on the race computer (another setup, a driver or car picked, a race saved): the second screen draws its Home again
+  ipcMain.on(
+    'home:changed',
+    safe('home:changed', e => {
+      if (!mainWin || e.sender !== mainWin.webContents) return;
+      if (liveWin && !liveWin.isDestroyed()) liveWin.webContents.send('home:changed');
+    })
+  );
   // The window that asks (the main window with the race screen, for the fullscreen widget view) goes full screen or back; the answer is how it is now and how it was
   ipcMain.handle('win:fullscreen', (e, on) => {
     const w = BrowserWindow.fromWebContents(e.sender);

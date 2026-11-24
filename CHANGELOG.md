@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **The second screen before a race:** your Home page for the audience (banner, the next race with its line-up, your cards, "Starting soon"). It switches to Race timing by itself when you press Start race, and back to Home when you leave the race. Move the mouse for the Live Race pages.
+
 ## 2.5.0 — 2026-11-24
 
 - **Swap Seats:** a heat race where every lane has its own car and the drivers move from lane to lane, so everyone drives every car. Choose it under Race Setup › Heats › The cars, pick the car of every lane on Home, and the results show how every car did.

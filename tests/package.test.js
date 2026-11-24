@@ -139,7 +139,7 @@ ok('the new name is used everywhere and the old exports still import', pkg.build
     ok('...the everything-message after that makes the state whole again', live.dyn && live.dyn.cars[0].laps.length === 4 && live.dyn.cars[1].laps.length === 3 && asked.length === 1); }
   ok('the race window sends what the sender gives (only what changed), and a new heat starts again from everything', /live\.sender\.pack\(/.test(raceText) && !/api\.livePush\(LiveShare\.packDynamic/.test(raceText) && /if \(live\.sender\) live\.sender\.reset\(\)/.test(raceText));
   ok('a Live Race page (second screen or phone) that misses a message fetches the whole state and carries on', /V\.needsSync\(\)/.test(viewText) && /api\.liveGet\(\)/.test(viewText));
-  ok('a window that opens late is given what main.js put together (live:get)', /ipcMain\.handle\('live:get', \(\) => \(\{ stat: live\.stat, dyn: live\.dyn \}\)\)/.test(mainText)); }
+  ok('a window that opens late is given what main.js put together (live:get; 2.5.0: and whether the race computer left the race)', mainText.includes("ipcMain.handle('live:get', () => ({ stat: live.stat, dyn: live.dyn, ...(live.closed ? { closed: true } : {}) }));")); }
 
 { // 1.35.2: who made the program, and on what terms it may be used
   const lic = fs.existsSync(path.join(root, 'LICENSE')) ? fs.readFileSync(path.join(root, 'LICENSE'), 'utf8') : '', linux = pkg.build.linux || {};

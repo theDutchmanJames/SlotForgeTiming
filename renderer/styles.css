@@ -7885,3 +7885,18 @@ html #side .field>.inline.geo>label{display:flex;flex-direction:column;gap:3px;f
 html #side .field>.inline.geo>label>input{width:100%!important;box-sizing:border-box}
 /* (2.4.0) the Status Lights button is its own pill: the holder of the older lights has no pill behind it (it stuck out on both sides) */
 html body.app-shell>header>#tabs .mb-lights.mb-lights-one{padding:0;background:none}
+
+/* 2.5.0 Second-screen Home (SlotForgeRestyle.md "Audience Home"): the race computer's Home read-only on the second screen until a race starts */
+.lv-clean .lv-head.lv-homehead{justify-content:flex-end;gap:8px}
+.lv-body.lv-home{padding:0}
+.hm-display :is(.hm-customize-btn,.hs-chev,.hs-more,.hs-tick,.hs-note,#addrow,.hint2,.issues,.mc-home,.resumecard,#hm-detect,#hm-update,.hm-customize,.heatplan,.hs-cside .btn,#champpick){display:none!important}
+.hm-display select{pointer-events:none;-webkit-appearance:none;appearance:none;background:none!important;border-color:transparent!important;padding-right:0!important;cursor:default}
+.hm-display :is(button,a,input){pointer-events:none}
+.hm-display #hmc-start>.hm-go>:not(.hm-wait){display:none!important}
+.hm-display #hmc-start>.hm-go{justify-content:center}
+.hm-wait{display:flex;flex-direction:column;gap:8px;align-items:stretch;text-align:center}
+.hm-wait>b{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 22px;border:2px solid var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink);font:italic 700 26px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.03em}
+.hm-wait>b>i{width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 25%,transparent);animation:hm-wait 1.6s ease-in-out infinite}
+.hm-wait>small{color:var(--muted);font-size:12.5px}
+@keyframes hm-wait{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.hm-wait>b>i{animation:none}}

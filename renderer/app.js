@@ -1362,6 +1362,7 @@ async function render() {
     // a race that is not on (not started, or over): the race screen is gone, no more keys, Trackmate or Race Director buttons
     if (live.leave) live.leave();
     live.alive = false;
+    if (api.liveClosed) api.liveClosed(); // (2.5.0: the second screen goes back to Home)
     const h = document.getElementById('racehost');
     if (h) h.innerHTML = '';
   }

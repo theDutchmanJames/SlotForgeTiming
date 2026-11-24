@@ -50,6 +50,7 @@ const LiveView = (() => {
     dirLogHtml = '',
     resultsFollowed = '',
     followedFrom = null, // (2.4.0 review: the page the second screen showed before it followed the results)
+    homeTimer = null, // (2.5.0: the second screen's Home is drawn again a moment after the race computer's Home changed)
     mountN = 0; // (2.4.0 review: counts mount and unmount, so a mount that waits knows it is still the one)
 
   const $ = id => document.getElementById(id);
@@ -58,6 +59,17 @@ const LiveView = (() => {
 
   // ---- the frame around every page ----
   function shell() {
+    if (page === 'home') {
+      // (2.5.0) the second screen before a race: the Home page of the race computer for the audience; the two buttons show when the mouse moves
+      host.innerHTML = `<div class="lv-head lv-homehead"><span class="lv-sr" id="lv-status" role="status"></span><span style="flex:1"></span><button class="btn" id="lv-pages">Live Race pages</button><button class="btn" id="lv-full">Full screen</button></div><div id="lv-body" class="lv-body lv-home"></div>`;
+      $('lv-pages').onclick = () => go('tiles');
+      $('lv-full').onclick = async () => {
+        const on = await api.liveFullscreen();
+        $('lv-full').textContent = on ? 'Exit full screen' : 'Full screen';
+      };
+      status();
+      return;
+    }
     const tile = TILES.find(t => t[0] === page);
     host.innerHTML = `<div class="lv-head${isControl(page) ? ' special' : ''}">${page === 'tiles' ? '<h2 style="margin:0">Live Race</h2>' : `<button class="btn" id="lv-back">‹ Live Race</button><div class="lv-titles"><strong class="lv-title">${esc(tile[1])}${isControl(page) ? BADGE : ''}</strong><span class="lv-sr" id="lv-status" role="status"></span><span class="muted lv-stline" id="lv-stline" aria-hidden="true"></span></div>`}
       ${page === 'tiles' ? '<span class="muted" id="lv-status" role="status"></span>' : ''}<span style="flex:1"></span>
@@ -176,12 +188,34 @@ const LiveView = (() => {
     draw(true);
   }
 
+  // (2.5.0) the second screen's Home: the race computer's Home page, read-only (landing.js renderHome with into); a window without it shows the Live Race pages
+  function drawHome(body) {
+    if (typeof renderHome !== 'function') return go('tiles');
+    // (the settings of the race computer first: the setup, the drivers and cars in the lanes, the cards)
+    Promise.resolve(api.getSettings ? api.getSettings() : null)
+      .then(st => {
+        if (st) state.settings = st;
+        if (page === 'home' && body.isConnected) return renderHome({ into: body });
+      })
+      .catch(() => {});
+  }
+  const homeAgain = () => {
+    clearTimeout(homeTimer);
+    homeTimer = setTimeout(() => {
+      if (page === 'home' && $('lv-body')) drawHome($('lv-body'));
+    }, 500);
+  };
+
   // ---- the pages ----
   function draw(fresh) {
     const body = $('lv-body');
     if (!body) return;
     const timingResults = page === 'timing' && live() && ['review', 'finished'].includes(V.dyn().phase);
-    setClean(page === 'timing' && live() && !timingResults);
+    setClean((page === 'timing' && live() && !timingResults) || page === 'home');
+    if (page === 'home') {
+      if (fresh) drawHome(body);
+      return;
+    }
     if (page === 'tiles') {
       // Live Desk (2.4.0): the ON AIR panel on top, then the pages that follow the race and the ones that run it, each as its own group
       const tile = ([id, name, d]) =>
@@ -1183,7 +1217,7 @@ const LiveView = (() => {
   function repaint() {
     lastPaint = performance.now();
     status();
-    if (page !== 'tiles' && page !== 'rules' && page !== 'database') draw(false);
+    if (!['tiles', 'rules', 'database', 'home'].includes(page)) draw(false);
   }
   async function mount(el, opts = {}) {
     unmount();
@@ -1228,15 +1262,18 @@ const LiveView = (() => {
       /* no race data yet: the pages open empty and fill in from the live messages */
     }
     if (my !== mountN) return;
-    if (got && got.stat) {
+    if (got && got.stat && !(second && got.closed)) {
       V.feedStatic(got.stat);
       if (got.dyn) V.feedDynamic(got.dyn, performance.now());
     }
+    // (2.5.0) the second screen: Home until a race is there, then Race Timing (a phone or the Live Race tab keeps the tiles)
+    if (second && page === 'tiles') page = live() ? 'timing' : 'home';
     offs.push(
       api.onLiveStatic(s => {
         V.feedStatic(s);
         LiveCanvas.dispose(nodes);
         nodes = null;
+        if (second && page === 'home') return go('timing'); // (2.5.0: Start race on the race computer: Race Timing by itself)
         if (followResults()) return;
         if (page !== 'tiles') draw(true);
         status();
@@ -1278,6 +1315,16 @@ const LiveView = (() => {
         } else if (V.needsSync()) resync();
       })
     );
+    if (second && api.onLiveClosed)
+      offs.push(
+        api.onLiveClosed(() => {
+          // (2.5.0) the race computer left its race: Home again, and the next race starts fresh
+          V = LiveShare.viewer();
+          resultsFollowed = '';
+          go('home');
+        })
+      );
+    if (second && api.onHomeChanged) offs.push(api.onHomeChanged(homeAgain));
     ticker = setInterval(() => {
       // (2.4.0 review, speed) no second paint when a live message has just painted
       if (live() && ['running', 'countdown'].includes(V.dyn().phase) && performance.now() - lastPaint >= 90) repaint();
@@ -1298,6 +1345,7 @@ const LiveView = (() => {
   }
   function unmount() {
     mountN++; // (2.4.0 review)
+    clearTimeout(homeTimer);
     boardHighlights.forEach(n => LapHighlights.dispose(n));
     boardHighlights = [];
     if (host) {
