@@ -4012,6 +4012,18 @@ async function renderRace() {
         return false;
       }
     }
+    if ((hardware === 'trackmate' || hardware === 'arduino') && !live.linkFault) {
+      // (audit 2026-11) the next heat or a restart with the timing hardware unplugged: said once, a second Start races on with the keys
+      const on = hardware === 'trackmate' ? Trackmate.link.connected : !!(abLinkNow() && abLinkNow().connected);
+      if (on) live.hwKeysOk = false;
+      else if (!live.hwKeysOk) {
+        live.hwKeysOk = true;
+        ui('msg').textContent =
+          (hardware === 'trackmate' ? 'The Trackmate' : 'The Arduino box') +
+          ' is not connected, so no lap counts by itself. Connect it, or press Start again to race with the keys.';
+        return false;
+      }
+    }
     if (!['parallel', 'plugin'].includes(hardware)) return true;
     const link = hardware === 'plugin' ? pt.link : ParallelPort.link;
     if (live[hardware] && live[hardware].ready() && link.connected) return true;
@@ -4299,6 +4311,7 @@ async function renderRace() {
     tokens,
     ui
   }); // the interface is told the lanes; the track starts with or without power
+  live.hwKeysOk = true; // (Home asked before the first start when the timing hardware was not connected)
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
     if (live.soloSwitch) return live.soloSwitch(); // (2.5.2 Solo: the call button switches the lane the car is on; no flag, no power cut)

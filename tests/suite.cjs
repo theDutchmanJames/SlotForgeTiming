@@ -350,4 +350,5 @@ module.exports = [
   ['swapseats.test.js', 'node-test'],
   ['secondhome.test.js', 'node-test'],
   ['solo.test.js', 'node-test'],
+  ['auditfixes.test.js', 'node-test'],
 ];

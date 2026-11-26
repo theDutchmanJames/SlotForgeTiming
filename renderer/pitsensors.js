@@ -17,7 +17,12 @@
     };
     const levels = () => {
       if (!link.connected || o.disabled) return o.eng().cars.map(c => ({ lane: c.lane, on: null, direct: true }));
-      if (o.hardware === 'arduino') return (link.pitCovered || []).map((on, lane) => ({ lane, on }));
+      // (audit 2026-11) sensor n is the lane chosen for it in Lane Check (link.pitMap), the same lane the stop itself uses (arduinorace.js)
+      if (o.hardware === 'arduino')
+        return (link.pitCovered || []).map((on, pit) => ({
+          lane: Number.isInteger((link.pitMap || [])[pit]) ? link.pitMap[pit] : pit,
+          on
+        }));
       return link.sensorLevels ? link.sensorLevels() : [];
     };
     const seed = () =>
@@ -31,7 +36,7 @@
     if (o.hardware === 'arduino')
       offs.push(
         link.on(e => {
-          if (e.type === 'pit') observe({ lane: e.pit, on: e.in, at: e.at });
+          if (e.type === 'pit') observe({ lane: Number.isInteger(e.lane) ? e.lane : e.pit, on: e.in, at: e.at });
         })
       );
     else if (link.onSensor) offs.push(link.onSensor(observe));

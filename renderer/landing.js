@@ -358,6 +358,9 @@ async function renderHome(opts = {}) {
   };
   if (setup) {
     if (!track) issues.push('This race setup has no track. Choose one in Race Setup.');
+    const noLimit = typeof SetupWords !== 'undefined' && SetupWords.limitMissing ? SetupWords.limitMissing(rawSetup) : '';
+    if (noLimit)
+      issues.push(`This race setup has no ${noLimit}, so the race would never end by itself. Set it in Race Setup.`); // (audit 2026-11)
     else if (!lanes) issues.push('The track has no number of lanes. Add it in the Database.');
     const distProblem = Distance.problem(setup, track, lanes);
     if (distProblem) issues.push(distProblem); // (1.35.0: a race by distance needs the length of the lanes)
@@ -717,6 +720,15 @@ async function renderHome(opts = {}) {
         .find(x => x.s.skipped && !p.done.has(Champ.keyOf(x.r.id, x.s.id)) && (!next || order.indexOf(x) < order.indexOf(next)));
     return { c, p, order, next, now, after, again, bad, lastSkipped };
   })();
+  // (audit 2026-11) a championship is picked but none of its sessions is loaded (its setup or track was deleted, or it is finished): Start would race the
+  // last race setup as a normal race that counts for nothing, so it waits
+  if (champNow && !(ch && ch.c.id === champNow.c.id))
+    issues.push(
+      champNow.bad[0] ||
+        (champNow.next
+          ? 'The next session of the championship is being loaded.'
+          : 'This championship is finished. Pick a race setup to race outside it.')
+    );
   // the session that is next is loaded by itself: when the championship was just picked, or when the session that was loaded has been driven
   const champAuto =
     champNow &&
@@ -810,7 +822,7 @@ async function renderHome(opts = {}) {
           ? 'Every lane is a team with its starting driver.'
           : 'Choose a human driver and car, or a Virtual Rival and its replay.';
   const rowSaid = new Set(Object.values(rowMsgs)),
-    otherIssues = issues.filter(x => !rowSaid.has(x)); // (the list under the rows keeps what is not about one row)
+    otherIssues = issues.filter(x => !rowSaid.has(x) && !(champNow && champNow.bad.includes(x))); // (the list under the rows keeps what is not about one row; the championship band says its own)
   const homeMsg = state.homeMsg && Date.now() - (state.homeMsgAt || 0) < 30000 ? state.homeMsg : ''; // (2.4.0: what the race page says when it sends you here, for half a minute: a race whose data was deleted)
   const rowOk = new Map(shown.map((x, k) => [x.i, lt.ok[k]])),
     allReady = !issues.length; // (1.58.0: a tick for every row, and one pill that says whether the race can start: nothing is wrong, and then every row is filled in, because what a row lacks is one of the issues)
@@ -1579,7 +1591,12 @@ async function renderHome(opts = {}) {
     if ((b.id === 'resumego' || b.id === 'resumesave') && resume && resume.race) {
       // the race that was interrupted comes back (paused), or is closed and checked for saving
       if (typeof raceActive === 'function' && raceActive()) return;
-      if (b.id === 'resumego' && !(await timingReady())) return;
+      // (audit 2026-11: the lanes of the race that was interrupted, so DS and plugin timing can be checked; without them Resume always said 'not connected')
+      if (
+        b.id === 'resumego' &&
+        !(await timingReady(Math.floor(Number(resume.race.track && resume.race.track.lanes)) || (resume.race.rows || []).length))
+      )
+        return;
       if (typeof raceActive === 'function' && raceActive()) return; // (the answer may come after another race was started)
       state.race = {
         resources: resume.race.resources || null,

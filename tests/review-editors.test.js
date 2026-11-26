@@ -117,7 +117,7 @@ test('F8: the Dealership card counts the cars of the catalogue', () => {
 
 test('F9: an import row that is not shown and already here is skipped unless chosen, and the hidden rows are counted', () => {
   const tr = code('renderer/transferui.js');
-  assert(has(tr, "(m.match ? (unseen.has(m) ? 'skip' : m.how === 'id' && m.e !== 'sessions' ? 'replace' : 'copy') : 'copy')"));
+  assert(has(tr, "(m.match ? (unseen.has(m) || (m.e === 'sessions' && m.how === 'id') ? 'skip' : m.how === 'id' ? 'replace' : 'copy') : 'copy')")); // (audit 2026-11: and a race that is already here)
   assert(has(tr, '.slice(0, TR_SHOWN)'));
   assert(has(tr, 'more not shown:'));
 });

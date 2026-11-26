@@ -11,8 +11,15 @@ class SqliteClient {
     this.sequence = 0;
     this.closing = null;
     this.failure = null;
-    this.worker = new Worker(path.join(__dirname, 'sqlite-worker.js'));
-    this.worker.on('message', message => {
+    this.opened = null; // (audit 2026-11: the database the worker has open, so a new worker can open it again after a crash or a timeout)
+    this.reviving = null;
+    this.spawn();
+  }
+  spawn() {
+    const worker = new Worker(path.join(__dirname, 'sqlite-worker.js'));
+    this.worker = worker;
+    worker.on('message', message => {
+      if (worker !== this.worker) return;
       const job = this.pending.get(message.id);
       if (!job) return;
       if (message.started) {
@@ -32,10 +39,38 @@ class SqliteClient {
       if (message.error) job.reject(Object.assign(Error(message.error.message), { code: message.error.code }));
       else job.resolve(message.value);
     });
-    this.worker.on('error', error => this.fail(error));
-    this.worker.on('exit', code =>
-      this.fail(Error(`SQLite worker exited (${code}); reopen and check the command receipt or migration manifest before retrying.`))
-    );
+    worker.on('error', error => {
+      if (worker === this.worker) this.fail(error);
+    });
+    worker.on('exit', code => {
+      if (worker === this.worker && !this.closing)
+        this.fail(Error(`SQLite worker exited (${code}); reopen and check the command receipt or migration manifest before retrying.`));
+    });
+  }
+  // (audit 2026-11) after a crash or a timeout the next request starts a new worker and opens the same database again, instead of every request failing
+  // until the app is restarted (the final save of a race too). What was uncertain stays so: a save is idempotent by its key, a receipt can be checked.
+  revive() {
+    // (no more than three new workers a minute: a database that keeps failing is reported, not tried for ever)
+    const t = Date.now();
+    this.revivals = (this.revivals || []).filter(x => t - x < 60000);
+    if (!this.reviving && this.revivals.length >= 3) return Promise.reject(this.failure);
+    if (!this.reviving) this.revivals.push(t);
+    if (!this.reviving)
+      this.reviving = (async () => {
+        const old = this.worker;
+        this.worker = null;
+        try {
+          await old.terminate();
+        } catch {
+          /* it may be gone already */
+        }
+        this.failure = null;
+        this.spawn();
+        if (this.opened) await this.send(this.opened.operation, this.opened.args);
+      })().finally(() => {
+        this.reviving = null;
+      });
+    return this.reviving;
   }
   arm(job) {
     job.timer = setTimeout(() => {
@@ -44,7 +79,7 @@ class SqliteClient {
           'SQLite operation timed out; its outcome is uncertain. Reopen and check the command receipt or migration manifest before retrying.'
         )
       );
-      void this.worker.terminate();
+      if (this.worker) void this.worker.terminate();
     }, this.timeoutMs);
   }
   fail(error) {
@@ -56,7 +91,19 @@ class SqliteClient {
     this.pending.clear();
   }
   request(operation, ...args) {
-    if (this.failure || this.closing) return Promise.reject(this.failure || Error('SQLite worker is closing.'));
+    if (this.closing) return Promise.reject(this.failure || Error('SQLite worker is closing.'));
+    if (this.failure || this.reviving) {
+      if (operation === 'close') return Promise.reject(this.failure);
+      const before = this.failure;
+      return this.revive().then(
+        () => this.request(operation, ...args),
+        () => Promise.reject(before || this.failure)
+      );
+    }
+    if (operation === 'open' || operation === 'openWorking') this.opened = { operation, args };
+    return this.send(operation, args);
+  }
+  send(operation, args) {
     if (operation !== 'close' && this.pending.size >= 32) return Promise.reject(Error('SQLite request queue is full.'));
     return new Promise((resolve, reject) => {
       const id = ++this.sequence,
@@ -221,10 +268,11 @@ class SqliteClient {
     return this.request('asset', entity, id, parts);
   }
   close() {
+    if (this.reviving && !this.closing) return this.reviving.catch(() => {}).then(() => this.close()); // (a new worker is starting: close it when it is there)
     // (audit 2.2.5) After a failure (a time-out, a crash) the worker can not answer any more: closing just stops it. SQLite rolls back whatever it had not
     // committed when the database is opened again, so this is safe, and the app can always quit.
     if (!this.closing && this.failure)
-      this.closing = this.worker.terminate().then(
+      this.closing = (this.worker ? this.worker.terminate() : Promise.resolve()).then(
         () => undefined,
         () => undefined
       );

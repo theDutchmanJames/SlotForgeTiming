@@ -397,7 +397,7 @@ async function renderTransferSettings(box) {
     );
   const choiceOf = m =>
     trState.choices[m.e + ':' + m.id] ||
-    (m.match ? (unseen.has(m) ? 'skip' : m.how === 'id' && m.e !== 'sessions' ? 'replace' : 'copy') : 'copy');
+    (m.match ? (unseen.has(m) || (m.e === 'sessions' && m.how === 'id') ? 'skip' : m.how === 'id' ? 'replace' : 'copy') : 'copy'); // (audit 2026-11: a race that is already here is skipped, or importing the same file twice doubles every race and lap)
   const segOf = (m, now) => {
     const opts = m.match
       ? m.e === 'sessions'
@@ -418,6 +418,7 @@ async function renderTransferSettings(box) {
   };
   const tally = items ? items.reduce((t, m) => ((t[choiceOf(m)] = (t[choiceOf(m)] || 0) + 1), t), {}) : {};
   const here = items ? items.filter(m => m.match).length : 0;
+  const racesHere = items ? items.filter(m => m.e === 'sessions' && m.match && m.how === 'id').length : 0;
   const allNow = items && here ? [...new Set(items.filter(m => m.match && m.e !== 'sessions').map(choiceOf))] : [];
   const importBody = `<div class="tr-im"><div class="row"><button class="btn" id="tr-open">${pending ? 'Choose another file…' : 'Choose a file to import…'}</button>${pending ? '' : '<span class="muted">An export file from SlotForge Timing, or from SlotForge Paddock (choose SlotForge Timing as the export format there).</span>'}</div>
     ${
@@ -426,7 +427,9 @@ async function renderTransferSettings(box) {
             pending.summary || {}
           )
             .map(([e, s]) => `${s.count} ${esc(trKind(e, s.count))}`)
-            .join(', ')}</small></div></div>
+            .join(
+              ', '
+            )}${racesHere ? ` · <b>${racesHere} ${racesHere === 1 ? 'race is' : 'races are'} already here</b> and skipped (choose Add a copy to import ${racesHere === 1 ? 'it' : 'them'} again)` : ''}</small></div></div>
         ${
           items
             ? `<div class="bv-ch tr-imhead"><h4>What is in it</h4><small>${here ? `${here} ${here === 1 ? 'is' : 'are'} already here` : 'all new'}</small><span class="bv-sp"></span>${

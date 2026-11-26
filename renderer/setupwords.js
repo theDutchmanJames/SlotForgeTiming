@@ -334,7 +334,8 @@
       ends = `Each heat is over after ${limit || 'a set limit'}.${heatsN ? ` ${plural(heatsN, 'heat', 'heats')} in all.` : ''}`;
       wins = w.text;
     }
-    const ok = !!tn;
+    const noLimit = limitMissing(s); // (audit 2026-11: a limit of 0 or none is no limit, and the race would never end by itself)
+    const ok = !!tn && !noLimit;
     return {
       kind: kindOf(s),
       format,
@@ -345,7 +346,7 @@
       say,
       ends,
       wins,
-      ready: { ok, text: ok ? 'Ready to race' : 'Choose a track' }
+      ready: { ok, text: ok ? 'Ready to race' : !tn ? 'Choose a track' : 'Set the ' + noLimit }
     };
   }
   const plain = parts => parts.map(p => p.t).join('');
@@ -718,7 +719,28 @@
     return out;
   }
 
-  const api = { KINDS, PICKER, kindOf, describe, plain, parts, pick, rail };
+  // (audit 2026-11) what a race by laps, time or distance is missing: 'number of laps', 'duration' or 'distance', or '' (a kind without a limit, or one that is set).
+  // The engine treats an empty or 0 limit as no limit, so such a race never ends by itself.
+  function limitMissing(s) {
+    s = s || {};
+    const t = s.sessionType;
+    const unit =
+      t === 'race'
+        ? s.raceBy || 'laps'
+        : t === 'qualifying'
+          ? 'time'
+          : t === 'heats'
+            ? s.heatBy || 'laps'
+            : t === 'endurance'
+              ? s.enduranceBy === 'heats'
+                ? s.heatBy || 'laps'
+                : s.enduranceBy || 'time'
+              : '';
+    const field = { laps: 'laps', time: 'duration', distance: 'distance' }[unit];
+    if (!field) return '';
+    return Number(s[field]) > 0 ? '' : { laps: 'number of laps', duration: 'duration', distance: 'distance' }[field];
+  }
+  const api = { KINDS, PICKER, kindOf, describe, plain, parts, pick, rail, limitMissing };
   root.SetupWords = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

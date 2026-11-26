@@ -99,9 +99,12 @@ function list(folder) {
     .sort((a, b) => (a.order < b.order ? 1 : a.order > b.order ? -1 : 0))
     .map(({ order: _o, ...x }) => x);
 }
-// removes the oldest automatic backups beyond `keep` (nothing else in the folder is touched) -> the names removed
-function prune(folder, keep) {
-  const gone = own(folder).slice(keep);
+// removes the oldest automatic backups beyond `keep` (nothing else in the folder is touched) -> the names removed.
+// mine (audit 2026-11): the names this copy of the app made. The standard folder is shared by every copy on the computer (the installed app and the
+// portable one), so only its own are counted and removed; without the list (an older state file) every automatic backup counts, as before.
+function prune(folder, keep, mine) {
+  const ours = Array.isArray(mine) ? own(folder).filter(n => mine.includes(n)) : own(folder);
+  const gone = ours.slice(keep);
   for (const n of gone) fs.rmSync(path.join(folder, n), { recursive: true, force: true });
   return gone;
 }
@@ -167,8 +170,13 @@ function createAutoBackup(o) {
         fs.mkdirSync(cfg.folder, { recursive: true });
         await o.make(target, folderKind);
         if (o.afterMake) await o.afterMake(target, { kind, note: String(opts.note || '').slice(0, 120), reason });
-        const removed = prune(cfg.folder, cfg.keep);
+        // (audit 2026-11) the automatic backups this copy made: adopted from the folder the first time, then only its own
+        const made = kind === 'auto' ? path.basename(target) : '';
+        const mine0 = Array.isArray(before.mine) ? before.mine : own(cfg.folder).filter(n => n !== made);
+        const mine1 = made ? [...mine0.filter(n => n !== made), made] : mine0;
+        const removed = kind === 'auto' || Array.isArray(before.mine) ? prune(cfg.folder, cfg.keep, mine1) : prune(cfg.folder, cfg.keep);
         const s = {
+          mine: mine1.filter(n => !removed.includes(n)).slice(-200),
           lastAt: new Date(now()).toISOString(),
           lastPath: target,
           ok: true,
