@@ -431,6 +431,9 @@
     R.logEvent = log; // Attached systems use the same frozen driver identity and race clock.
 
     const end = (t, why) => {
+      // (audit 2026-11) a race stopped after its time was up or after a car finished is judged as a finished one: the mandatory stops and the DQ for an
+      // unserved penalty count (Stop is the way out when one car never crosses again); a race stopped before that is not judged
+      const judged = why !== 'Stopped' || !!R.timeUp || R.finished > 0;
       R.cars.forEach(c => tempUpdate(c, t));
       R.cars.forEach((c, i) => {
         wxFlush(i, t, true);
@@ -446,9 +449,9 @@
           twCheck(i, pitEnd);
           closePit(i, pitEnd);
         }
-        if (MAND && why !== 'Stopped') msJudge(c, i, t);
+        if (MAND && judged) msJudge(c, i, t);
       });
-      if (P.dqUnserved && why !== 'Stopped')
+      if (P.dqUnserved && judged)
         R.cars.forEach((c, i) => {
           if (!c.dq && c.pending.some(p => p.mandatory && !p.afterFinish)) {
             c.dq = true;

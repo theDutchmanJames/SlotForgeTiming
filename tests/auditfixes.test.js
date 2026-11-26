@@ -125,3 +125,26 @@ test('Solo and the second screen: the slips of 2.5.1 and 2.5.2', () => {
   assert(has(lv, 'api.onSettingsChanged(() => {'), 'and follows the theme');
   assert(has(code('main.js'), "liveWin.webContents.send('settings:changed');"));
 });
+
+test('the race: judged when stopped after the end, abort start, review kept, the break waits, restart lights, stopping kept, tokens saved in turn', () => {
+  const eng = code('renderer/engine.js');
+  assert(has(eng, "const judged = why !== 'Stopped' || !!R.timeUp || R.finished > 0;"));
+  assert(has(eng, 'if (MAND && judged) msJudge(c, i, t);') && has(eng, 'if (P.dqUnserved && judged)'));
+  const race = code('renderer/race.js');
+  assert(has(race, 'function cancelStart() {') && has(race, 'red() { if (cancelStart()) return;'), 'R aborts the start');
+  assert(has(race, 'checkpoint(true); // (audit 2026-11: every change of the review'));
+  assert(has(race, 'if (l === 0 && dialogOpen()) return;'), 'no automatic start under an open question');
+  assert(
+    has(
+      race,
+      "if (live.phase === 'paused' && eng.flag === 'red' && setup.restartAfterRed !== 'resume' && !tokens) return restartCountdown();"
+    )
+  );
+  assert(has(race, '...(live.stopping ? { stopping: true } : {})') && has(race, 'if (hs.stopping === true) live.stopping = true;'));
+  assert(has(race, "live.phase = heats && heat.idx > 0 ? 'between' : 'ready'; // (audit 2026-11: heat 2"));
+  assert(has(race, 'if (c && c.carId === carId) c.tyre = code;'), 'Swap Seats tyre');
+  assert(has(race, 'Stop the event now?'));
+  assert(has(race, 'live.tkWrites = (live.tkWrites || Promise.resolve())'), 'token clocks saved one after another');
+  assert(has(race, 'The race could not be saved for recovery'));
+  assert(has(race, "if (lapsOnly && box.dataset.hover === '1') {"), 'Review laps waits for the pointer');
+});

@@ -1880,16 +1880,36 @@ async function renderRace() {
       return;
     }
     const R = Review.ui,
-      sig = JSON.stringify([
-        eng.cars.map(c => [c.laps.length, c.best, c.invalid, c.removed, c.dq, c.done, c.driverName]),
+      countSig = eng.cars.map(c => c.laps.length).join(','),
+      restSig = JSON.stringify([
+        eng.cars.map(c => [c.best, c.invalid, c.removed, c.dq, c.done, c.driverName]),
+        tokens ? tokens.snapshot().lates : 0,
         [...R.open],
         R.del,
         R.filter,
         [...R.checked],
-        R.focus,
-        tokens ? tokens.snapshot().lates : 0
-      ]);
+        R.focus
+      ]),
+      sig = countSig + '|' + restSig;
     if (sig === live.lapSig) return;
+    // (audit 2026-11) a new lap alone does not rebuild the panel under the pointer, so a click lands on the lap it was meant for; the panel is drawn when the
+    // pointer leaves it. A change made in it (invalid, delete, open, filter) is drawn at once.
+    const lapsOnly = !!live.lapSig && live.lapSig.slice(live.lapSig.indexOf('|') + 1) === restSig;
+    if (!box.dataset.hoverWatch) {
+      box.dataset.hoverWatch = '1';
+      box.addEventListener('pointerenter', () => (box.dataset.hover = '1'));
+      box.addEventListener('pointerleave', () => {
+        delete box.dataset.hover;
+        if (box.dataset.waitLeave) {
+          delete box.dataset.waitLeave;
+          drawLapReview();
+        }
+      });
+    }
+    if (lapsOnly && box.dataset.hover === '1') {
+      box.dataset.waitLeave = '1';
+      return;
+    }
     live.lapSig = sig;
     box.hidden = false;
     const tv = tokens ? tokens.view() : null;
@@ -2544,7 +2564,7 @@ async function renderRace() {
     if (c.op === 'undo') Review.undo(eng, live.rvChanges);
     else Review.record(eng, c, live.rvChanges); // (2.4.0: every change is listed in the review, with what it did to the place)
     recomputeBests();
-    checkpoint();
+    checkpoint(true); // (audit 2026-11: every change of the review is kept for recovery, also one made within 2 s of the last save)
     update();
   };
   // The break between two races: a countdown (when the race setup has a break), and then either the lights start by themselves or the race waits for Start.
@@ -2587,6 +2607,7 @@ async function renderRace() {
         if (live.phase !== 'between') return stopBreak();
         const l = left();
         if (l === live.breakLeft) return;
+        if (l === 0 && dialogOpen()) return; // (audit 2026-11: the heat does not start by itself under an open question, such as "Stop the race now?")
         live.breakLeft = l;
         const go = l === 0 && brk.auto && heat.picksDone(); // (a final waits for the lanes: the race does not start by itself with a lane not chosen)
         ui('msg').textContent = go ? `${heat.raceName(heat.idx)} is starting.` : betweenMsg();
@@ -3921,7 +3942,7 @@ async function renderRace() {
       startingPhase = live.phase;
     live.lights = 0;
     if (eng.resourceStart && !eng.resourceStart()) {
-      live.phase = 'ready';
+      live.phase = heats && heat.idx > 0 ? 'between' : 'ready'; // (audit 2026-11: heat 2 and later wait between heats, not as a first start)
       power(false);
       ui('msg').textContent = eng.resourceError;
       update();
@@ -3950,6 +3971,7 @@ async function renderRace() {
     if (!['ready', 'between'].includes(live.phase)) return; // (2.4.0 review: the race was stopped while the pre-race call was said)
     if (!timingReady()) return;
     if (typeof PerfUI !== 'undefined') PerfUI.raceStarted(); // (the worst figures and the rows of the Performance report start again, 1.60.1)
+    live.beforeCountdown = live.phase; // (audit 2026-11: where an aborted start goes back to)
     live.phase = 'countdown';
     live.lights = 0;
     ui('msg').textContent = '';
@@ -3972,6 +3994,19 @@ async function renderRace() {
       syncPhase();
     });
   }
+  // (audit 2026-11) R or S during the start lights (not a restart after a red flag): the start is aborted, a car off the grid or a jump start. The track power
+  // goes off and the race waits for Start again, as before the lights.
+  function cancelStart() {
+    if (live.phase !== 'countdown' || live.restarting) return false;
+    live.runId++;
+    live.lights = 0;
+    live.phase = live.beforeCountdown === 'between' ? 'between' : 'ready';
+    power(false);
+    ui('sim').disabled = false;
+    ui('msg').textContent = 'Start aborted. Press Start (Space) when the grid is ready.';
+    update();
+    return true;
+  }
   function cancelRestart() {
     // red again, or stop, during the countdown: the race stays stopped under the red flag
     if (!live.restarting) return false;
@@ -3987,6 +4022,9 @@ async function renderRace() {
     if (!carId || !code) return;
     people.forEach(p => {
       if (p.carId === carId) p.tyre = code;
+    });
+    (laneCars || []).forEach(c => {
+      if (c && c.carId === carId) c.tyre = code; // (audit 2026-11: Swap Seats, the car of a lane)
     });
     try {
       await api.update('slotcars', carId, { tyreCompound: code });
@@ -4134,6 +4172,8 @@ async function renderRace() {
     },
     pause() {
       if (live.phase === 'paused' && !timingReady()) return;
+      // (audit 2026-11) going on after a red flag with restart lights set: Space runs the lights too, as R does (it used to lift the flag at once)
+      if (live.phase === 'paused' && eng.flag === 'red' && setup.restartAfterRed !== 'resume' && !tokens) return restartCountdown();
       const resuming = live.phase === 'paused';
       if (live.phase === 'running') eng.pause(now());
       else if (resuming) eng.resume(now());
@@ -4157,6 +4197,7 @@ async function renderRace() {
     },
     async stop(force) {
       // force: the Race Director page has already asked
+      if (cancelStart()) return;
       cancelRestart();
       if (!['running', 'paused', 'between'].includes(live.phase)) return;
       if (
@@ -4164,7 +4205,9 @@ async function renderRace() {
         !(await Dialog.confirm(
           tokens
             ? 'End the session now? Every lane is switched off. You check the results before they are saved.'
-            : 'Stop the race now? The laps so far are saved.',
+            : heats && heat.hasNext()
+              ? 'Stop the event now? The laps so far are saved, and the heats that are still to come are not raced.' // (audit 2026-11: say that it ends the event)
+              : 'Stop the race now? The laps so far are saved.',
           { ok: tokens ? 'End the session' : 'Stop the race', cancel: 'Keep racing', danger: true }
         ))
       )
@@ -4298,6 +4341,7 @@ async function renderRace() {
       syncPhase();
     },
     red() {
+      if (cancelStart()) return;
       if (eng.flag === 'red' && live.phase === 'paused' && !timingReady()) return;
       if (cancelRestart()) return;
       if (eng.flag === 'red' && live.phase === 'paused' && setup.restartAfterRed !== 'resume' && !tokens) return restartCountdown(); // lifting the red flag: restart with the lights
@@ -4720,11 +4764,27 @@ async function renderRace() {
         review: live.phase === 'review'
       }; // (review: the session had ended and its stints waited for the review)
     state.settings = { ...state.settings, tokenSessions: all }; // (at once, so the next time the screen is opened it finds it)
-    const saved = Promise.resolve()
+    // (audit 2026-11) the writes go one after another, an older answer never replaces a newer state, and a failed write is said on the race page
+    const seq = (live.tkSeq = (live.tkSeq || 0) + 1);
+    const saved = (live.tkWrites = (live.tkWrites || Promise.resolve())
+      .catch(() => {})
       .then(() => api.setSettings({ tokenSessions: all }))
-      .then(st => {
-        if (st) state.settings = st;
-      });
+      .then(
+        st => {
+          if (st && seq === live.tkSeq) state.settings = { ...st, tokenSessions: state.settings.tokenSessions || st.tokenSessions };
+          if (live.tkFailed) {
+            live.tkFailed = false;
+            if (ui('msg') && /Token clocks could not be saved/.test(ui('msg').textContent)) ui('msg').textContent = '';
+          }
+        },
+        e => {
+          live.tkFailed = true;
+          if (ui('msg'))
+            ui('msg').textContent =
+              'Token clocks could not be saved for recovery (' + ((e && e.message) || e) + '). The session goes on; it is tried again.';
+          throw e;
+        }
+      ));
     saved.catch(() => {});
     return saved;
   };
@@ -5142,7 +5202,8 @@ async function renderRace() {
     reruns: live.reruns,
     rerunAt: live.rerunAt,
     ...(byTeam ? { drivers: people.map(p => p.driverId) } : {}),
-    teamHist: teamHist.map(l => l.slice())
+    teamHist: teamHist.map(l => l.slice()),
+    ...(live.stopping ? { stopping: true } : {}) // (audit 2026-11: Stop was pressed: after a crash the event still ends with this heat)
   });
   function checkpoint(force = false) {
     const waiting = heats && !!live && live.phase === 'between'; // (a heat race also waits between two races)
@@ -5213,6 +5274,12 @@ async function renderRace() {
       )
         .then(ok => {
           if (!ok) throw Error('Database write failed');
+          if (live.cpFailed) {
+            // (audit 2026-11) saved again: the warning goes
+            live.cpFailed = false;
+            if (ui('msg') && /could not be saved for recovery/.test(ui('msg').textContent)) ui('msg').textContent = '';
+          }
+          live.cpOkAt = Date.now();
           return true;
         })
         .catch(resourceSaveFailed);
@@ -5222,7 +5289,15 @@ async function renderRace() {
     }
   }
   function resourceSaveFailed(x) {
-    if (!resourceState) return false;
+    if (!resourceState) {
+      // (audit 2026-11) a race without resources goes on, but the Race Director is told that a crash now would lose it (it is tried again with the next change)
+      live.cpFailed = true;
+      live.cpSig = '';
+      if (ui('msg') && !/could not be saved for recovery/.test(ui('msg').textContent))
+        ui('msg').textContent =
+          'The race could not be saved for recovery (' + ((x && x.message) || x) + '). Racing goes on; it is tried again.';
+      return false;
+    }
     live.resourceFault = true;
     live.resourceSent = -1;
     if (eng.status === 'running') {
@@ -5258,6 +5333,7 @@ async function renderRace() {
       ui('msg').textContent = 'The saved race does not fit this race setup any more, so it could not be carried on.';
       return false;
     }
+    if (hs.stopping === true) live.stopping = true; // (audit 2026-11)
     if (byTeam && Array.isArray(hs.drivers))
       hs.drivers.forEach((id, i) => {
         if (people[i] && typeof id === 'string') setDriver(i, id);
