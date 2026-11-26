@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.5.2 — 2026-11-26
 
+- **Solo:** a new kind of session for driving and testing on your own. One driver and one car, on any lane: Switch lane (the Track Call button, Tab, or the button on the race page) tells Timing which lane the car is on, or it follows the car by itself. Widgets set to the new lane "Followed" show the lane the car is on, with the best lap of that lane. The results show your laps by lane and car.
 - **Small things that help on a race night:**
   - The computer and its screen stay awake while a race is on.
   - **Ctrl + Shift + lane number** takes back a lap counted by hand.
@@ -24,7 +25,7 @@
   - The race: an aborted start, the Review laps panel, Space after red, timing hardware locked during a race, track power after a disconnect, a silent Trackmate.
   - Live screens and phones: reconnecting after an error, staying in step, commands for the right heat, a double-tapped Pause, logins that last, private settings kept off phones.
   - Speed: the race screen paints less while hidden or in full screen, Home, Results and the Record Book read less.
-- **Solo:** a new kind of session for driving and testing on your own. One driver and one car, on any lane: Switch lane (the Track Call button, Tab, or the button on the race page) tells Timing which lane the car is on, or it follows the car by itself. Widgets set to the new lane "Followed" show the lane the car is on, with the best lap of that lane. The results show your laps by lane and car.
+- **Changed:** with a Trackmate or Arduino box the track power now goes off at the finish and stays off through the break between heats; it comes back on at the next start.
 
 ## 2.5.1 — 2026-11-24
 
