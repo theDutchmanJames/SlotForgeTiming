@@ -7,6 +7,7 @@
   const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
   const IC = typeof module !== 'undefined' ? require('./icons.js') : root.Icons;
   const VR = typeof module !== 'undefined' ? require('./virtualrival.js') : root.VirtualRival;
+  const SO = typeof module !== 'undefined' ? require('./engine/solo.js') : root.Solo; // (2.5.2: Solo, by lane and car)
   const SS = typeof module !== 'undefined' ? require('./heats/swapseats.js') : root.SwapSeats; // (2.5.0: Swap Seats, the cars of the lanes)
   const RR = typeof module !== 'undefined' ? require('./racereport.js') : root.RaceReport; // (2.4.0: the look of the race report on paper)
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -132,6 +133,11 @@
             )
             .join('') +
           (SS && SS.cars(session).length ? '<h2>Lane cars</h2>' + SS.carsTable(session, esc, ms => E.fmtTime(ms)) : '');
+    const soloSheet =
+      session.solo && session.soloTable && SO
+        ? '<h2>By lane and car</h2>' +
+          SO.tableHtml(session.soloTable, esc, ms => E.fmtTime(ms), ((session.standings || [])[0]?.driverName || 'All') + ', all laps')
+        : '';
     const stintSheet =
       !opt.results || !ST.stintLines(session, distUnit).length
         ? ''
@@ -190,7 +196,7 @@
       ${racing && opt.results ? RR.podium(session, rows, figs) : ''}
       ${standings ? '<section class="rp-class"><h2>' + (session.virtualRivals?.length ? 'Physical-field standings' : 'Results') + '</h2>' + standings + '</section>' : ''}
       ${racing && opt.results ? RR.middle(F, rows, session, mono) : ''}
-      <div class="rp-extra">${opt.results && VR ? VR.historyHtml(session) : ''}${opt.results ? (typeof module !== 'undefined' ? require('./multiclass.js') : MultiClass).resultsHtml(session.classStandings || [], session.multiclass) : ''}${heatSummary ? `<section class="rp-heats">${heatSummary}</section>` : ''}${stintSheet ? `<section class="rp-section">${stintSheet}</section>` : ''}${tyreSheet ? `<section class="rp-section">${tyreSheet}</section>` : ''}</div>
+      <div class="rp-extra">${opt.results && VR ? VR.historyHtml(session) : ''}${opt.results ? (typeof module !== 'undefined' ? require('./multiclass.js') : MultiClass).resultsHtml(session.classStandings || [], session.multiclass) : ''}${heatSummary ? `<section class="rp-heats">${heatSummary}</section>` : ''}${soloSheet && opt.results ? `<section class="rp-section">${soloSheet}</section>` : ''}${stintSheet ? `<section class="rp-section">${stintSheet}</section>` : ''}${tyreSheet ? `<section class="rp-section">${tyreSheet}</section>` : ''}</div>
       <footer class="rp-foot"><span>Made with SlotForge Timing</span><span>${drivers.length ? `Page 1 · a page for every driver follows (${drivers.length})` : ''}</span></footer></main>
       ${drivers.map(({ x, i }) => RR.driverPage({ session, x, i, rows, fig: figs[i], F, count: drivers.length, raceTitle: session.setupName || 'Race', mono })).join('')}
       ${

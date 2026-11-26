@@ -412,6 +412,18 @@ const Help = (() => {
         </ul>`
         },
         {
+          id: 'solo',
+          title: 'Solo',
+          note: 'Just you and one car, on any lane',
+          body: `
+        <ul>
+          <li>Choose <b>Solo</b> as the kind of session in a race setup. On Home pick the driver, the car and the lane it <b>starts on</b>, then <b>Start solo</b>. Every lane counts laps, and it runs until you stop it, like a Free practice.</li>
+          <li>Move the car to another lane and press <b>Switch lane</b>: the Track Call button, <b>Tab</b>, or the button on the race page. With <b>Which lane the car is on</b> set to <b>By itself</b>, Timing follows the lane whose sensor sees the car. A lap never runs across a switch: the first crossing on the new lane starts a new lap.</li>
+          <li>In the Layout Editor, set a widget's lane to <b>Followed</b>: in a Solo session it shows the lane the car is on (its best lap is the best on that lane); in other races it keeps its own lane.</li>
+          <li>The results show your laps <b>by lane and car</b>, with the best and the average. To change car, stop (the session is saved) and start Solo again with the other car.</li>
+        </ul>`
+        },
+        {
           id: 'swapseats',
           title: 'Swap Seats',
           note: 'The cars stay on their lane, the drivers move',

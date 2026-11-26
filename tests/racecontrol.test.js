@@ -214,7 +214,7 @@ test('race.js: Race Control on the race page (not for a Time Token Session), the
   assert(has(race, "const rcOn = !tokenSession && typeof RaceControl !== 'undefined';"));
   assert(has(race, '<div id="rcbar" class="rc-bar" role="region" aria-label="Race control"></div>'));
   assert(
-    has(race, 'rcOn ? Widgets.withoutControls(layout, lanes).layout : layout'),
+    has(race, 'rcOn ? Widgets.withoutControls(lay, lanes).layout : lay'),
     'the race screen leaves its own buttons out, as the second screen does'
   );
   assert(has(race, 'if (menu && tools) menu.appendChild(tools);'), 'the tool bar of before is the Tools menu');

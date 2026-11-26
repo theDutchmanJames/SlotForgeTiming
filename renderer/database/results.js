@@ -526,6 +526,10 @@ async function renderResultsPool(box, pool, supplied = null) {
         `<div class="rr-classwrap"><table class="fields rr-class"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
         s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') +
         '</table></div>' +
+        (s.soloTable && typeof Solo !== 'undefined'
+          ? '<h4>By lane and car</h4>' +
+            Solo.tableHtml(s.soloTable, esc, ms => RaceEngine.fmtTime(ms), ((s.standings[0] || {}).driverName || 'All') + ', all laps')
+          : '') + // (2.5.2 Solo)
         (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
         (typeof resourceHistoryHtml === 'function' ? resourceHistoryHtml(s) : '') +
         (typeof VirtualRival !== 'undefined' ? VirtualRival.historyHtml(s) : '') +

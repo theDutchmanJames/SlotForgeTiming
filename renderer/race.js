@@ -439,6 +439,10 @@ function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, 
       return;
     }
     const k = String(ev.key).toLowerCase();
+    if (k === 'tab' && live.soloSwitch) {
+      ev.preventDefault();
+      return live.soloSwitch(); // (2.5.2 Solo: Tab switches the lane the car is on)
+    }
     if (k === 'y') return actions.yellow();
     if (k === 'r') return actions.red();
     if (k === 's') return actions.stop(); // still asks "Stop the race now?"
@@ -460,7 +464,7 @@ function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, 
       return;
     }
     let was = null;
-    live.fsView = LiveCanvas.fullView(layout, lanes, {
+    live.fsView = LiveCanvas.fullView(live.soloLayout ? live.soloLayout() : layout, lanes, {
       onClose: () => {
         live.fsView = null;
         if (api.windowFullscreen && was !== null) api.windowFullscreen(was);
@@ -635,7 +639,8 @@ async function renderRace() {
     (r.setup?.sessionType === 'tokens' ? state.settings.tokenSessions?.[r.setup.id]?.timingPlugin : null) ||
     (Hardware.timingChosen(state.settings) === 'plugin' && typeof pt !== 'undefined' ? TimingPlugin.provenance(pt.identity) : null);
   const speed = state.speed || 1; // only changed by automated tests
-  const setup = Endurance.effective(r.setup),
+  const setup = Solo.effective(Endurance.effective(r.setup)), // (2.5.2: a Solo session is a Free practice with solo: true)
+    solo = !!setup.solo,
     heats = setup.sessionType === 'heats',
     tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
   const storageRunId =
@@ -754,7 +759,7 @@ async function renderRace() {
     cars.some(c => (c.sharedLibrary || (!tokenSession && c.paddock)) && carRows.some(x => x.carId === c.id))
   ) {
     try {
-      paddockJournal = await api.paddockPrepare(carRows.filter(x => !isRival(x)).map(x => x.carId));
+      paddockJournal = await api.paddockPrepare([...new Set(carRows.filter(x => !isRival(x)).map(x => x.carId))]); // (Solo: the same car on every lane, once)
       if (paddockJournal.timingSettings)
         for (const [id, binding] of Object.entries(paddockJournal.timingSettings)) {
           const car = cars.find(c => c.id === id),
@@ -1117,7 +1122,7 @@ async function renderRace() {
   const rcOn = !tokenSession && typeof RaceControl !== 'undefined'; // (2.4.0: Race Control; a Time Token Session keeps its tool bar)
   const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
-  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"${rcOn ? ' class="rc-on"' : ''}>${rcOn ? '<div id="rcbar" class="rc-bar" role="region" aria-label="Race control"></div>' : ''}<button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
+  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"${rcOn ? ' class="rc-on"' : ''}>${rcOn ? '<div id="rcbar" class="rc-bar" role="region" aria-label="Race control"></div>' : ''}<button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>${solo ? '<div class="solo-bar" id="solobar" role="group" aria-label="Solo"></div>' : ''}
     ${rulePlan ? `<p class="muted" id="race-rule-summary">Plugin rules: <strong>${esc(rulePlan.name)}</strong> · v${esc(rulePlan.version)} · frozen for this race. Raw lap timing is unchanged.</p>` : ''}
     ${rcOn ? '<div class="rc-row" id="rcrow"><section class="rc-order" aria-label="The order of the race"><div class="rc-oh"><b>Order</b><small id="rcorderline"></small></div><div id="rctower"></div></section><section class="rc-mon" id="rcmon" aria-label="The race screen"><div class="rc-mh" id="rcmonhead"></div><div class="rc-mb">' : ''}<div class="rt-stage"><div class="canvas live" id="canvas"></div></div>${rcOn ? '</div></section></div>' : ''}
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
@@ -1182,10 +1187,45 @@ async function renderRace() {
     msgEl = ui('msg'); // (read on every refresh and share: found once)
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
-  live.nodes = LiveCanvas.build(ui('canvas'), rcOn ? Widgets.withoutControls(layout, lanes).layout : layout, lanes, {
-    onButton: type => actions[type](),
-    imageSets
-  }); // (2.4.0: with Race Control the bar has the controls: the race screen leaves its own out, as the second screen does)
+  // (2.5.2 Solo) the lane the car is on: widgets marked Followed show it (the race screen is built again when it changes)
+  live.solo = solo;
+  live.soloLane = solo ? Solo.laneOf(r.resume?.race?.soloLane ?? r.soloLane, lanes) : null;
+  live.soloLast = -1; // (the entry that crossed last: a crossing on another lane starts a new lap)
+  live.soloLayout = solo ? () => Solo.layout(layout, live.soloLane) : null;
+  const buildCanvas = () => {
+    const lay = live.soloLayout ? live.soloLayout() : layout;
+    live.nodes = LiveCanvas.build(ui('canvas'), rcOn ? Widgets.withoutControls(lay, lanes).layout : lay, lanes, {
+      onButton: type => actions[type](),
+      imageSets
+    });
+  };
+  buildCanvas(); // (2.4.0: with Race Control the bar has the controls: the race screen leaves its own out, as the second screen does)
+  // the Solo bar on the race page: the lane the car is on, and Switch lane (the Track Call button and Tab do the same)
+  let soloMsgT = null;
+  const drawSoloBar = said => {
+    const el = ui('solobar');
+    if (!el) return;
+    const c = eng.cars.find(x => x.lane === live.soloLane) || eng.cars[0] || {};
+    el.style.setProperty('--c', HomeStats.laneColor(layout, live.soloLane));
+    el.innerHTML = `<span class="solo-lane"><i>${live.soloLane + 1}</i>On lane ${live.soloLane + 1}</span><span class="muted">${esc(c.driverName || '')}${c.carName ? ' · ' + esc(c.carName) : ''}</span>${lanes > 1 ? '<button type="button" class="btn" id="soloswitch">Switch lane <kbd>Tab</kbd></button>' : ''}<span class="solo-msg" role="status">${said ? esc(said) : ''}</span>`;
+    if (ui('soloswitch'))
+      ui('soloswitch').onclick = ev => {
+        if (ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+        live.soloSwitch();
+      };
+    clearTimeout(soloMsgT);
+    if (said) soloMsgT = setTimeout(() => drawSoloBar(), 3000);
+  };
+  function soloSet(lane) {
+    if (!solo || lane === live.soloLane) return;
+    live.soloLane = lane;
+    buildCanvas();
+    if (live.fsView && live.fsView.relayout) live.fsView.relayout(live.soloLayout());
+    drawSoloBar('Now on lane ' + (lane + 1));
+    update();
+  }
+  live.soloSwitch = solo && lanes > 1 ? () => soloSet(Solo.next(live.soloLane, lanes)) : null;
+  if (solo) drawSoloBar();
   // the Performance line (App Settings > General > Performance, 1.60.0): a small line under the buttons with the frames a second, the time of a screen update and the CPU of the app, when it is switched on
   const syncPerfLine = () => {
     if (typeof PerfUI === 'undefined') return;
@@ -1388,6 +1428,7 @@ async function renderRace() {
         bestBy: live.bestBy,
         tokens: tokens ? tokens.snapshot() : null,
         after: live.afterTv || null,
+        follow: solo ? live.soloLane : null,
         now: t
       },
       t
@@ -2326,6 +2367,12 @@ async function renderRace() {
   // held: the crossing of a Trackmate sensor, which is also where a car stops for the pits: the tyres that are due are judged when it is known whether the car stays (engine.js, wxFlush)
   const crossCar = (i, at, held, measurement) => {
     if (live.phase !== 'running') return;
+    if (solo && live.soloLast !== i) {
+      // (2.5.2 Solo) the car is on another lane now: its first crossing there only starts a lap, so a lap never runs across a switch
+      if (live.soloLast >= 0) eng.cars[i].started = false;
+      live.soloLast = i;
+      if (Solo.auto(setup) && eng.cars[i].lane !== live.soloLane) soloSet(eng.cars[i].lane);
+    }
     const c = eng.cars[i],
       tAt = at !== undefined ? at : now();
     const tokenT = tokens ? eng.elapsed(tAt) : 0,
@@ -3744,6 +3791,12 @@ async function renderRace() {
     try {
       if (api.saveResume && !(await checkpoint(true))) throw Error('Recovery could not be saved. Retry saving before finalizing.');
       live.cpOff = true;
+      if (solo) {
+        // (2.5.2 Solo) a lane the car never drove on has no row
+        session.solo = true;
+        session.soloTable = Solo.table(eng.cars); // (by lane and car, for the results)
+        session.standings = session.standings.filter(x => Number(x.laps) > 0);
+      }
       const savedId = await api.saveSession(session, laps);
       live.audioSavedId = savedId;
       try {
@@ -4248,6 +4301,7 @@ async function renderRace() {
   }); // the interface is told the lanes; the track starts with or without power
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
+    if (live.soloSwitch) return live.soloSwitch(); // (2.5.2 Solo: the call button switches the lane the car is on; no flag, no power cut)
     const mode = trackCall.action,
       t = now();
     if (mode === 'power') {
@@ -5130,6 +5184,7 @@ async function renderRace() {
             track: lean(r.track),
             rows: r.rows,
             ...(laneCars ? { laneCars: r.laneCars } : {}),
+            ...(solo ? { soloLane: live.soloLane } : {}),
             ...(r.champ ? { champ: r.champ } : {}),
             ...(byTeam ? { byTeam: true } : {}),
             ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {})

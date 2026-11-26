@@ -12,7 +12,7 @@ const say = (s, ctx) => W.plain(d(s, ctx).say);
 ok('the kind of a setup is its small heading: a heat-based race and an Endurance Race are races, a Time Token Session is Time tokens', W.kindOf({ sessionType: 'practice' }) === 'Free practice' && W.kindOf({ sessionType: 'qualifying' }) === 'Qualifying'
   && W.kindOf({ sessionType: 'race' }) === 'Race' && W.kindOf({ sessionType: 'heats' }) === 'Race' && W.kindOf({ sessionType: 'endurance' }) === 'Race' && W.kindOf({ sessionType: 'tokens' }) === 'Time tokens');
 ok('...a setup with no kind, an odd kind, or nothing at all is a race (as the form starts)', W.kindOf({}) === 'Race' && W.kindOf({ sessionType: 'enduro' }) === 'Race' && W.kindOf(null) === 'Race' && W.kindOf(undefined) === 'Race');
-ok('the six session types of the form are the six kinds of the words, in the order of the form', W.KINDS.map(k => k[0]).join() === 'practice,qualifying,race,heats,endurance,tokens' && require('../schema.js').racesetups.fields.find(f => f.key === 'sessionType').options.map(o => o[0]).join() === W.KINDS.map(k => k[0]).join());
+ok('the six session types of the form are the six kinds of the words, in the order of the form', W.KINDS.map(k => k[0]).join() === 'practice,qualifying,race,heats,endurance,tokens,solo' && require('../schema.js').racesetups.fields.find(f => f.key === 'sessionType').options.map(o => o[0]).join() === W.KINDS.map(k => k[0]).join());
 
 // ---- one race: how it ends and who wins ----
 { const r = d({ sessionType: 'race', raceBy: 'laps', laps: 10, endRule: 'all' });
@@ -137,8 +137,8 @@ ok('plain() joins the parts into the sentence', W.plain([{ t: 'A ', b: false }, 
   ok('the same card pressed again changes nothing that matters: Heats on a heat setup stays heats (with its swaps), Endurance stays endurance; Race on a heat setup is one race', K({ sessionType: 'heats' }, { kind: 'heats' }).sessionType === 'heats' && JSON.stringify(K({ sessionType: 'endurance', enduranceBy: 'heats' }, { kind: 'heats' })) === '{"sessionType":"endurance","enduranceBy":"heats"}'
     && K({ sessionType: 'endurance', enduranceBy: 'laps' }, { kind: 'endurance' }).sessionType === 'endurance' && K({ sessionType: 'endurance', enduranceBy: 'laps' }, { kind: 'endurance' }).enduranceBy === undefined
     && K({ sessionType: 'heats' }, { kind: 'race' }).sessionType === 'race' && K({ sessionType: 'endurance', enduranceBy: 'laps' }, { kind: 'race' }).sessionType === 'race' && K({ sessionType: 'endurance', enduranceBy: 'laps' }, { kind: 'race' }).raceBy === 'laps');
-  ok('the words of the picker are the ones of the design: six kinds and the line of the swaps; each has a picture', W.PICKER.kinds.map(k => k[1]).join() === 'Free practice,Qualifying,Race,Heats,Endurance,Time tokens' && W.PICKER.swaps[0] === 'Teams swap drivers in the pits'
-    && [...W.PICKER.kinds.map(k => k[0]), ...W.PICKER.formats.map(k => k[0])].every(k => W.PICKER.icons[k]) && W.PICKER.kinds.map(k => k[0]).join() === 'practice,qualifying,race,heats,endurance,tokens');
+  ok('the words of the picker are the ones of the design: six kinds and the line of the swaps; each has a picture', W.PICKER.kinds.map(k => k[1]).join() === 'Free practice,Qualifying,Race,Heats,Endurance,Time tokens,Solo' && W.PICKER.swaps[0] === 'Teams swap drivers in the pits'
+    && [...W.PICKER.kinds.map(k => k[0]), ...W.PICKER.formats.map(k => k[0])].every(k => W.PICKER.icons[k]) && W.PICKER.kinds.map(k => k[0]).join() === 'practice,qualifying,race,heats,endurance,tokens,solo');
 }
 
 // ---- the rail (1.71.0): a note and a dot for every section of the form ----

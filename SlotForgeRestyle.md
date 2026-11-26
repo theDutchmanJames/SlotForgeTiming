@@ -40,6 +40,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Toggle Chips](#toggle-chips) | Checkboxes as pill switches | View settings, Hide unused systems |
 | [Broadcast Hero](#broadcast-hero) | A header picture across the page with big titles on it | Home |
 | [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
+| [Solo Bar](#solo-bar) | The lane the car is on in a Solo session, in its lane colour, with Switch lane; Starts on lane buttons on Home; the Followed lane button in the Layout Editor | Race page, Home, Layout Editor |
 | [Audience Home](#audience-home) | Home read-only on the second screen before a race: no menu or controls, "Next race" and a pulsing Starting soon panel where Start race was | The second screen (Live Race window) |
 | [Lane Cars](#lane-cars) | Swap Seats: a row of Grid Slots for the car of every lane, above the participants; the line-up between heats names the lane car | Home › Start a race, the break between heats |
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
@@ -1259,6 +1260,19 @@ a lane spans 12 / lanes in its row), so there is never an empty place.
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"n f" ". m" "w w";min-height:116px;padding:16px 18px 14px;overflow:hidden}
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar{display:block;position:absolute;top:0;right:0;bottom:0;width:var(--gs-pic,132px);mask-image:linear-gradient(90deg,transparent 0,#000 38%)}
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-tick{position:absolute;top:12px;right:12px}
+```
+
+## Solo Bar
+
+**Solo** (2.5.2, one driver and one car on any lane). On the race page, under the title line: a bar with a 4px left border in the colour of the lane the
+car is on, the lane number in a small square of that colour, *On lane 2* (Barlow), the driver and car (muted), **Switch lane** with its key (Tab) and,
+for three seconds after a switch, *Now on lane 2* in the lane colour. On Home the solo card has **Starts on** with a small button per lane (the chosen
+one filled with its lane colour). In the Layout Editor the lane buttons get a wider **Followed** button after 1–8.
+
+```css
+.solo-bar{--c:var(--accent);display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--line);border-left:4px solid var(--c);border-radius:10px;background:color-mix(in srgb,var(--c) 8%,var(--panel))}
+.solo-bar .solo-lane>i{display:grid;place-items:center;width:26px;height:26px;border-radius:6px;background:var(--c);color:#fff}
+#hmc-start .hs-solostart>.btn.on{background:var(--c);border-color:var(--c);color:#fff}
 ```
 
 ## Audience Home
@@ -2804,6 +2818,7 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Pit Lights | New: Lane Check shows a light per pit sensor (Arduino box); a car on it lights it amber, click it and choose its lane; saved at once (`abPitMap`) and the race uses the same lanes |
 | 2026-11 | Editor Panels | Restyled: the Layout Editor and the Leaderboard Editor panels (the widget list as a rail, the settings as Folders with a head and slim rows, the lane as eight buttons, Align and Layer as pictures, explanations on one line with More). Behaviour: the lane is chosen with buttons (the list is hidden), explanations start folded |
 | 2026-11 | Home Weather card | Fixed: on the light themes (Light, Ocean, light tone) the sky card had dark words on its dark sky; its words are now light in every theme and the sky no longer fades to white at the bottom |
+| 2026-11 | Solo Bar | New: the Solo bar on the race page (the lane the car is on, Switch lane), Starts on on Home, Followed in the Layout Editor, By lane and car in the results |
 | 2026-11 | Audience Home | New: the second screen shows Home read-only before a race (Next race, Starting soon, the cards), Race timing from Start race, Home again when the race is left |
 | 2026-11 | Lane Cars | New: Swap Seats — a Lane cars row on Start a race (a Grid Slot per lane with the car picker), participants without a car (*4 heats · all 4 cars*), the lane car in the break tiles and the Next Up pills, and a Lane cars table in the results |
 | 2026-11 | App icon | New: two crossed chequered flags in white on the SlotForge red tile (#e5484d), red and white only (no charcoal); also the logo at the top left of the app and on the startup window (`build/icon.svg`, made with `tools/build-icon.cjs`) |

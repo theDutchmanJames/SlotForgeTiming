@@ -349,4 +349,5 @@ module.exports = [
   ['sqlitejson.test.js', 'node-test'],
   ['swapseats.test.js', 'node-test'],
   ['secondhome.test.js', 'node-test'],
+  ['solo.test.js', 'node-test'],
 ];

@@ -229,8 +229,11 @@ async function renderHome(opts = {}) {
   const withTeam = byTeam || enduSingle; // (the team is the participant: it has to be chosen)
   // 2.5.0 Swap Seats: every lane has its own car, chosen here (the setting laneCars, by race setup); the participants have no car of their own
   const seats = heats && typeof SwapSeats !== 'undefined' && SwapSeats.on(setup);
+  // 2.5.2 Solo: one driver and one car, on any lane; the lane it starts on is kept by race setup (the setting soloLane)
+  const solo = typeof Solo !== 'undefined' && Solo.on(setup),
+    soloStart = solo ? Solo.laneOf((saved.soloLane || {})[setupId], lanes) : 0;
   const laneCarIds = seats ? SwapSeats.laneIds((saved.laneCars || {})[setupId], lanes, id => cars.some(c => c.id === id)) : [];
-  const allowRival = !tokens && !withTeam && !endu && !seats;
+  const allowRival = !tokens && !withTeam && !endu && !seats && !solo;
   const laneDrivers = allowRival ? allDrivers.filter(d => !d.retired) : drivers; // (2.4.0 review: the virtual rivals, but no retired driver)
   if (!withTeam)
     rows.forEach(r => {
@@ -238,9 +241,9 @@ async function renderHome(opts = {}) {
     }); // (1.10.1: a session without teams has no Team choice on Home, so a team that was chosen for it earlier is not used)
   const teamOf = id => teams.find(t => t.id === id) || null,
     membersOf = t => (t && Array.isArray(t.drivers) ? t.drivers : []).map(id => drivers.find(d => d.id === id)).filter(Boolean);
-  const wanted = rot ? rot.participants : heats ? Math.max(rows.length, 2) : lanes;
+  const wanted = rot ? rot.participants : heats ? Math.max(rows.length, 2) : solo ? 1 : lanes;
   while (rows.length < wanted) rows.push({ driverId: '', carId: '' });
-  rows = rows.slice(0, heats ? rows.length : lanes);
+  rows = rows.slice(0, heats ? rows.length : solo ? 1 : lanes);
 
   // the winner of the latest qualifying on this track picks their lane first
   let qual = null;
@@ -639,7 +642,10 @@ async function renderHome(opts = {}) {
   const rowHtml = (r, i) => {
     const gone = away(r),
       ready = rowOk.has(i) ? rowOk.get(i) : true, // (an away row is in no lamp, and has no message: it is never marked)
-      who = (heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane ') + (i + 1) + (rot && rot.names[i] ? ' · ' + rot.names[i] : '');
+      who = solo
+        ? 'Solo, starts on lane ' + (soloStart + 1)
+        : (heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane ') + (i + 1) + (rot && rot.names[i] ? ' · ' + rot.names[i] : ''),
+      li = solo ? soloStart : i; // (Solo: the number and colour of the lane the car starts on)
     const note = [
       seatNote(i),
       classChoice(r, i),
@@ -667,9 +673,12 @@ async function renderHome(opts = {}) {
       (rot
         ? `<label class="lane-away"><input type="checkbox" data-absent="${i}"${away(r) ? ' checked' : ''} aria-label="${byTeam ? 'Team' : 'Participant'} ${i + 1} is not here today"> Not here today</label>`
         : '') +
-      (heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '');
-    return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
-      <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
+      (heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '') +
+      (solo && lanes > 1
+        ? `<span class="hs-solostart" role="group" aria-label="The lane the car starts on"><small>Starts on</small>${Array.from({ length: lanes }, (_, l) => `<button type="button" class="btn${l === soloStart ? ' on' : ''}" data-solo-lane="${l}" aria-pressed="${l === soloStart}" style="--c:${esc(laneHue(l))}"${raceOn ? ' disabled' : ''}>${l + 1}</button>`).join('')}</span>`
+        : '');
+    return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(li))}">
+      <strong class="hs-num" style="--on:${onLane(laneHue(li))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${li + 1}</span></strong>
       <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r) && allowRival ? rivalSelect(r, i) : seats ? '' : sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r, mc, { cars, drivers, teams }), r.carId, mc?.assignment === 'roster' ? (MultiClass.assignedClass(r, mc, { cars, drivers, teams }) ? 'Choose a matching car' : 'Choose a class first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
       ${more || (!isRival(r) && !seats && typeof PaddockBrowser !== 'undefined') ? `<div class="hs-more">${more}${!isRival(r) && !seats && typeof PaddockBrowser !== 'undefined' ? `<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r) || raceOn ? ' disabled' : ''} title="Browse available slotcars">Browse cars</button>` : ''}</div>` : ''}
       ${r.driverId && !gone && !byTeam ? `<span class="hs-avatar" aria-hidden="true" data-avatar-driver="${esc(r.driverId)}"><img src="${esc(homeAvatarCache.get(r.driverId) || (typeof Avatars !== 'undefined' ? Avatars.forLane(null, i) : ''))}" alt=""${homeAvatarCache.get(r.driverId) ? ' class="own"' : ''}></span>` : ''}
@@ -791,13 +800,15 @@ async function renderHome(opts = {}) {
       issues.length > 0
     ),
     shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
-  const laneSub = tokens
-    ? 'A lane can have no driver (a Guest) and no car.'
-    : heats
-      ? `${rows.length} ${byTeam ? 'teams' : 'participants'} race on ${lanes} lanes. ${seats ? 'No car to choose: they drive the car of the lane.' : 'Pick who takes part.'}`
-      : enduSingle
-        ? 'Every lane is a team with its starting driver.'
-        : 'Choose a human driver and car, or a Virtual Rival and its replay.';
+  const laneSub = solo
+    ? 'One driver and one car. Switch lane whenever you like.'
+    : tokens
+      ? 'A lane can have no driver (a Guest) and no car.'
+      : heats
+        ? `${rows.length} ${byTeam ? 'teams' : 'participants'} race on ${lanes} lanes. ${seats ? 'No car to choose: they drive the car of the lane.' : 'Pick who takes part.'}`
+        : enduSingle
+          ? 'Every lane is a team with its starting driver.'
+          : 'Choose a human driver and car, or a Virtual Rival and its replay.';
   const rowSaid = new Set(Object.values(rowMsgs)),
     otherIssues = issues.filter(x => !rowSaid.has(x)); // (the list under the rows keeps what is not about one row)
   const homeMsg = state.homeMsg && Date.now() - (state.homeMsgAt || 0) < 30000 ? state.homeMsg : ''; // (2.4.0: what the race page says when it sends you here, for half a minute: a race whose data was deleted)
@@ -976,14 +987,14 @@ async function renderHome(opts = {}) {
       }
       ${rotHtml}
       ${seats && track && lanes ? laneCarsHtml() : ''}
-      ${track && lanes ? `${heats || tokens || enduSingle ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div>` : ''}<div class="hs-lanes" data-cols="${laneCols(rows.length)}" role="group" aria-label="${esc(laneSub)}">${rows.map(rowHtml).join('')}</div>` : ''}
+      ${track && lanes ? `${heats || tokens || enduSingle || solo ? `<div class="hs-sub"><span class="hs-label hs-muted">${solo ? 'Solo' : heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div>` : ''}<div class="hs-lanes" data-cols="${laneCols(rows.length)}" role="group" aria-label="${esc(laneSub)}">${rows.map(rowHtml).join('')}</div>` : ''}
       ${heats && track && !rot ? `<button class="btn" id="addrow">${byTeam ? 'Add team' : 'Add participant'}</button>` : ''}
       ${mcHtml}${heatPlanHtml}
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${homeMsg ? `<p class="hint2 hm-msg" role="status">${esc(homeMsg)}</p>` : ''}
       ${otherIssues.length ? `<ul class="issues">${otherIssues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="hm-go">${display ? waitHtml : lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
+      <div class="hm-go">${display ? waitHtml : lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : solo ? 'Start solo' : 'Start race'}</span></button></div>`
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p><div class="row"><button type="button" class="btn primary" id="guideagain">Start the setup guide</button></div>') +
     `</section>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))">${otherCells}</div>`;
@@ -1554,6 +1565,12 @@ async function renderHome(opts = {}) {
       rows.splice(Number(b.dataset.remove), 1);
       persist();
     }
+    if (b.dataset && b.dataset.soloLane !== undefined) {
+      // Solo: the lane the car starts on, kept with the race setup
+      state.settings = await api.setSettings({ soloLane: { ...(saved.soloLane || {}), [setupId]: Number(b.dataset.soloLane) } });
+      renderHome();
+      return;
+    }
     if (b.id === 'gorace') {
       state.tab = 'race';
       render();
@@ -1572,6 +1589,7 @@ async function renderHome(opts = {}) {
         track: resume.race.track,
         rows: resume.race.rows,
         ...(resume.race.laneCars ? { laneCars: resume.race.laneCars } : {}),
+        ...(Number.isInteger(resume.race.soloLane) ? { soloLane: resume.race.soloLane } : {}),
         ...(resume.race.byTeam ? { byTeam: true } : {}),
         ...(resume.race.schedule ? { schedule: resume.race.schedule, ...(resume.race.labels ? { labels: resume.race.labels } : {}) } : {}),
         ...(resume.race.champ ? { champ: resume.race.champ } : {}),
@@ -1638,12 +1656,13 @@ async function renderHome(opts = {}) {
           multiclass: mc,
           setup: rawSetup,
           track: fullTrack,
-          rows: go.map(row => ({
+          rows: (solo ? Solo.rows(go[0], lanes) : go).map(row => ({
             ...row,
             ...(seats ? { carId: '' } : {}),
             raceClass: MultiClass.resolve(row, mc, { cars, drivers, teams })
           })),
           ...(seats ? { laneCars: laneCarIds } : {}),
+          ...(solo ? { soloLane: soloStart } : {}),
           virtualRivals: rivalSelection.entries,
           ...(byTeam ? { byTeam: true } : {}),
           ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}),

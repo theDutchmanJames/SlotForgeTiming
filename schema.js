@@ -705,7 +705,8 @@ module.exports = {
           ['race', 'Race'],
           ['heats', 'Heat-based race'],
           ['endurance', 'Endurance Race'],
-          ['tokens', 'Time Token Session']
+          ['tokens', 'Time Token Session'],
+          ['solo', 'Solo']
         ],
         hint: 'Each kind shows only its own settings. Heats and Endurance are races too: in heats, or with teams that swap drivers.'
       },
@@ -728,6 +729,20 @@ module.exports = {
         tone: 'tokens',
         showIf: [{ sessionType: ['tokens'] }],
         hint: 'The time buttons, the warning and the colours of the token clocks. Make profiles under Race Setup > Time Tokens; the Club default is used when none is chosen.'
+      },
+      {
+        key: 'soloSwitch',
+        group: 'session',
+        label: 'Which lane the car is on',
+        ui: 'seg',
+        type: 'select',
+        default: 'button',
+        options: [
+          ['button', 'Switch lane button'],
+          ['auto', 'By itself']
+        ],
+        showIf: [{ sessionType: ['solo'] }],
+        hint: 'Solo: one driver and one car, on any lane. Switch lane button: you press it when you move the car (the Track Call button, Tab, or Switch lane on the race page). By itself: the lane whose sensor sees the car (the button still works). A lap never runs across a switch: the first crossing on the new lane starts a new lap.'
       },
       {
         key: 'rotation',

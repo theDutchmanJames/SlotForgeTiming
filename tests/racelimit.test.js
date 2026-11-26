@@ -22,7 +22,7 @@ let fails = 0; const ok = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); 
 const F = schema.racesetups, field = k => F.fields.find(f => f.key === k);
 const shown = (f, vals) => !f.showIf || f.showIf.some(c => Object.entries(c).every(([k, vs]) => vs.includes(vals[k] ?? '')));
 const keys = vals => F.fields.filter(f => shown(f, vals)).map(f => f.key);
-ok('the session types: no Timed race any more, and the Race is just "Race"', field('sessionType').options.map(o => o[0]).join() === 'practice,qualifying,race,heats,endurance,tokens' && field('sessionType').options.find(o => o[0] === 'race')[1] === 'Race');
+ok('the session types: no Timed race any more, and the Race is just "Race"', field('sessionType').options.map(o => o[0]).join() === 'practice,qualifying,race,heats,endurance,tokens,solo' && field('sessionType').options.find(o => o[0] === 'race')[1] === 'Race');
 ok('"The race is over after" (1.69.0: it was "The race is limited by") has a time next to laps and a distance, in the order laps, time, distance, and the hint says how a time race is decided', field('raceBy').label === 'The race is over after' && field('raceBy').options.map(o => o[0]).join() === 'laps,time,distance' && field('raceBy').options.find(o => o[0] === 'time')[1] === 'Time' && /most laps/.test(field('raceBy').hint) && /lowest total time/.test(field('raceBy').hint));
 ok('a race limited by a time asks for the minutes and not for the laps, the distance or the rule about the lead car', (() => { const k = keys({ sessionType: 'race', raceBy: 'time' });
   return k.includes('duration') && !k.includes('laps') && !k.includes('endRule') && !k.includes('distance') && !k.includes('distanceMode') && !k.includes('distanceMax'); })());

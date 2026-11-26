@@ -17,7 +17,8 @@ test('the widget list: a folder says how many widgets it holds, the widgets are 
 
 test('the head of the settings: the lane as eight buttons that set the hidden Lane list', () => {
   assert.ok(has(E, '<header class="ed-insp"><span class="insp-k">${kindLine}</span>'));
-  assert.ok(has(E, 'data-lanebtn="${l}" aria-pressed="${l === lane}"'));
+  assert.ok(has(E, 'data-lanebtn="${l}" aria-pressed="${l === lane && follow !== true}"'));
+  assert.ok(has(E, 'data-lanebtn="follow"'), '2.5.2: and Followed, for a Solo session');
   assert.ok(has(E, '<div class="field insp-lanefield" hidden><label for="s-lane">Lane</label><select id="s-lane">'));
   assert.ok(has(E, 'pick.value = b.dataset.lanebtn;'));
   assert.ok(has(E, 'side.onchange({ target: pick });'));

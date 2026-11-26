@@ -100,13 +100,13 @@ test('Home, the race and the results are wired', () => {
   assert(has(home, 'issues.push(...SwapSeats.problems(laneCarIds));'));
   assert(has(home, 'laneCars: { ...(saved.laneCars || {}), [setupId]: next }'), 'the cars of the lanes are kept by race setup');
   assert(has(home, '...(seats ? { laneCars: laneCarIds } : {}),'), 'the race gets them');
-  assert(has(home, 'const allowRival = !tokens && !withTeam && !endu && !seats;'), 'no virtual rivals');
+  assert(has(home, 'const allowRival = !tokens && !withTeam && !endu && !seats && !solo;'), 'no virtual rivals');
   const race = code('renderer/race.js');
   assert(has(race, 'eng = mk(seated(heat.entries()));'));
   assert(has(race, 'if (laneCars) session.laneCars = SwapSeats.keep(laneCars);'));
   assert(has(race, '...(laneCars ? { laneCars: r.laneCars } : {}),'), 'an interrupted race keeps them');
   assert(
-    has(race, 'paddockJournal = await api.paddockPrepare(carRows.filter(x => !isRival(x)).map(x => x.carId));'),
+    has(race, 'api.paddockPrepare([...new Set(carRows.filter(x => !isRival(x)).map(x => x.carId))])'),
     'Paddock cars of the lanes are prepared'
   );
   assert(has(code('renderer/report.js'), 'SS.drivenText(session, x.participant)'));

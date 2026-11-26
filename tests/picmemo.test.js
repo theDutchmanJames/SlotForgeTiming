@@ -262,7 +262,7 @@ const big1 = 'data:image/png;base64,' + b64(3000), big2 = 'data:image/jpeg;base6
   say('every picture of the widgets goes into the text as link(...): the avatar and slotcar picture, the image, the race flag picture, the fuel picture', ['avimg', 'flagimg', 'fuelimg'].every(c => new RegExp('<img class="' + c + '" src="\\$\\{esc\\(link\\(').test(wid)) && (wid.match(/src="\$\{esc\(link\(/g) || []).length === 4);
   say('...and the weather and tyre pictures (weatherwidgets.js)', /<img class="\$\{cls\}" src="\$\{esc\(link\(src\)\)\}"/.test(wxw) && /const link = src => \(PM && typeof PM\.link === 'function' \? PM\.link\(src\) : src\)/.test(wxw));
   say('the page builder makes the lights ready after the widgets are built, with the picture sets it is given', has(cv, 'Widgets.prepareLights(layout,o.imageSets)') && flat(cv).indexOf('nodes.push(n)') < flat(cv).indexOf('Widgets.prepareLights(layout,o.imageSets)')); // (compared without spaces, see source.cjs)
-  say('the race screen and the second screen hand over the picture sets', has(race, "LiveCanvas.build(ui('canvas'), rcOn ? Widgets.withoutControls(layout, lanes).layout : layout, lanes, { onButton: type => actions[type](), imageSets })") && has(lv, '{ maxH: 0, imageSets: V.stat().imageSets }'));
+  say('the race screen and the second screen hand over the picture sets', has(race, "LiveCanvas.build(ui('canvas'), rcOn ? Widgets.withoutControls(lay, lanes).layout : lay, lanes, { onButton: type => actions[type](), imageSets })") && has(lv, '{ maxH: 0, imageSets: V.stat().imageSets }'));
 }
 // the queue, one picture at a time
 async function ready160() {

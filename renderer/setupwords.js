@@ -10,7 +10,8 @@
     ['race', 'Race'],
     ['heats', 'Heat-based race'],
     ['endurance', 'Endurance Race'],
-    ['tokens', 'Time Token Session']
+    ['tokens', 'Time Token Session'],
+    ['solo', 'Solo']
   ];
   const num = v => {
     const t = String(v === undefined || v === null ? '' : v)
@@ -33,6 +34,7 @@
     if (t === 'practice') return 'Free practice';
     if (t === 'qualifying') return 'Qualifying';
     if (t === 'tokens') return 'Time tokens';
+    if (t === 'solo') return 'Solo';
     return 'Race';
   }
   // how a race is limited, in words: '10 laps', '5 minutes', '100 m'; '' when the number is not typed (yet). dist(n) says a distance in the unit of the person (metres or feet).
@@ -206,7 +208,7 @@
     const heated = t === 'heats' || (t === 'endurance' && raceLimitBy(s) === 'heats');
     const swaps = t === 'endurance';
     const by = heated ? heatLimitBy(s) : raceLimitBy(s);
-    const limit = t === 'practice' || t === 'tokens' ? '' : t === 'qualifying' ? lim('time', s, c) : lim(by, s, c);
+    const limit = t === 'practice' || t === 'tokens' || t === 'solo' ? '' : t === 'qualifying' ? lim('time', s, c) : lim(by, s, c);
     // the pills: kind, format, limit, track, lanes
     const format =
       t === 'race' ? 'One race' : t === 'heats' ? 'Heats' : t === 'endurance' ? (heated ? 'Heats with driver swaps' : 'Driver swaps') : '';
@@ -247,6 +249,17 @@
       add('. It is not a race: each lane is switched on with paid time and turns red when the time is up.');
       ends = 'Runs until you stop it.';
       wins = 'No winner: this is not a race.';
+    } else if (t === 'solo') {
+      add('A ');
+      add('solo session', true);
+      onPlace();
+      add(
+        '. Just you and one car, on any lane: Switch lane tells Timing which lane the car is on' +
+          (s.soloSwitch === 'auto' ? ', or it follows the car by itself' : '') +
+          '. It runs until you stop it.'
+      );
+      ends = 'Runs until you stop it.';
+      wins = 'No winner: your laps by car and lane.';
     } else if (t === 'practice') {
       add('A ');
       add('free practice', true);
@@ -351,7 +364,8 @@
       ['race', 'Race', 'Laps and time decide the winner.'],
       ['heats', 'Heats', 'Turns on every lane, the heats added up.'],
       ['endurance', 'Endurance', 'Teams swap drivers in the pits.'],
-      ['tokens', 'Time tokens', 'Not a race. You sell track time per lane.']
+      ['tokens', 'Time tokens', 'Not a race. You sell track time per lane.'],
+      ['solo', 'Solo', 'Just you and one car, on any lane you like.']
     ],
     formats: [
       ['one', 'One race', 'All cars start together and there is one result.'],
@@ -365,6 +379,7 @@
       heats: 'layers',
       endurance: 'rotation',
       tokens: 'tokens',
+      solo: 'driver',
       one: 'arrow'
     }
   };
@@ -377,7 +392,7 @@
       KINDS.map(k => k[0]),
       'race'
     );
-    if (t === 'practice' || t === 'qualifying' || t === 'tokens') return { kind: t, format: '', swaps: false };
+    if (t === 'practice' || t === 'qualifying' || t === 'tokens' || t === 'solo') return { kind: t, format: '', swaps: false };
     return {
       kind: 'race',
       format: t === 'heats' || (t === 'endurance' && s.enduranceBy === 'heats') ? 'heats' : 'one',

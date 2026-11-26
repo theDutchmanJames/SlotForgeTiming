@@ -1484,7 +1484,7 @@ function widgetHtml(w, sel, single, d) {
   const def = Widgets.def(w.type),
     row = d.kind === 'row',
     tiny = single && (w.w < TINY || w.h < TINY);
-  const badge = def.perLane && !row ? `<span class="lw-lane">L${w.lane + 1}</span>` : '';
+  const badge = def.perLane && !row ? `<span class="lw-lane">${w.follow ? 'Followed' : 'L' + (w.lane + 1)}</span>` : '';
   const handles = single
     ? '<i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>'
     : '';
@@ -1600,6 +1600,7 @@ function sideHtml() {
       <label><input type="checkbox" data-theme="${key}" ${v === '' ? 'checked' : ''}> Theme default</label></div></div>`;
   };
   const lane = common(w => w.lane),
+    follow = common(w => !!w.follow), // (2.5.2 Solo: the widget shows the lane the car is on; its own lane in every other race)
     allLane = defs.every(d => d.perLane) && !row;
   const size = common(w => w.textSize),
     tsize = common(w => w.titleSize),
@@ -1834,11 +1835,14 @@ function sideHtml() {
   const laneBtns = allLane
     ? `<div class="insp-lanes" role="group" aria-label="Lane">${Array.from(
         { length: Widgets.LANES },
-        (_, l) => `<button type="button" data-lanebtn="${l}" aria-pressed="${l === lane}" title="Lane ${l + 1}">${l + 1}</button>`
-      ).join('')}</div>`
+        (_, l) =>
+          `<button type="button" data-lanebtn="${l}" aria-pressed="${l === lane && follow !== true}" title="Lane ${l + 1}">${l + 1}</button>`
+      ).join(
+        ''
+      )}<button type="button" class="insp-follow" data-lanebtn="follow" aria-pressed="${follow === true}" title="Followed: in a Solo session the lane the car is on; in other races lane ${lane === undefined ? 1 : lane + 1}">Followed</button></div>`
     : '';
   return `<header class="ed-insp"><span class="insp-k">${kindLine}</span><h3>${single ? esc(d0.label) : sel.length + ' widgets selected'}</h3>${laneBtns}</header>
-    ${allLane ? `<div class="field insp-lanefield" hidden><label for="s-lane">Lane</label><select id="s-lane">${lane === undefined ? '<option value="" selected>(different)</option>' : ''}${Array.from({ length: Widgets.LANES }, (_, l) => `<option value="${l}"${l === lane ? ' selected' : ''}>Lane ${l + 1}</option>`).join('')}</select></div>` : ''}
+    ${allLane ? `<div class="field insp-lanefield" hidden><label for="s-lane">Lane</label><select id="s-lane">${lane === undefined || follow === undefined ? '<option value="" selected>(different)</option>' : ''}${Array.from({ length: Widgets.LANES }, (_, l) => `<option value="${l}"${l === lane && follow === false ? ' selected' : ''}>Lane ${l + 1}</option>`).join('')}<option value="follow"${follow === true ? ' selected' : ''}>Followed (Solo)</option></select></div>` : ''}
     ${group('arrange', 'Arrange', `${arrangeTools}${snapHint}<div class="row"><button class="btn" id="s-tidy">Tidy to grid</button></div>${tidyHint}`)}
     ${
       row && single
@@ -3078,7 +3082,12 @@ function edSideChange({ $, d, drawCanvas, ed, redraw, refreshAssets, side, step 
     } // the shade slider is only for "Shade of the background"
     if (t.id === 's-lane' && t.value !== '') {
       sel.forEach(w => {
-        w.lane = Number(t.value);
+        if (t.value === 'follow')
+          w.follow = true; // (the widget keeps its lane for every race that is not Solo)
+        else {
+          w.lane = Number(t.value);
+          delete w.follow;
+        }
       });
       step();
       drawCanvas(sel);

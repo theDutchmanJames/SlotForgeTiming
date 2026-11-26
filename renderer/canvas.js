@@ -171,7 +171,11 @@ const LiveCanvas = (() => {
     root.appendChild(canvas);
     root.appendChild(bar);
     document.body.appendChild(root);
-    const nodes = build(canvas, Widgets.withoutControls(layout, lanes).layout, lanes, { maxH: 0 });
+    const view = { nodes: build(canvas, Widgets.withoutControls(layout, lanes).layout, lanes, { maxH: 0 }), root, close };
+    // (2.5.2) the same page with another layout, without leaving full screen (Solo: the followed lane changed)
+    view.relayout = l => {
+      if (!closed) view.nodes = build(canvas, Widgets.withoutControls(l, lanes).layout, lanes, { maxH: 0 });
+    };
     let timer = null,
       closed = false;
     const show = () => {
@@ -185,7 +189,7 @@ const LiveCanvas = (() => {
     function close() {
       if (closed) return;
       closed = true;
-      dispose(nodes);
+      dispose(view.nodes);
       clearTimeout(timer);
       document.removeEventListener('keydown', onKey);
       if (root.parentNode) root.parentNode.removeChild(root);
@@ -196,7 +200,7 @@ const LiveCanvas = (() => {
     exit.onclick = close;
     document.addEventListener('keydown', onKey);
     show();
-    return { nodes, root, close };
+    return view;
   }
   return { build, paint, fullView, fitValue, dispose };
 })();

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Solo:** a new kind of session for driving and testing on your own. One driver and one car, on any lane: Switch lane (the Track Call button, Tab, or the button on the race page) tells Timing which lane the car is on, or it follows the car by itself. Widgets set to the new lane "Followed" show the lane the car is on, with the best lap of that lane. The results show your laps by lane and car.
+
 ## 2.5.1 — 2026-11-24
 
 - **The second screen before a race:** your Home page for the audience (banner, the next race with its line-up, your cards, "Starting soon"). It switches to Race timing by itself when you press Start race, and back to Home when you leave the race. Move the mouse for the Live Race pages.

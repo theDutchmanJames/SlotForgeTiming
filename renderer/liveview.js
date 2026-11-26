@@ -50,6 +50,7 @@ const LiveView = (() => {
     dirLogHtml = '',
     resultsFollowed = '',
     followedFrom = null, // (2.4.0 review: the page the second screen showed before it followed the results)
+    followBuilt = null, // (2.5.2: the followed lane the timing page was built for)
     homeTimer = null, // (2.5.0: the second screen's Home is drawn again a moment after the race computer's Home changed)
     mountN = 0; // (2.4.0 review: counts mount and unmount, so a mount that waits knows it is still the one)
 
@@ -393,10 +394,14 @@ const LiveView = (() => {
       nodes = null;
       return drawResults(body);
     }
-    if (!nodes || fresh) {
+    // (2.5.2 Solo) widgets marked Followed show the lane the car is on: the page is built again when it changes
+    const follow = Number.isInteger(V.dyn().follow) ? V.dyn().follow : null;
+    if (!nodes || fresh || follow !== followBuilt) {
       LiveCanvas.dispose(nodes);
+      followBuilt = follow;
+      const lay = follow !== null && typeof Solo !== 'undefined' ? Solo.layout(V.stat().layout, follow) : V.stat().layout;
       body.innerHTML = '<div class="fullview" id="lv-fv"><div class="canvas live" id="lv-canvas"></div></div>';
-      nodes = LiveCanvas.build($('lv-canvas'), Widgets.withoutControls(V.stat().layout, V.stat().lanes).layout, V.stat().lanes, {
+      nodes = LiveCanvas.build($('lv-canvas'), Widgets.withoutControls(lay, V.stat().lanes).layout, V.stat().lanes, {
         maxH: 0,
         imageSets: V.stat().imageSets
       });

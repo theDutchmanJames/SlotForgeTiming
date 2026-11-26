@@ -89,8 +89,8 @@ test('the button of the main menu and its drop-down', () => {
 test('the Setup Sheet: six kinds, the Race card is one race, Heats and Endurance are kinds; the sections of the rail; Track Call and the lights together', () => {
   assert.deepEqual(
     SW.PICKER.kinds.map(k => k[0]),
-    ['practice', 'qualifying', 'race', 'heats', 'endurance', 'tokens']
-  );
+    ['practice', 'qualifying', 'race', 'heats', 'endurance', 'tokens', 'solo']
+  ); // (2.5.2: and Solo)
   assert.deepEqual(SW.pick({ sessionType: 'heats' }, { kind: 'race' }), { sessionType: 'race' }, 'Race on a heat setup is one race now');
   assert.equal(SW.pick({ sessionType: 'race' }, { kind: 'heats' }).sessionType, 'heats');
   assert.equal(SW.pick({ sessionType: 'practice' }, { kind: 'endurance' }).sessionType, 'endurance');
