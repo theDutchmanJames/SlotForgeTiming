@@ -72,11 +72,22 @@
           : { level: 'ok', title: 'No race systems', sub: 'Laps and time only' }
       );
       if (o.layoutName) race.push({ level: 'ok', title: 'Race screen', sub: o.layoutName });
-      race.push(
-        o.audioName
-          ? { level: 'ok', title: 'Audio set', sub: o.audioName }
-          : { level: 'warn', title: 'No audio set', sub: 'Nothing is announced during the race', fix: { go: 'setup', label: 'Choose one' } }
+      // (2.5.2) a layout, audio set or system the setup names that was deleted
+      (o.missing || []).forEach(m =>
+        race.push({ level: 'warn', title: 'About the race setup', sub: m, fix: { go: 'setup', label: 'Open the setup' } })
       );
+      if (!(o.missing || []).some(m => /audio set was deleted/.test(m)))
+        // (review: said once)
+        race.push(
+          o.audioName
+            ? { level: 'ok', title: 'Audio set', sub: o.audioName }
+            : {
+                level: 'warn',
+                title: 'No audio set',
+                sub: 'Nothing is announced during the race',
+                fix: { go: 'setup', label: 'Choose one' }
+              }
+        );
     }
     // (what must be fixed first, then what is good to know, then what is ready)
     race.sort((a, b) => RANK[b.level] - RANK[a.level]);

@@ -131,6 +131,7 @@
           buttons.forEach((b, k) => {
             b.classList.toggle('on', k === i);
             b.setAttribute('aria-checked', String(k === i));
+            b.tabIndex = k === i ? 0 : -1; // (a radio group is one Tab stop; the arrows move inside it)
           });
           okBtn.textContent = list[i].ok || o.ok || list[i].label;
         };
@@ -160,6 +161,21 @@
           ev.preventDefault();
           finish(null);
         });
+        // (2.5.2) the keys of a radio group: the arrows move the choice, Enter on a choice answers with it
+        if (rows.addEventListener)
+          rows.addEventListener('keydown', ev => {
+            const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[ev.key];
+            if (step) {
+              ev.preventDefault();
+              pick((picked + step + list.length) % list.length);
+              buttons[picked].focus();
+            } else if (ev.key === 'Enter') {
+              ev.preventDefault();
+              if (ev.repeat) return; // (a held Enter, from the key that opened the question, is not an answer)
+              const at = buttons.indexOf(document.activeElement);
+              finish(list[at >= 0 ? at : picked].value); // (the choice that has the focus)
+            }
+          });
         pick(0);
         document.body.appendChild(d);
         d.showModal();

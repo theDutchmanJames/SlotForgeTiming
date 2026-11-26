@@ -435,7 +435,7 @@ const dialogOpen = ev => {
   );
 };
 // the buttons and the keys of the race screen
-function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update }) {
+function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update, undoHandLap }) {
   ui('stopbtn').onclick = ev => {
     if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
     actions.stop();
@@ -469,7 +469,7 @@ function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, 
       if (main) {
         ev.preventDefault();
         const l = Number(main[1]) - 1;
-        if (l < lanes) actions.call(l);
+        if (l < lanes) (ev.shiftKey ? undoHandLap : actions.call)(l); // (2.5.2: Ctrl + Shift + number takes back a lap counted by hand)
       }
       return;
     }
@@ -548,6 +548,8 @@ function raceShowAndLeave({ syncPerfLine, update }) {
   };
   live.leave = () => {
     clearInterval(live.tmWatch); // (audit 2026-11)
+    if (live.awake && api.raceAwake) api.raceAwake(false).catch(() => {}); // (2.5.2: the computer may sleep again)
+    live.awake = false;
     LiveCanvas.dispose(live.nodes);
     if (live.fsView) live.fsView.close();
     document.removeEventListener('keydown', live.fsKey);
@@ -1189,7 +1191,7 @@ async function renderRace() {
     </div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="champpanel" class="card chpanelbox" hidden></div>
-    <div class="rd-keys" aria-hidden="true"><span><kbd>Space</kbd>start · pause</span><span><kbd>1</kbd>…<kbd>${Math.min(lanes, 8)}</kbd>lap</span>${tokenSession ? '' : '<span><kbd>⇧</kbd>+<kbd>1</kbd>pit</span>'}<span><kbd>Ctrl</kbd>+<kbd>1</kbd>call</span><span><kbd>Y</kbd>yellow</span><span><kbd>R</kbd>red</span><span><kbd>S</kbd>stop</span><span><kbd>F</kbd>full screen</span><span><kbd>Esc</kbd>closes it</span></div>
+    <div class="rd-keys" aria-hidden="true"><span><kbd>Space</kbd>start · pause</span><span><kbd>1</kbd>…<kbd>${Math.min(lanes, 8)}</kbd>lap</span>${tokenSession ? '' : '<span><kbd>⇧</kbd>+<kbd>1</kbd>pit</span>'}<span><kbd>Ctrl</kbd>+<kbd>1</kbd>call</span><span><kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>1</kbd>take back a hand lap</span><span><kbd>Y</kbd>yellow</span><span><kbd>R</kbd>red</span><span><kbd>S</kbd>stop</span><span><kbd>F</kbd>full screen</span><span><kbd>Esc</kbd>closes it</span></div>
     <p class="muted rd-keyline">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''}${tokenSession ? '' : " · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off"} · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
     ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>${byTeam ? 'Team' : 'Driver'}</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}</div>`;
 
@@ -2292,6 +2294,12 @@ async function renderRace() {
   // (how long a screen update takes is measured for the Performance line, only while it is shown: 1.60.0)
   live.repaintNow = () => update(); // (audit 2026-11: app.js, when the Race tab is shown again)
   const update = () => {
+    // (2.5.2) no sleep while the race is on: from the start lights until it is saved or left (a break and the check of the results included)
+    const awake = ['countdown', 'running', 'paused', 'between', 'review'].includes(live.phase) || !!live.saving || !!live.rescue; // (review: also while the results are saved, or wait for Retry)
+    if (api.raceAwake && live.awake !== awake && live.alive !== false) {
+      live.awake = awake;
+      api.raceAwake(awake).catch(() => {});
+    }
     const t0 = typeof PerfUI !== 'undefined' && PerfUI.active() ? performance.now() : -1;
     if (live.pitSensors) live.pitSensors.sync();
     updateNow();
@@ -2580,7 +2588,38 @@ async function renderRace() {
   };
   const crossLane = lane => {
     const i = eng.cars.findIndex(c => c.lane === lane);
-    if (i >= 0) crossCar(i);
+    if (i < 0) return;
+    const c0 = eng.cars[i],
+      before = c0.laps.length,
+      // (the marks a crossing uses up, so taking the lap back gives them back: the next lap is an out lap, spans the red flag or the pause, as it was)
+      marks = { outlap: c0.outlap, redInterrupted: c0.redInterrupted, resumed: c0.resumed, pausedLap: c0.pausedLap };
+    crossCar(i);
+    // (2.5.2) a lap counted by hand (the Lap button or its key) can be taken back with Ctrl + Shift + the lane's number, while it is the car's latest lap
+    if (c0.laps.length > before) (live.handLast = live.handLast || {})[lane] = { car: c0, n: c0.laps.length - 1, marks };
+  };
+  const undoHandLap = lane => {
+    if (!['running', 'paused'].includes(live.phase)) return;
+    const h = (live.handLast || {})[lane],
+      i = h ? eng.cars.indexOf(h.car) : -1,
+      c = eng.cars[i];
+    if (!c || c.done || h.n !== c.laps.length - 1) {
+      ui('msg').textContent = `Lane ${lane + 1}: no lap counted by hand to take back (only the latest lap of the car, while it is racing).`;
+      return;
+    }
+    const gone = c.laps[h.n];
+    // (review: as the lap fix of the race does it: the Time Token stint, the best laps of the screens)
+    if (!lapFix({ op: 'removelap', car: i, lap: h.n, recalc: true })) return;
+    c.last -= gone; // (its next lap is timed from the crossing before the one taken back)
+    Object.entries(h.marks || {}).forEach(([k, v]) => {
+      if (v === undefined) delete c[k];
+      else c[k] = v;
+    });
+    delete live.handLast[lane];
+    eng.logEvent && eng.logEvent('lapundone', i, now(), { lap: h.n + 1, by: 'hand' });
+    ui('msg').textContent =
+      `Lane ${lane + 1}: lap ${h.n + 1} (counted by hand) taken back. Fuel, tyre wear and penalty points of that lap stay as they were.`;
+    checkpoint(true);
+    update();
   };
   const simulate = i => {
     const pace = (4200 + Math.random() * 1800) / speed;
@@ -4004,6 +4043,8 @@ Racing goes on, and saving is tried again with every change. To be safe, save th
       if (finalsOn) session.finals = { finals: fmode.finals, finalMode: fmode.finalMode };
     }
     try {
+      ui('msg').textContent = 'Saving the results…'; // (2.5.2: said while it is on its way, as a Time Token session does)
+      live.saving = true;
       if (api.saveResume && !(await checkpoint(true))) throw Error('Recovery could not be saved. Retry saving before finalizing.');
       live.cpOff = true;
       if (solo) {
@@ -4013,6 +4054,12 @@ Racing goes on, and saving is tried again with every change. To be safe, save th
         session.standings = session.standings.filter(x => Number(x.laps) > 0);
       }
       const savedId = await api.saveSession(session, laps);
+      live.saving = false;
+      live.rescue = null;
+      if (live.awake && api.raceAwake) {
+        live.awake = false; // (saved: the computer may sleep again)
+        api.raceAwake(false).catch(() => {});
+      }
       live.audioSavedId = savedId;
       try {
         AudioCalls.resultCalls(session, audioSet || {}).forEach(e =>
@@ -4036,6 +4083,7 @@ Racing goes on, and saving is tried again with every change. To be safe, save th
       if (typeof RaceOver !== 'undefined') roStart(session, savedId, laps).catch(() => roShow(''));
     } catch (x) {
       live.cpOff = false;
+      live.saving = false;
       live.rescue = { session, laps }; // (2.5.2: what Save results to a file writes)
       ui('msg').textContent = 'Could not save the results: ' + x.message + ' Nothing is lost yet: the race stays here until it is saved. ';
       const retry = document.createElement('button');
@@ -5046,7 +5094,7 @@ Undo puts it back while the race runs.`,
       else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
     });
   live.engine = () => eng; // for automated tests
-  raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update });
+  raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update, undoHandLap });
   let chartReload = 0;
   const chartOwner = live;
   live.reloadCharts = async () => {

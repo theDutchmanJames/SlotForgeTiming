@@ -136,7 +136,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   const clickHome = async b => { await E('view').onclick({ target: { closest: sel => (sel === 'button' ? { dataset: {}, ...b } : null) } }); await wait(30); return E('view').innerHTML.replace(/&quot;/g, '"'); };
   const assignments = () => run('state.settings.assignments.hs1');
   const rowsOf = h => h.split('data-row="').slice(1);
-  const options = (rowHtml, k) => { const m = new RegExp('<select data-k="' + k + '"[^>]*>(.*?)</select>').exec(rowHtml); return m ? [...m[1].matchAll(/<option value="([^"]*)"( selected)?>([^<]*)</g)].map(x => ({ v: x[1], sel: !!x[2], t: x[3] })) : null; };
+  const options = (rowHtml, k) => { const m = new RegExp('<select data-k="' + k + '"[^>]*>(.*?)</select>').exec(rowHtml); return m ? [...m[1].matchAll(/<option value="([^"]*)"( selected)?(?: disabled)?>([^<]*)</g)].map(x => ({ v: x[1], sel: !!x[2], t: x[3] })) /* (2.5.2: a driver on another lane is disabled, grey) */ : null; };
 
   // 1.10.1: the Team choice is only there in a session that has teams (an Endurance Race in one go, or heats whose participants are teams)
   const enduSetup = { sessionType: 'endurance', enduranceBy: 'laps', laps: 10 };

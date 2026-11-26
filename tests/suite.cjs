@@ -351,4 +351,5 @@ module.exports = [
   ['secondhome.test.js', 'node-test'],
   ['solo.test.js', 'node-test'],
   ['auditfixes.test.js', 'node-test'],
+  ['qol.test.js', 'node-test'],
 ];

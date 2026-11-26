@@ -1631,6 +1631,34 @@ function registerParallelHandlers() {
 function registerResumeAndLiveHandlers() {
   // the race save is written in the background (1.60.0): the program does not wait for the disk, a read waits for a save that is on its way
   ipcMain.handle('resume:get', () => lifecycle.resume());
+  // (2.5.2) while a race is on, the computer and its screen do not go to sleep (Windows power saving would stop the timing and the screens)
+  let awakeId = null;
+  const letSleep = () => {
+    const { powerSaveBlocker } = require('electron');
+    if (awakeId !== null && powerSaveBlocker.isStarted(awakeId)) powerSaveBlocker.stop(awakeId);
+    awakeId = null;
+  };
+  ipcMain.handle('race:awake', (e, on) => {
+    const { powerSaveBlocker } = require('electron');
+    if (on && awakeId === null) {
+      awakeId = powerSaveBlocker.start('prevent-display-sleep');
+      // (review) the window that asked reloads or goes away: nothing is racing any more
+      const wc = e.sender;
+      const off = () => {
+        letSleep();
+        wc.removeListener('render-process-gone', off);
+        wc.removeListener('did-start-navigation', nav);
+        wc.removeListener('destroyed', off);
+      };
+      const nav = (ev, url, inPage, isMain) => {
+        if (isMain !== false && !inPage) off();
+      };
+      wc.on('render-process-gone', off);
+      wc.on('did-start-navigation', nav);
+      wc.on('destroyed', off);
+    } else if (!on) letSleep();
+    return awakeId !== null;
+  });
   ipcMain.handle('resume:save', (e, snap) => {
     resourceOwner(e);
     return lifecycle.saveResume(snap);

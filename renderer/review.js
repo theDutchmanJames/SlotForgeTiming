@@ -138,7 +138,7 @@ const Review = (() => {
           : `<td class="num rv-champ">${((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0) + (eng.pluginPointsOf?.(c, x.pos) || 0)}</td>`;
         return `<tr><td>${x.pos}</td><td>${wins(x) ? cup + ' ' : ''}${name}${c.dq ? ' <span class="muted">(disqualified)</span>' : c.retired ? ` <span class="muted">(${c.dmgOut ? 'out by damage' : c.failOut ? 'out by a failure' : c.retiredBy === 'director' ? 'DNF: retired by the Race Director' : 'out'})</span>` : ''}${adjText ? `<br><small class="muted">adjusted: ${esc(adjText)}</small>` : ''}${bopNote ? `<br><small class="muted">Balance of Power: ${esc(bopNote)}</small>` : ''}${tyreNote ? `<br><small class="muted">Tyres: ${esc(tyreNote)}</small>` : ''}${damageNote ? `<br><small class="muted">Damage: ${esc(damageNote)}</small>` : ''}${failureNote ? `<br><small class="muted">Failures: ${esc(failureNote)}</small>` : ''}</td><td class="num">${lapsCell}</td>
         <td class="num">${timeCell}</td>${pointsCell}<td>${on ? `${c.points} pts${pen ? ` · ${secs(pen)}` : ''}${c.pending.length ? ` · ${c.pending.length} not served` : ''}` : ''}</td>
-        <td class="actions">${on && c.points ? `<button class="btn" data-rv="nullify" data-car="${i}">Clear points</button> ` : ''}${on && c.undoPoints ? `<button class="btn" data-rv="restorepoints" data-car="${i}">Restore (${c.undoPoints} pts)</button> ` : ''}${c.dq ? `<button class="btn" data-rv="undq" data-car="${i}">Reinstate</button>` : `<button class="btn" data-rv="dq" data-car="${i}">Disqualify</button>`}
+        <td class="actions">${on && c.points ? `<button class="btn" data-rv="nullify" data-car="${i}">Clear points</button> ` : ''}${on && c.undoPoints ? `<button class="btn" data-rv="restorepoints" data-car="${i}">Restore (${c.undoPoints} pts)</button> ` : ''}${c.retiredBy === 'director' && !c.dq ? `<button class="btn" data-rv="undnf" data-car="${i}">Undo DNF</button> ` : ''}${c.dq ? `<button class="btn" data-rv="undq" data-car="${i}">Reinstate</button>` : `<button class="btn" data-rv="dq" data-car="${i}">Disqualify</button>`}
         ${canAdjust ? `<button class="btn" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}" title="Add or take off race time, laps${champ ? ' or championship points' : ''}">${adjOpen ? 'Hide adjust' : 'Adjust'}</button> ` : ''}<button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></td></tr>${secRow}${pending}${adjRow}${laps}`;
       })
       .join('');
@@ -369,7 +369,7 @@ const Review = (() => {
           <div class="rf-who"><strong>${wins(x) ? Icons.trophy({ size: 16 }) + ' ' : ''}${esc(c.driverName)}</strong><span class="muted">Lane ${c.lane + 1}${c.carName ? ` · ${esc(c.carName)}` : ''} · <b class="rfinish-state">${esc(state)}</b></span>${chips ? `<span class="rf-chips">${chips}</span>` : ''}</div>
           <button type="button" class="rf-spark" data-rv="laps" data-excl="1" data-car="${i}" title="The laps of ${esc(c.driverName)}" aria-label="Open the laps of ${esc(c.driverName)}">${lapChart(c, { cls: 'rf-sparkline', h: 32, med, sc: !!eng.safetyCar, label: `Laps of ${c.driverName}` })}</button>
           ${num('Laps', eng.lapsOf(c), c.adjLaps ? `${c.laps.length} driven` : '')}${num('Total', c.dq ? 'DQ' : fmt(total), gap)}${num('Best lap', c.best === null || c.best === undefined ? '–' : fmt(c.best))}${champ ? num('Points', ((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0) + (eng.pluginPointsOf?.(c, x.pos) || 0)) : ''}${on ? num('Penalties', `${c.points || 0} pts`) : ''}
-          <div class="rfinish-actions"><button class="btn sm${open ? ' on' : ''}" data-rv="laps" data-excl="1" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Review laps'}${redCount ? ` (${redCount} red-flag ${redCount === 1 ? 'lap' : 'laps'})` : ''}</button>${canAdjust ? `<button class="btn sm" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}">${adjOpen ? 'Hide adjustments' : 'Adjust result'}</button>` : ''}${on && c.points ? `<button class="btn sm" data-rv="nullify" data-car="${i}">Clear points</button>` : ''}${on && c.undoPoints ? `<button class="btn sm" data-rv="restorepoints" data-car="${i}">Restore points</button>` : ''}${c.dq ? `<button class="btn sm" data-rv="undq" data-car="${i}">Reinstate driver</button>` : `<button class="btn sm danger" data-rv="dq" data-car="${i}">Disqualify driver</button>`}</div>
+          <div class="rfinish-actions"><button class="btn sm${open ? ' on' : ''}" data-rv="laps" data-excl="1" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Review laps'}${redCount ? ` (${redCount} red-flag ${redCount === 1 ? 'lap' : 'laps'})` : ''}</button>${canAdjust ? `<button class="btn sm" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}">${adjOpen ? 'Hide adjustments' : 'Adjust result'}</button>` : ''}${on && c.points ? `<button class="btn sm" data-rv="nullify" data-car="${i}">Clear points</button>` : ''}${on && c.undoPoints ? `<button class="btn sm" data-rv="restorepoints" data-car="${i}">Restore points</button>` : ''}${c.retiredBy === 'director' && !c.dq ? `<button class="btn sm" data-rv="undnf" data-car="${i}" title="Classify this car by its laps again">Undo DNF</button>` : ''}${c.dq ? `<button class="btn sm" data-rv="undq" data-car="${i}">Reinstate driver</button>` : `<button class="btn sm danger" data-rv="dq" data-car="${i}">Disqualify driver</button>`}</div>
         </div>
         ${notes ? `<div class="rf-notes">${notes}</div>` : ''}${adjOpen ? `<div class="rfinish-detail">${adjustHtml(c, i, { champ, settings: o.settings })}</div>` : ''}
       </article>`;
@@ -698,6 +698,10 @@ const Review = (() => {
         return eng.setDq(c.car, true);
       case 'undq':
         return eng.setDq(c.car, false);
+      case 'undnf':
+        return !!eng.setDnf && eng.setDnf(c.car, false);
+      case 'dnf':
+        return !!eng.setDnf && eng.setDnf(c.car, true);
       case 'invalid':
         return eng.setInvalid(c.car, c.lap, !!c.on);
       case 'removelap':
@@ -734,6 +738,10 @@ const Review = (() => {
         return d('Result', 'disqualified', { op: 'undq', car: c.car });
       case 'undq':
         return d('Result', 'reinstated', { op: 'dq', car: c.car });
+      case 'undnf':
+        return d('Result', 'DNF taken back: classified by its laps', { op: 'dnf', car: c.car });
+      case 'dnf':
+        return d('Result', 'DNF again', { op: 'undnf', car: c.car });
       case 'adjust': {
         const bits = [];
         if (c.ms) bits.push((c.ms > 0 ? '+' : '−') + secs(Math.abs(c.ms)));

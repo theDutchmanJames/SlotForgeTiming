@@ -345,6 +345,7 @@ contextBridge.exposeInMainWorld('api', {
     return () => listeners.command.delete(f);
   },
   liveGet: () => call('live:get'),
+  raceAwake: on => call('race:awake', !!on), // (2.5.2: no sleep while a race is on)
   rescueResults: (session, laps, name) => call('results:rescue', session, laps, name), // (2.5.2: the results to a file when saving failed)
   writeEpoch: () => writeEpoch,
   liveClosed: () => ipcRenderer.send('live:closed'), // (2.5.0: the race computer left its race)

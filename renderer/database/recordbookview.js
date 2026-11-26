@@ -14,14 +14,21 @@ const RB_ICON = {
 };
 // everything the book needs: the sessions, the records (every page), the names. (audit 2026-11) Read once and kept while nothing is written: a filter, a
 // search or Show more used to read every race and every record page again, seconds with a large history.
-let rbCache = null;
+let rbCache = null,
+  rbReadAt = 0;
 async function rbLoad() {
   const epoch = api.writeEpoch ? api.writeEpoch() : null;
-  if (epoch !== null && rbCache && rbCache.epoch === epoch && Date.now() - rbCache.at < 10 * 60000) return rbCache.data;
+  if (epoch !== null && rbCache && rbCache.epoch === epoch && Date.now() - rbCache.at < 10 * 60000) {
+    rbReadAt = rbCache.at;
+    return rbCache.data;
+  }
   const data = await rbRead();
+  rbReadAt = Date.now(); // (review: when it was really read, kept or not)
   if (epoch !== null && api.writeEpoch() === epoch) rbCache = { epoch, at: Date.now(), data };
   return data;
 }
+// (2.5.2) when the book read what it shows (it keeps that for a while, to be quick), as 20:14
+const rbAsOf = () => new Date(rbReadAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 async function rbRead() {
   const [sessions, tracks, drivers, champs] = await Promise.all([
     api.list('sessions'),
@@ -158,7 +165,7 @@ async function renderRecordBook(box, o = {}) {
   const raced = drivers.filter(d => sessions.some(s => (s.standings || []).some(x => x.driverId === d.id)));
   const shownRecs = f.allRecs ? recs : recs.slice(0, 4);
   box.innerHTML = `<div class="rb">
-<section aria-label="Track records"><div class="rb-h"><h3>Track records</h3><span>The fastest lap ever driven on each track${recs.length > 4 ? ` · <button type="button" class="rb-link" data-rb-allrecs>${f.allRecs ? 'Show 4' : `All ${recs.length} tracks ›`}</button>` : ''}</span></div>${recs.length ? `<div class="rb-recs">${shownRecs.map(recHtml).join('')}</div>` : '<p class="muted">No records yet.</p>'}</section>
+<section aria-label="Track records"><div class="rb-h"><h3>Track records</h3><span>The fastest lap ever driven on each track${recs.length > 4 ? ` · <button type="button" class="rb-link" data-rb-allrecs>${f.allRecs ? 'Show 4' : `All ${recs.length} tracks ›`}</button>` : ''}</span><span class="rb-asof">Data as of ${esc(rbAsOf())}<button type="button" class="btn" data-rb-refresh title="Read the results again now">↻ Refresh</button></span></div>${recs.length ? `<div class="rb-recs">${shownRecs.map(recHtml).join('')}</div>` : '<p class="muted">No records yet.</p>'}</section>
 <div class="rb-strip" role="search"><label class="rb-search">${RB_ICON.search}<span class="hs-vh">Find a race</span><input type="search" data-rb-q value="${esc(f.q)}" placeholder="Race or driver" maxlength="100"></label>
 <label class="rb-sel"><span>Track</span><select data-rb-f="track">${opt('', 'All', f.track)}${tracks.map(t => opt(t.id, t.name || 'Track', f.track)).join('')}</select></label>
 <label class="rb-sel"><span>Driver</span><select data-rb-f="driver">${opt('', 'All', f.driver)}${raced.map(d => opt(d.id, d.name || 'Driver', f.driver)).join('')}</select></label>
@@ -233,6 +240,10 @@ async function renderRecordBook(box, o = {}) {
     }
   };
   box.onclick = async ev => {
+    if (ev.target.closest && ev.target.closest('[data-rb-refresh]')) {
+      rbCache = null; // (2.5.2: read again now)
+      return renderRecordBook(box, o);
+    }
     const t = ev.target;
     const b = t.closest('button');
     if (b && b.dataset.recMore) {

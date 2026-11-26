@@ -7957,3 +7957,11 @@ html .rc-bar .rc-fix{height:30px;padding:0 14px;white-space:nowrap}
 .lv-done{border-color:#2fbf71 !important;box-shadow:inset 0 0 0 1px #2fbf71}
 .lv-ack{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;max-width:min(520px,92vw);padding:10px 14px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--ink);font-size:13px;line-height:1.4;box-shadow:0 12px 30px rgba(0,0,0,.4)}
 .lv-ack[hidden]{display:none}
+/* (2.5.2) Start a race: Draw lanes and Clear all at the right of the bar over the lanes, the note of a draw with Undo */
+#hmc-start .hs-tools{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+#hmc-start .hs-tools .btn{min-height:0;padding:4px 11px;font-size:12.5px}
+#hmc-start .hs-drawn{color:#2fbf71;font-size:12.5px}
+#hmc-start .hs-drawn .linkbtn{color:#2fbf71}
+/* (2.5.2) Record Book: when its data was read, and Refresh */
+.rb-asof{display:inline-flex;align-items:center;gap:10px;margin-left:auto;color:var(--muted);font-size:12.5px}
+.rb-asof .btn{min-height:0;padding:4px 11px;font-size:12.5px}

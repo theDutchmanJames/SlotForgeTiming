@@ -2544,6 +2544,27 @@
       log('reinstated', i, t, { by: 'retire' });
       return true;
     };
+    // (2.5.2) the check of the results: a DNF given by the Race Director taken back (the car is classified by its laps), or given again
+    R.setDnf = (i, on) => {
+      const c = R.cars[i];
+      if (!c || R.status !== 'finished' || c.dq) return false;
+      if (on) {
+        // (review: only the DNF the Race Director gave and took back can be given again here; a DNF of a car that raced on is not made in the check)
+        if (c.retired || !c.dnfUndone) return false;
+        c.retired = true;
+        c.retiredBy = 'director';
+        c.retiredAt = c.dnfUndone;
+        c.dnfUndone = null;
+        c.done = true;
+        return true;
+      }
+      if (c.retiredBy !== 'director') return false;
+      c.dnfUndone = c.retiredAt || true;
+      c.retired = false;
+      c.retiredBy = '';
+      c.retiredAt = null;
+      return true;
+    };
     R.failureNoteOf = i => (FL && R.cars[i] ? Fl.noteOf(R.cars[i], R.events, i) : ''); // what the failures did to car i in this race, in words (empty when nothing)
 
     // ---- the end-of-race review: the Race Director corrects the result before it is saved ----

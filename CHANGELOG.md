@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Small things that help on a race night:**
+  - The computer and its screen stay awake while a race is on.
+  - **Ctrl + Shift + lane number** takes back a lap counted by hand.
+  - **Undo DNF** when you check the results.
+  - "Saving the results…" while a race is saved.
+  - Phones reconnect at once when you tap "Reconnecting", or when they wake up, and the Race Director page names the race and the heat.
+  - Start a race: **Draw lanes** (by lot, with Undo) and **Clear all**; a driver or car already on another lane is greyed out.
+  - The race check says when the setup uses a deleted layout, audio set or system, or a Solo layout without Followed widgets.
+  - Record Book: "Data as of" and **Refresh**.
+  - Choice questions work with the arrow keys and Enter.
 - **Race night safety nets:**
   - Stop in a heat race asks: **End this heat** (then the break and the next heat) or **End the event**.
   - **Retire car** on every lane card (⋯), also on the phone: the car is listed as DNF and the race no longer waits for it. Undo puts it back.

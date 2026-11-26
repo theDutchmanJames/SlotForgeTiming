@@ -136,6 +136,32 @@ const LiveView = (() => {
     const box = el.querySelector('.lv-airfacts');
     if (box && box.innerHTML !== facts) box.innerHTML = facts;
   }
+  // (2.5.2) on the Race Director and Tokens pages: the race, the heat and the leader's lap, so it is clear which heat the buttons act on
+  let ctlMemo = { key: '', text: '' };
+  function controlTitle(d) {
+    // (review: worked out once per message, not on every paint of the clock)
+    const key = `${V.stat().raceId}|${d && d.seq}|${d && d.phase}`;
+    if (ctlMemo.key === key) return ctlMemo.text;
+    const name = String(V.stat().title || '').split(' · ')[0],
+      h = d && d.heat,
+      heat =
+        h && typeof h.idx === 'number' ? (h.final ? `Final ${h.final}` : h.idx < h.count ? `Heat ${h.idx + 1} of ${h.count}` : '') : '';
+    let lap = '';
+    try {
+      const e = V.engine(),
+        lead = ['running', 'paused'].includes(d.phase) && e && e.type === 'race' && e.standings ? e.standings()[0] : null; // (practice and qualifying are about a best lap)
+      if (lead && lead.car && !lead.car.done) {
+        const n = e.lapsOf(lead.car) + 1,
+          limit = Number(e.lapLimit) > 0 ? Number(e.lapLimit) : 0;
+        lap = limit ? `lap ${Math.min(n, limit)} of ${limit}` : `lap ${n}`;
+      }
+    } catch (x) {
+      /* no lap then */
+    }
+    const text = [name, heat, lap].filter(Boolean).join(' · ');
+    ctlMemo = { key, text };
+    return text;
+  }
   function status() {
     air();
     const el = $('lv-status');
@@ -150,7 +176,7 @@ const LiveView = (() => {
     if (!line) return;
     const k = live()
         ? [
-            V.stat().title,
+            isControl(page) ? controlTitle(d) : V.stat().title,
             d.phase,
             PHASE[d.phase] || '',
             left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''
@@ -1363,6 +1389,16 @@ const LiveView = (() => {
     if (!force && key === linkKey) return;
     linkKey = key;
     el.hidden = !text;
+    // (2.5.2) a tap on Reconnecting tries at once
+    if (tone === 'warn' && api.liveReconnect) {
+      if (el.setAttribute) el.setAttribute('role', 'button');
+      el.title = 'Tap to reconnect now';
+      el.onclick = () => api.liveReconnect();
+    } else {
+      el.removeAttribute && el.removeAttribute('role');
+      el.title = '';
+      el.onclick = null;
+    }
     if (el.classList) {
       el.classList.toggle('ok', tone === 'ok');
       el.classList.toggle('warn', tone === 'warn');

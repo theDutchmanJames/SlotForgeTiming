@@ -192,6 +192,8 @@ const REVIEW_OPS = {
   restorepoints: CAR,
   dq: CAR,
   undq: CAR,
+  undnf: CAR,
+  dnf: CAR,
   adjustreset: CAR,
   forgive: { car: IDX, k: IDX },
   addtime: { car: IDX, ms: v => NUM(DAY_MS)(v) && v > 0 },

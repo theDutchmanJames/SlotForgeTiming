@@ -91,6 +91,7 @@
       retryMs = Math.min(30000, retryMs * 2);
     });
     es.addEventListener('static', e => {
+      lastEventAt = Date.now();
       try {
         const s = JSON.parse(e.data);
         lists.static.forEach(f => f(s));
@@ -99,6 +100,7 @@
       }
     });
     es.addEventListener('push', e => {
+      lastEventAt = Date.now();
       try {
         const d = JSON.parse(e.data);
         lists.push.forEach(f => f(d));
@@ -107,6 +109,32 @@
       }
     });
   };
+  let lastEventAt = 0;
+  const reconnectNow = force => {
+    if (!force && link.connected && es && es.readyState === 1) return false;
+    if (retryT) clearTimeout(retryT);
+    retryT = null;
+    retryMs = 2000;
+    if (es) {
+      try {
+        es.close();
+      } catch {
+        /* gone */
+      }
+      es = null;
+    }
+    stream();
+    return true;
+  };
+  if (typeof document !== 'undefined' && document.addEventListener)
+    document.addEventListener('visibilitychange', () => {
+      // (a phone that slept may hold a connection that only looks open: nothing came for a while, so a new one)
+      if (document.visibilityState === 'visible' && (lists.push.size || lists.static.size)) reconnectNow(Date.now() - lastEventAt > 5000);
+    });
+  if (typeof window.addEventListener === 'function')
+    window.addEventListener('online', () => {
+      if (lists.push.size || lists.static.size) reconnectNow();
+    });
   window.api = {
     web: true,
     schema: () => getJson('/api/schema'),
@@ -141,6 +169,8 @@
       return () => lists.push.delete(f);
     },
     liveLink: () => ({ ...link }),
+    // (2.5.2) reconnect now: a tap on the Reconnecting pill, or a phone that wakes up or gets its wifi back (no waiting for the next try)
+    liveReconnect: () => reconnectNow(true),
     onLiveLink: f => {
       linkLists.add(f);
       return () => linkLists.delete(f);
