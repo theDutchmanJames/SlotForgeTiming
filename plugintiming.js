@@ -31,7 +31,8 @@ class TimingHost {
     this.values = {};
     this.lastAlive = clock();
     this.watch = setInterval(() => {
-      if (this.connected && this.clock() - this.lastAlive > 1500) this.fail('Main window heartbeat expired.');
+      // (audit 2026-11) 4 s, not 1.5: a busy window (a PDF, a big redraw) must not red-flag a race whose hardware is fine
+      if (this.connected && this.clock() - this.lastAlive > 4000) this.fail('Main window heartbeat expired.');
     }, 250);
     this.watch.unref?.();
     runtime.timing = this;
@@ -136,7 +137,7 @@ class TimingHost {
     const now = this.clock(),
       converted = at + this.offset;
     ok(
-      Number.isFinite(at) && now - converted <= 2000 && converted - now <= this.uncertainty + 5,
+      Number.isFinite(at) && now - converted <= 5000 && converted - now <= this.uncertainty + 5, // (audit 2026-11: a backlog after a short stall is still counted)
       'Timing timestamp is stale or outside the synchronized clock.'
     );
     return Math.min(now, converted);

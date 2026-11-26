@@ -110,12 +110,27 @@ const tmNote = text => {
   hw.lines.push('          ' + text);
   tmShow();
 };
+// (audit 2026-11) drawn at most every 100 ms, as the DS log: every lane letter used to join all 3000 lines and lay the page out again
+let tmShowT = null;
 const tmShow = () => {
-  const l = document.getElementById('hw-log');
-  if (l) {
-    l.textContent = hw.lines.join('\n');
-    l.scrollTop = l.scrollHeight;
+  if (!hw.open) {
+    // (not connected: nothing streams in, so it is drawn at once and no timer is left behind)
+    const l = document.getElementById('hw-log');
+    if (l) {
+      l.textContent = hw.lines.join('\n');
+      l.scrollTop = l.scrollHeight;
+    }
+    return;
   }
+  if (tmShowT) return;
+  tmShowT = setTimeout(() => {
+    tmShowT = null;
+    const l = document.getElementById('hw-log');
+    if (l) {
+      l.textContent = hw.lines.join('\n');
+      l.scrollTop = l.scrollHeight;
+    }
+  }, 100);
 };
 const tmMsg = t => {
   const m = document.getElementById('hw-msg');
@@ -326,6 +341,13 @@ async function tmOpenNow(setup) {
   }
 }
 async function tmClose() {
+  if (tmShowT) {
+    // (the log is drawn now, and no timer is left behind)
+    clearTimeout(tmShowT);
+    tmShowT = null;
+    const l = document.getElementById('hw-log');
+    if (l) l.textContent = hw.lines.join('\n');
+  }
   hw.open = false;
   Trackmate.link.setConnected(false);
   tmClearLeds();
@@ -543,33 +565,61 @@ function renderHardwareSettings(box) {
       tmMsg(x.name === 'NotFoundError' ? 'No device chosen.' : 'Could not find a device: ' + x.message);
     }
   };
-  $('hw-serial').onclick = () => find('serial');
+  // (audit 2026-11) while a race is open the Trackmate keeps its connection, sensors and lanes: a change would end the race or count laps for the wrong car
+  const tmLocked = () => typeof raceKept === 'function' && raceKept();
+  const lockedSay = () => (tmMsg('Finish or leave the race before changing the Trackmate.'), true);
+  if (tmLocked()) {
+    [
+      'hw-serial',
+      'hw-virtual',
+      'hw-hid',
+      'hw-conn',
+      'hw-lanes',
+      'hw-nc',
+      'hw-deb',
+      'hw-init',
+      'hw-baud',
+      'hw-data',
+      'hw-parity',
+      'hw-stop'
+    ].forEach(id => {
+      const el = $(id);
+      if (el) el.disabled = true;
+    });
+    box.querySelectorAll('[data-sensor],[data-tmx-relay]').forEach(el => (el.disabled = true));
+    tmMsg('A race is open: the Trackmate connection, sensors and lanes stay as they are until it is finished or left.');
+  }
+  $('hw-serial').onclick = () => (tmLocked() ? lockedSay() : find('serial'));
   $('hw-virtual').onclick = async () => {
+    if (tmLocked()) return lockedSay();
     await tmUseVirtual();
     renderHardwareSettings(box);
   };
-  $('hw-hid').onclick = () => find('hid');
+  $('hw-hid').onclick = () => (tmLocked() ? lockedSay() : find('hid'));
   $('hw-conn').onclick = async () => {
+    if (tmLocked() && hw.open) return lockedSay();
     if (hw.open) await tmClose();
     else await tmOpen(hw.kind === 'serial');
     renderHardwareSettings(box);
   };
   $('hw-auto').onchange = e => save({ tmAuto: e.target.checked });
   $('hw-lanes').onchange = async e => {
+    if (tmLocked()) return lockedSay();
     await save({ tmLanes: Math.max(1, Math.min(8, Math.round(Number(e.target.value)) || 2)) });
     if (hw.open && hw.kind === 'serial') await tmSetup();
     renderHardwareSettings(box);
   }; // a connected Trackmate hears the new number of lanes at once
-  $('hw-nc').onchange = e => save({ tmNC: e.target.value === '1' });
+  $('hw-nc').onchange = e => (tmLocked() ? lockedSay() : save({ tmNC: e.target.value === '1' }));
   $('hw-deb').onchange = e => save({ tmDeb: Math.max(0, Math.min(9, Math.round(Number(e.target.value)) || 0)) });
   box.onchange = async ev => {
     // a sensor gets another lane
     const t = ev.target;
     if (!t || !t.dataset || t.dataset.sensor === undefined) return;
+    if (tmLocked()) return (lockedSay(), renderHardwareSettings(box));
     await save({ tmLaneMap: Trackmate.swapLane(Trackmate.laneMap(state.settings.tmLaneMap), Number(t.dataset.sensor), Number(t.value)) });
     renderHardwareSettings(box);
   };
-  $('hw-init').onclick = () => tmSetup();
+  $('hw-init').onclick = () => (tmLocked() ? lockedSay() : tmSetup());
   // (2.4.0, "Sensor Bench") the Live monitor and the Track power tab: drawn now, then by themselves
   tmMonDraw();
   tmMonTick();
@@ -585,6 +635,7 @@ function renderHardwareSettings(box) {
       }
       if (b.dataset.tmxPower !== undefined) return tmPower(b.dataset.tmxPower === '1');
       if (b.dataset.tmxRelay !== undefined) {
+        if (tmLocked()) return lockedSay();
         await save({ tmRelayNC: b.dataset.tmxRelay === '1' });
         tmPowerDraw();
       }

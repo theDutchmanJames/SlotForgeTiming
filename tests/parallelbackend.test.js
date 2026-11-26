@@ -43,11 +43,11 @@ assert(fs.existsSync(binary), 'The native helper must be included in the release
   // Explicit shutdown, masked writes and watchdog are exercised on the compiled helper directly.
   const raw = launch(), lines = []; let buffer = '';
   raw.stdout.on('data', b => { buffer += b; let i; while ((i = buffer.indexOf('\n')) >= 0) { const s = buffer.slice(0, i).trim(); buffer = buffer.slice(i + 1); if (s) lines.push(JSON.parse(s)); } });
-  const until = async predicate => { for (let i = 0; i < 150 && !predicate(); i++) await wait(20); assert(predicate(), 'Native helper response timed out: ' + JSON.stringify(lines.slice(-3))); };
+  const until = async (predicate, tries = 150) => { for (let i = 0; i < tries && !predicate(); i++) await wait(20); assert(predicate(), 'Native helper response timed out: ' + JSON.stringify(lines.slice(-3))); };
   try {
     await until(() => lines.some(e => e.type === 'hello')); raw.stdin.write('START 888 1 3 32 2 0\nO 1 0\nSNAP\n'); await until(() => lines.some(e => e.type === 'snapshot')); assert.equal(lines.find(e => e.type === 'snapshot').data, 1);
     raw.stdin.write('STOP\nSNAP\n'); await until(() => lines.filter(e => e.type === 'snapshot').length === 2); assert.equal(lines.filter(e => e.type === 'snapshot')[1].data, 2);
-    raw.stdin.write('START 888 1 3 32 2 0\n'); await until(() => lines.some(e => e.type === 'error')); assert.match(lines.find(e => e.type === 'error').message, /heartbeat/);
+    raw.stdin.write('START 888 1 3 32 2 0\n'); await until(() => lines.some(e => e.type === 'error'), 300); /* (audit 2026-11: the helper waits 4 s for the app's heartbeat) */ assert.match(lines.find(e => e.type === 'error').message, /heartbeat/);
     console.log('ok  compiled helper masks output writes, returns to inactive polarity and stops on heartbeat loss');
   } finally { raw.stdin.end(); await wait(60); raw.kill(); }
 })().catch(x => { console.error(x); process.exitCode = 1; });

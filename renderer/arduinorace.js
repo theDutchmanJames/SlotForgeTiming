@@ -111,6 +111,7 @@
         lanePowerOff.forEach(lane => L.send(C.lanePower(lane, false)));
         lastLights = null;
         sync();
+        if (o.onReboot) o.onReboot(); // (audit 2026-11: the race is told)
       }
     });
     // the keep-alive: every second while bound (the page sends one too while its tab is open; two are harmless)
@@ -129,6 +130,7 @@
     // the track power at the start, as the Trackmate setting says (on or off; race.js calls power(true) at lights out when it is its choice)
     let wantPower = setup.startPower !== 'off'; // the track power the race wants now (a box that comes back from its safe state is told)
     L.send(C.mainPower(wantPower));
+    if (L.setPower) L.setPower(wantPower); // (audit 2026-11: the link knows it too, so the first Track Call press in 'power' mode switches the right way)
     sync();
     return {
       sync,

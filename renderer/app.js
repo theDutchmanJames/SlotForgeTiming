@@ -535,7 +535,13 @@ function startHwDetect() {
   HwDetect.start({
     context: () => {
       const chosen = Hardware.timingChosen(state.settings);
-      return { settings: state.settings, chosen, open: !!timingConnectedNow()[chosen], racing: raceKept() };
+      return {
+        settings: state.settings,
+        chosen,
+        open: !!timingConnectedNow()[chosen],
+        racing: raceKept(),
+        faulted: typeof live !== 'undefined' && !!live && live.linkFault === chosen // (audit 2026-11)
+      };
     },
     connect: async (id, port) => {
       if (hwPortUse[id] && (await hwPortUse[id](port))) {

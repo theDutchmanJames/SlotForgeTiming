@@ -78,12 +78,18 @@ const abNote = text => {
   ab.lines.push('          ' + text);
   abShow();
 };
+// (audit 2026-11) drawn at most every 100 ms: every line used to join all 3000 lines and lay the page out again
+let abShowT = null;
 const abShow = () => {
-  const l = document.getElementById('ab-log');
-  if (l) {
-    l.textContent = ab.lines.join('\n');
-    l.scrollTop = l.scrollHeight;
-  }
+  if (abShowT) return;
+  abShowT = setTimeout(() => {
+    abShowT = null;
+    const l = document.getElementById('ab-log');
+    if (l) {
+      l.textContent = ab.lines.join('\n');
+      l.scrollTop = l.scrollHeight;
+    }
+  }, 100);
 };
 const abMsg = t => {
   const m = document.getElementById('ab-msg');

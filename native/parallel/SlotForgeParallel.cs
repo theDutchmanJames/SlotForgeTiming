@@ -83,7 +83,7 @@ class Program {
             if (!Running) return;
             try {
                 if (Failed) throw new InvalidOperationException("Timing buffer overflow. Connection stopped; no samples were silently discarded.");
-                if (Clock() - LastHeartbeat > 1800) throw new InvalidOperationException("App heartbeat lost. Assigned outputs were switched off.");
+                if (Clock() - LastHeartbeat > 4000) throw new InvalidOperationException("App heartbeat lost. Assigned outputs were switched off.");
                 Sample();
             } catch (Exception x) { Fail(x); }
         }

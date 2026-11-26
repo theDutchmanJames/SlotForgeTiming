@@ -321,6 +321,11 @@ async function deskAct(b, box) {
       name: (HwDesk.deviceOf(ctx.chosen) || {}).name,
       settings: state.settings
     });
+  // (audit 2026-11) while a race is open the timing hardware is not disconnected or remapped from here (it would end the race, or count laps for the wrong car)
+  if ((act === 'disconnect' || act === 'order' || act === 'use') && typeof raceKept === 'function' && raceKept()) {
+    deskNote = 'Finish or leave the race before disconnecting or changing the timing hardware.';
+    return renderHardwareArea(box);
+  }
   if (act === 'disconnect') {
     b.disabled = true;
     try {

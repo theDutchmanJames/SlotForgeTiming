@@ -87,6 +87,7 @@
     };
     // bytes from the port; returns the whole messages (for the monitor screen)
     L.feed = bytes => {
+      L.lastDataAt = typeof performance !== 'undefined' ? performance.now() : Date.now(); // (audit 2026-11: when the interface last sent anything; a race notices silence)
       const arrival = clock(),
         msgs = parser.feed(bytes);
       msgs.forEach(m => {

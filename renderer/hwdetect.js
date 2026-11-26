@@ -36,7 +36,9 @@
     const known = rememberedFor(settings, info, ctx.chosen);
     // (2.4.0 review) "connect automatically" switched off on its page: the device is left alone
     const auto = { trackmate: settings.tmAuto, arduino: settings.abAuto }[known] !== false;
-    if (known && known === ctx.chosen) return ctx.open || ctx.racing || !auto ? { action: 'none' } : { action: 'connect', hw: known };
+    // (audit 2026-11) ctx.faulted: the race lost exactly this device: plugging it back in connects it again (the restart stays manual)
+    if (known && known === ctx.chosen)
+      return ctx.open || (ctx.racing && !ctx.faulted) || !auto ? { action: 'none' } : { action: 'connect', hw: known };
     if (known) return ctx.open || ctx.racing ? { action: 'none' } : { action: 'switch', hw: known }; // (the hardware in use works: two devices plugged in is no question)
     if ((settings.hwIgnored || []).includes(idOf(info))) return { action: 'none' };
     return { action: 'ask', hw: describe(info).likely };

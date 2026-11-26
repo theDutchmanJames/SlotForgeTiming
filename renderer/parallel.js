@@ -256,6 +256,8 @@
       statuses.add(f);
       return () => statuses.delete(f);
     };
+    let inputsFor = null,
+      inputs = [];
     L.configure = v => {
       c = config(v);
       L.config = c;
@@ -319,7 +321,12 @@
       L.lastAt = at;
       L.samples++;
       L.pins = decode(sample.status, sample.control);
-      const input = assignments(c).filter(a => a.kind !== 'out');
+      // (audit 2026-11) the inputs are worked out once per configuration, not for every sample (at least 50 a second)
+      if (inputsFor !== c) {
+        inputsFor = c;
+        inputs = assignments(c).filter(a => a.kind !== 'out');
+      }
+      const input = inputs;
       for (const a of input) {
         const signal = a.kind === 'lap' ? c.signal[a.lane] : a.kind === 'pit' ? c.pitSignal[a.lane] : c.callSignal,
           active = L.pins[a.pin] === (signal === 'high');

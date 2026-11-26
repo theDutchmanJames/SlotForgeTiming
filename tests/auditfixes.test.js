@@ -148,3 +148,34 @@ test('the race: judged when stopped after the end, abort start, review kept, the
   assert(has(race, 'The race could not be saved for recovery'));
   assert(has(race, "if (lapsOnly && box.dataset.hover === '1') {"), 'Review laps waits for the pointer');
 });
+
+test('hardware: power off when the device comes back in a fault, at the finish and in a pause; locks, watchdog, reboot, debounce, heartbeats', () => {
+  const race = code('renderer/race.js');
+  assert(has(race, 'if (back) power(false);'), 'power off at the moment the device comes back in a fault');
+  assert(has(race, "live.phase = 'review'; power(false);"), 'power off after the finish');
+  assert(has(race, "if (live.phase === 'paused' && eng.flag !== 'red') power(false);"), 'and during a pause');
+  assert(has(race, 'if (speed === 1 && pressAt - callLast < 120) return;'), 'Track Call debounce');
+  assert(has(race, 'The Trackmate did not take the power'));
+  assert(has(race, 'onReboot: () => {') && has(code('renderer/arduinorace.js'), 'if (o.onReboot) o.onReboot();'));
+  assert(has(race, 'No data for a few seconds: the interface stopped sending.'));
+  assert(has(code('renderer/trackmate.js'), 'L.lastDataAt ='));
+  assert(has(code('renderer/arduinorace.js'), 'L.setPower(wantPower); // (audit 2026-11'));
+  assert(has(code('renderer/hardwareui.js'), "const tmLocked = () => typeof raceKept === 'function' && raceKept();"));
+  assert(
+    has(
+      code('renderer/hwdeskview.js'),
+      "(act === 'disconnect' || act === 'order' || act === 'use') && typeof raceKept === 'function' && raceKept()"
+    )
+  );
+  assert(has(code('plugintiming.js'), 'this.clock() - this.lastAlive > 4000'));
+  assert(has(code('native/parallel/SlotForgeParallel.cs'), 'Clock() - LastHeartbeat > 4000'));
+  const HD = require('../renderer/hwdetect.js');
+  const info = { usbVendorId: 1, usbProductId: 2 },
+    settings = { tmDevice: { vid: 1, pid: 2 } };
+  assert.equal(HD.decide(settings, info, { chosen: 'trackmate', open: false, racing: true }).action, 'none', 'not during a race...');
+  assert.equal(
+    HD.decide(settings, info, { chosen: 'trackmate', open: false, racing: true, faulted: true }).action,
+    'connect',
+    '...unless the race lost exactly this device'
+  );
+});

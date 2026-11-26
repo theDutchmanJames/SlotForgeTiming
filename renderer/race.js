@@ -320,9 +320,15 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
       ab = !!(abLinkNow() && abLinkNow().connected),
       busy = ['countdown', 'running', 'paused'].includes(live.phase);
     const tmLost = hwUse === 'trackmate' && tmWas && !tm && busy,
-      abLost = hwUse === 'arduino' && abWas && !ab && busy;
+      abLost = hwUse === 'arduino' && abWas && !ab && busy,
+      back =
+        (hwUse === 'trackmate' && !tmWas && tm && live.linkFault === 'trackmate') ||
+        (hwUse === 'arduino' && !abWas && ab && live.linkFault === 'arduino');
     tmWas = tm;
     abWas = ab; // (first: switching the power off tells the status listeners again)
+    // (audit 2026-11) back during a fault: the power goes off at once (a reconnect sends no power command, and the relay may still be on); the race stays
+    // stopped until the manual restart
+    if (back) power(false); // (only at the moment it comes back: switching the power tells the status listeners again)
     if (tmLost) {
       live.linkFault = 'trackmate';
       timingFault('Trackmate', 'Disconnected. Reconnect, then restart manually.');
@@ -332,6 +338,24 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
       timingFault('Arduino', 'Disconnected. Reconnect, then restart manually.');
     }
   };
+  // (audit 2026-11) a Trackmate that stays connected but sends nothing (a hung interface or USB adapter: it ticks every 200 ms): after 2.5 s in a running race
+  // it is a timing fault, as a disconnect is; the restart waits until it sends again
+  const tmSilent = () =>
+    hwUse === 'trackmate' &&
+    Trackmate.link.connected &&
+    Trackmate.link.lastDataAt > 0 &&
+    performance.now() - Trackmate.link.lastDataAt > 2500;
+  live.tmSilent = tmSilent;
+  clearInterval(live.tmWatch);
+  const watchLive = live;
+  live.tmWatch = setInterval(() => {
+    if (live !== watchLive || !watchLive.alive) return clearInterval(watchLive.tmWatch);
+    if (live.phase === 'running' && !live.linkFault && tmSilent()) {
+      live.linkFault = 'trackmate';
+      timingFault('Trackmate', 'No data for a few seconds: the interface stopped sending. Check the cable, then restart manually.');
+    }
+  }, 1000);
+  if (live.tmWatch && live.tmWatch.unref) live.tmWatch.unref(); // (a test run in Node is not held open by it)
   {
     const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null,
       offT = Trackmate.link.onStatus(() => {
@@ -356,7 +380,12 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
   }
   // the track power (the Trackmate relay): only when it is connected
   const power = on => {
-    if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on);
+    if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function')
+      Promise.resolve(tmPower(on)).then(ok => {
+        // (audit 2026-11) a power command the Trackmate did not take is said on the race page, not only on the hardware page
+        if (ok === false && ui('msg'))
+          ui('msg').textContent = `The Trackmate did not take the power ${on ? 'on' : 'off'} command. Check the track power by hand.`;
+      });
     if (live.box) live.box.power(on);
     if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running'));
     if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running'));
@@ -510,6 +539,7 @@ function raceShowAndLeave({ syncPerfLine, update }) {
     }
   };
   live.leave = () => {
+    clearInterval(live.tmWatch); // (audit 2026-11)
     LiveCanvas.dispose(live.nodes);
     if (live.fsView) live.fsView.close();
     document.removeEventListener('keydown', live.fsKey);
@@ -2546,6 +2576,7 @@ async function renderRace() {
     live.rvChanges = Array.isArray(live.rvRestore) ? live.rvRestore : []; // (a race that came back in its review keeps the changes made before)
     live.rvRestore = null;
     live.phase = 'review';
+    power(false); // (audit 2026-11: the track power is off after the finish with every interface, as Parallel and Plugin already did)
     ui('msg').textContent = 'The race is over. Check the final results, then press Finalize.';
     update();
     if (state.autoFinalize) finalize(); // only the automated tests skip the review
@@ -4049,7 +4080,10 @@ async function renderRace() {
     }
     if (live.linkFault && live.linkFault === hardware) {
       // (2.2.5: after a disconnect or the box's safe state, a restart waits until the same hardware is back)
-      const back = hardware === 'trackmate' ? Trackmate.link.connected : !!(abLinkNow() && abLinkNow().connected && !abLinkNow().safe);
+      const back =
+        hardware === 'trackmate'
+          ? Trackmate.link.connected && !(live.tmSilent && live.tmSilent())
+          : !!(abLinkNow() && abLinkNow().connected && !abLinkNow().safe);
       if (!back) {
         ui('msg').textContent =
           (hardware === 'trackmate' ? 'Trackmate' : 'Arduino') + ' is not connected. Reconnect it in App Settings, then restart manually.';
@@ -4178,6 +4212,14 @@ async function renderRace() {
       if (live.phase === 'running') eng.pause(now());
       else if (resuming) eng.resume(now());
       syncPhase();
+      // (audit 2026-11) a pause (not a red flag) switches the track power off, so no lap is driven that the race would not count; going on gives it back as
+      // the flags want it
+      if (live.phase === 'paused' && eng.flag !== 'red') power(false);
+      else if (resuming && live.phase === 'running') {
+        const want = !((eng.flag === 'yellow' && trackCall.yellow === 'off') || (eng.flag === 'red' && trackCall.red === 'off'));
+        live.pwWant = want;
+        power(want);
+      }
       if (resuming && live.phase !== 'paused') {
         const added = live.ds && live.ds.flushHeld ? live.ds.flushHeld() : 0; // (the laps driven during the pause, when they are kept)
         ui('msg').textContent = added ? `Added ${added} lap${added > 1 ? 's' : ''} driven during the pause.` : '';
@@ -4363,7 +4405,12 @@ async function renderRace() {
   }); // the interface is told the lanes; the track starts with or without power
   live.hwKeysOk = true; // (Home asked before the first start when the timing hardware was not connected)
   let callAt = 0; // when the last Trackcall press was
+  let callLast = -1e9;
   const trackcall = () => {
+    // (audit 2026-11) one press is one call: a bouncing contact or a repeating interface within 120 ms is the same press (yellow, then red needs two)
+    const pressAt = performance.now();
+    if (speed === 1 && pressAt - callLast < 120) return; // (the automated tests run faster, with their own press timing)
+    callLast = pressAt;
     if (live.soloSwitch) return live.soloSwitch(); // (2.5.2 Solo: the call button switches the lane the car is on; no flag, no power cut)
     const mode = trackCall.action,
       t = now();
@@ -4489,6 +4536,14 @@ async function renderRace() {
       onTrap: (lane, ms) => {
         const i = eng.cars.findIndex(c => c.lane === lane);
         if (i >= 0) eng.cars[i].trapMs = ms;
+      },
+      // (audit 2026-11) the box started again during the race (a power dip): the track was dead for a few seconds. A yellow flag and a word, so the Race
+      // Director checks the cars; the box itself is set up again by arduinorace.js
+      onReboot: () => {
+        if (live.phase !== 'running') return;
+        if (eng.flag !== 'yellow' && eng.flag !== 'red') actions.yellow();
+        ui('msg').textContent =
+          'The Arduino box restarted (a power dip?): the track was without power for a moment. Yellow flag: check the cars, then clear it.';
       },
       // (the box lost contact. When this window itself stood still, for instance behind a dialog, the box gets its keep-alive again at once and switches back on as
       // before; when the keep-alives were sent but did not arrive, the connection is the problem: a timing fault)
