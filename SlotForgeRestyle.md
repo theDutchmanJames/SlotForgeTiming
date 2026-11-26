@@ -43,6 +43,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Solo Bar](#solo-bar) | The lane the car is on in a Solo session, in its lane colour, with Switch lane; Starts on lane buttons on Home; the Followed lane button in the Layout Editor | Race page, Home, Layout Editor |
 | [Audience Home](#audience-home) | Home read-only on the second screen before a race: no menu or controls, "Next race" and a pulsing Starting soon panel where Start race was | The second screen (Live Race window) |
 | [Lane Cars](#lane-cars) | Swap Seats: a row of Grid Slots for the car of every lane, above the participants; the line-up between heats names the lane car | Home › Start a race, the break between heats |
+| [Safety Nets](#safety-nets) | The race night safety nets: Stop asks End this heat or End the event, Retire car on the lane cards, the recovery pill and Reconnect in the race bar, Save results to a file, the Live / Reconnecting pill and answering buttons on phones | Race tab, Race Director on a phone, the second screen |
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
 | [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket; connect inside, cars from the library, Commentary, Back to the guide | The setup guide on Home |
@@ -1306,6 +1307,34 @@ html .hn-lane.seat{border-radius:10px;padding:4px 12px 4px 4px}
 html .hn-seat>b{font:italic 700 17px/1.1 "Barlow Condensed","Segoe UI",sans-serif;text-transform:uppercase}
 ```
 
+
+## Safety Nets
+
+**Race night safety nets** (2.5.2, from the audit). Small additions that tell the Race Director what is safe and give a way out.
+
+- **Stop in a heat race**: a [Flag Dialog](#flag-dialog) with [Choice Rows](#choice-rows) (`Dialog.choose`): *End this heat* (picked first) and
+  *End the event*, each a whole-row button with a bold line and a muted note; the red answer button takes the name of the row that is picked. The
+  phone's Race Director asks the same.
+- **Retire car**: a quiet **⋯** button at the right of a lane card's head opens a small menu (*Retire car (DNF)*, in the accent, with *Out of the race
+  with its 14 laps* under it). A retired car's card shows a red-outlined **DNF · lap 11** chip and **Undo**; its buttons are dimmed. On a phone the lane
+  card's action row gets **Retire** and **Undo DNF**.
+- **Recovery pill** in the [Race Control](#race-control) bar, after the timing pill: a pill button *Saved 3 s ago* with a green light, amber when a save
+  is more than 30 s late, red with a tinted fill when it failed (*Recovery save failed · 3 tries*). A click explains, and offers *Save results to a file…*.
+- **Reconnect**: a red primary button in the bar while the race has lost its Trackmate or Arduino box (*Connecting…* while it tries).
+- **Save results to a file…**: next to *Retry saving results* when the results could not be saved.
+- **Live / Reconnecting** on the Live Race pages: a pill at the right of the header (*Live*, green light; *Reconnecting · 12 s old*, amber). On the
+  second screen only the amber one shows, small in the bottom right corner. A command button shows an amber progress line while it is sent and a green
+  outline for 1.5 s when the race took it; when it did not, a red-outlined message at the bottom says why (*Not done: that heat had already ended*).
+
+```css
+html dialog.appdlg .appdlg-choice{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html dialog.appdlg .appdlg-choice.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+.trk-dnf{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700}
+html .rc-bar .rc-cp.warn{border-color:#f2b33d;color:#f2b33d}
+html .rc-bar .rc-cp.bad{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.lv-link.warn{border-color:#f2b33d;color:#f2b33d;background:color-mix(in srgb,#f2b33d 12%,transparent)}
+.lv-ack{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);border:1px solid var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 18%,var(--panel))}
+```
 ## Home Cards
 
 The cards under Start a race on Home (`renderer/homecards.js`). One frame for all (the Barlow title in the header, a quiet tag on the right, an
@@ -2822,3 +2851,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Audience Home | New: the second screen shows Home read-only before a race (Next race, Starting soon, the cards), Race timing from Start race, Home again when the race is left |
 | 2026-11 | Lane Cars | New: Swap Seats — a Lane cars row on Start a race (a Grid Slot per lane with the car picker), participants without a car (*4 heats · all 4 cars*), the lane car in the break tiles and the Next Up pills, and a Lane cars table in the results |
 | 2026-11 | App icon | New: two crossed chequered flags in white on the SlotForge red tile (#e5484d), red and white only (no charcoal); also the logo at the top left of the app and on the startup window (`build/icon.svg`, made with `tools/build-icon.cjs`) |
+| 2026-11 | Safety Nets | New: Stop in a heat race asks End this heat or End the event (Flag Dialog with Choice Rows), Retire car (⋯ on a lane card, DNF and Undo), the recovery pill and Reconnect in the race bar, Save results to a file, the Live / Reconnecting pill and Sending / Done buttons on the Live Race pages |

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Race night safety nets:**
+  - Stop in a heat race asks: **End this heat** (then the break and the next heat) or **End the event**.
+  - **Retire car** on every lane card (⋯), also on the phone: the car is listed as DNF and the race no longer waits for it. Undo puts it back.
+  - A **recovery pill** in the race bar says when the race was last saved for recovery, and turns red when that fails.
+  - **Reconnect** in the race bar when the Trackmate or Arduino box drops out.
+  - **Save results to a file** when the results cannot be saved: Import reads it back.
+  - Phones and the second screen: a **Live / Reconnecting** pill, the clock stops on old data, and Race Director buttons show **Sending… / Done**, or why nothing was done.
+- **Fixes from an app-wide check:**
+  - Race-night risks: resuming with DS or plugin timing, remapped pit sensors, the SQLite worker restarting after a crash, a race without a limit, the championship check on Home, imports that doubled races.
+  - The race: an aborted start, the Review laps panel, Space after red, timing hardware locked during a race, track power after a disconnect, a silent Trackmate.
+  - Live screens and phones: reconnecting after an error, staying in step, commands for the right heat, a double-tapped Pause, logins that last, private settings kept off phones.
+  - Speed: the race screen paints less while hidden or in full screen, Home, Results and the Record Book read less.
 - **Solo:** a new kind of session for driving and testing on your own. One driver and one car, on any lane: Switch lane (the Track Call button, Tab, or the button on the race page) tells Timing which lane the car is on, or it follows the car by itself. Widgets set to the new lane "Followed" show the lane the car is on, with the best lap of that lane. The results show your laps by lane and car.
 
 ## 2.5.1 — 2026-11-24

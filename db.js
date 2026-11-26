@@ -122,16 +122,25 @@ function writeChunksSync(file, chunks) {
   const tmp = file + '.tmp',
     fd = fs.openSync(tmp, 'w');
   try {
-    for (const c of chunks) for (const s of slicesOf(c)) fs.writeSync(fd, s);
     try {
-      fs.fsyncSync(fd);
-    } catch {
-      /* not every file system can flush */
+      for (const c of chunks) for (const s of slicesOf(c)) fs.writeSync(fd, s);
+      try {
+        fs.fsyncSync(fd);
+      } catch {
+        /* not every file system can flush */
+      }
+    } finally {
+      fs.closeSync(fd);
     }
-  } finally {
-    fs.closeSync(fd);
+    renameSyncWithRetry(tmp, file);
+  } catch (x) {
+    try {
+      fs.rmSync(tmp, { force: true }); // (follow-up audit: a write that failed leaves no half file behind)
+    } catch {
+      /* it stays */
+    }
+    throw x;
   }
-  renameSyncWithRetry(tmp, file);
 }
 
 // The pieces written in the background, by the system's helper threads. The file gets a name of its own while it is written ('.bg.tmp'), so a save in the program's own time can never

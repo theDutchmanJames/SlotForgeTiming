@@ -83,7 +83,94 @@
     queue = next.catch(() => {});
     return next;
   }
+  // (2.5.2) a question with a few answers as Choice Rows (o.choices: [{ value, label, note, ok }], the first is picked to begin with); the value of the
+  // one picked, or null for Cancel. Without a page to draw on: the browser's own yes/no for the first answer.
+  function choose(message, o = {}) {
+    const list = Array.isArray(o.choices) ? o.choices.filter(c => c && c.label) : [];
+    if (!list.length) return Promise.resolve(null);
+    if (!real())
+      return Promise.resolve(typeof root.confirm === 'function' && !root.confirm(message + ' ' + list[0].label) ? null : list[0].value);
+    const run = () =>
+      new Promise(resolve => {
+        const d = document.createElement('dialog');
+        d.className = 'appdlg appdlg-confirm appdlg-choose' + (o.danger ? ' appdlg-danger' : '');
+        d.setAttribute('aria-labelledby', 'appdlg-title');
+        const title = document.createElement('h3');
+        title.id = 'appdlg-title';
+        title.textContent = o.title || 'Please choose';
+        const body = document.createElement('div');
+        body.className = 'appdlg-body';
+        if (message) body.appendChild(paragraphs(message));
+        const rows = document.createElement('div');
+        rows.className = 'appdlg-choices';
+        rows.setAttribute('role', 'radiogroup');
+        let picked = 0;
+        const okBtn = document.createElement('button');
+        okBtn.type = 'button';
+        okBtn.className = 'btn ' + (o.danger ? 'danger' : 'primary');
+        const buttons = list.map((c, i) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'appdlg-choice';
+          b.setAttribute('role', 'radio');
+          b.dataset.value = String(c.value);
+          const t = document.createElement('b');
+          t.textContent = c.label;
+          b.appendChild(t);
+          if (c.note) {
+            const n = document.createElement('small');
+            n.textContent = c.note;
+            b.appendChild(n);
+          }
+          b.onclick = () => pick(i);
+          b.ondblclick = () => finish(c.value);
+          return b;
+        });
+        const pick = i => {
+          picked = i;
+          buttons.forEach((b, k) => {
+            b.classList.toggle('on', k === i);
+            b.setAttribute('aria-checked', String(k === i));
+          });
+          okBtn.textContent = list[i].ok || o.ok || list[i].label;
+        };
+        rows.append(...buttons);
+        body.appendChild(rows);
+        const row = document.createElement('div');
+        row.className = 'row appdlg-buttons';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn';
+        cancelBtn.textContent = o.cancel || 'Cancel';
+        row.append(cancelBtn, okBtn);
+        d.append(title, body, row);
+        const before = document.activeElement;
+        let done = false;
+        const finish = answer => {
+          if (done) return;
+          done = true;
+          d.close();
+          d.remove();
+          if (before && before.isConnected && typeof before.focus === 'function') before.focus();
+          resolve(answer);
+        };
+        okBtn.onclick = () => finish(list[picked].value);
+        cancelBtn.onclick = () => finish(null);
+        d.addEventListener('cancel', ev => {
+          ev.preventDefault();
+          finish(null);
+        });
+        pick(0);
+        document.body.appendChild(d);
+        d.showModal();
+        buttons[0].focus();
+      });
+    const next = queue.then(run, run);
+    queue = next.catch(() => {});
+    return next;
+  }
   const api = {
+    choose,
     confirm: (message, options) => show('confirm', message, options),
     alert: (message, options) => show('alert', message, options),
     // how many are open or waiting (tests, and the unsaved-changes check before closing)

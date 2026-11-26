@@ -2520,6 +2520,30 @@
       if (!stillDq) log('reinstated', i, t, { by: 'failure' });
       return true;
     };
+    // (2.5.2) Retire car: the Race Director takes a car that is out (broken, crashed, its driver gone) out of the race. It keeps its laps, is listed as
+    // DNF and the race no longer waits for it. Undo, while the race runs, puts it back: its next crossing starts the timing again.
+    R.retire = (i, t) => {
+      const c = R.cars[i];
+      if (!c || !['running', 'paused'].includes(R.status) || c.done || c.dq || c.retired) return false;
+      c.done = true;
+      c.retired = true;
+      c.retiredBy = 'director';
+      c.retiredAt = t;
+      log('retired', i, t, { why: 'director', laps: lapsOf(c) });
+      checkEnd(t);
+      return true;
+    };
+    R.unretire = (i, t) => {
+      const c = R.cars[i];
+      if (!c || !['running', 'paused'].includes(R.status) || c.retiredBy !== 'director' || c.dq) return false;
+      c.done = false;
+      c.retired = false;
+      c.retiredBy = '';
+      c.retiredAt = null;
+      c.started = false;
+      log('reinstated', i, t, { by: 'retire' });
+      return true;
+    };
     R.failureNoteOf = i => (FL && R.cars[i] ? Fl.noteOf(R.cars[i], R.events, i) : ''); // what the failures did to car i in this race, in words (empty when nothing)
 
     // ---- the end-of-race review: the Race Director corrects the result before it is saved ----

@@ -33,17 +33,7 @@
       }
     };
   }
-  // (audit 2026-11, speed) a long string (a picture) is named by its length and samples along it, not written out in full on every click
-  const brief = (k, v) => {
-    if (typeof v !== 'string' || v.length <= 512) return v;
-    let out = '#' + v.length;
-    for (let i = 0; i < 16; i++) {
-      const at = Math.floor(((v.length - 24) * i) / 15);
-      out += ':' + v.slice(at, at + 24);
-    }
-    return out;
-  };
-  const signature = w => JSON.stringify(Object.fromEntries(Object.entries(w).filter(([k]) => !['x', 'y', 'w', 'h'].includes(k))), brief);
+  const signature = w => JSON.stringify(Object.fromEntries(Object.entries(w).filter(([k]) => !['x', 'y', 'w', 'h'].includes(k)))); // (follow-up audit: written out in full again; samples could miss an edit)
   function create({ canvas, layout, html, fit }) {
     const records = new Map();
     let layoutKey,

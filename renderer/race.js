@@ -348,8 +348,14 @@ function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, 
   live.tmSilent = tmSilent;
   clearInterval(live.tmWatch);
   const watchLive = live;
+  let tmTickAt = performance.now();
   live.tmWatch = setInterval(() => {
     if (live !== watchLive || !watchLive.alive) return clearInterval(watchLive.tmWatch);
+    // (follow-up audit) the window itself stood still (a big save, a busy computer): the bytes that came meanwhile are still waiting to be read,
+    // so a late check is skipped rather than taken for a silent interface
+    const late = performance.now() - tmTickAt > 1500;
+    tmTickAt = performance.now();
+    if (late) return;
     if (live.phase === 'running' && !live.linkFault && tmSilent()) {
       live.linkFault = 'trackmate';
       timingFault('Trackmate', 'No data for a few seconds: the interface stopped sending. Check the cable, then restart manually.');
@@ -1321,8 +1327,60 @@ async function renderRace() {
     row.appendChild(cb);
     live.callBtns.push({ lane: l, b: cb });
     card.appendChild(row);
+    // (2.5.2) Retire car: a ⋯ menu on the card; a retired car shows DNF and Undo (on the Race Deck the lane card's head takes them)
+    const ret = mkEl('span', 'trk-ret'),
+      dnf = mkEl('span', 'trk-dnf', 'DNF'),
+      undo = mkEl('button', 'btn trk-undo', 'Undo'),
+      more = mkEl('button', 'btn trk-more', '⋯'),
+      menu = mkEl('div', 'trk-menu');
+    dnf.hidden = true;
+    undo.hidden = true;
+    undo.type = 'button';
+    undo.title = 'Put this car back in the race: its next crossing starts the timing again';
+    undo.onclick = () => actions.unretire(l);
+    more.type = 'button';
+    more.title = 'More for this lane';
+    more.setAttribute('aria-haspopup', 'menu');
+    more.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+    menu.setAttribute('role', 'menu');
+    const retireItem = mkEl('button', 'trk-mi');
+    retireItem.type = 'button';
+    retireItem.setAttribute('role', 'menuitem');
+    retireItem.innerHTML = '<b>Retire car (DNF)</b><small></small>';
+    menu.appendChild(retireItem);
+    const closeMenu = () => {
+      menu.hidden = true;
+      more.setAttribute('aria-expanded', 'false');
+    };
+    more.onclick = ev => {
+      ev.stopPropagation();
+      const open = menu.hidden;
+      document.querySelectorAll('.trk-menu').forEach(m => (m.hidden = true));
+      if (!open) return closeMenu();
+      const c = eng.cars.find(x => x.lane === l);
+      retireItem.querySelector('small').textContent = c
+        ? `Out of the race with its ${eng.lapsOf(c)} lap${eng.lapsOf(c) === 1 ? '' : 's'}`
+        : '';
+      menu.hidden = false;
+      more.setAttribute('aria-expanded', 'true');
+      retireItem.focus();
+      setTimeout(() => document.addEventListener('click', closeMenu, { once: true })); // (a click anywhere else closes it)
+    };
+    retireItem.onclick = () => {
+      closeMenu();
+      actions.retire(l);
+    };
+    menu.onkeydown = ev => {
+      if (ev.key === 'Escape') {
+        closeMenu();
+        more.focus();
+      }
+    };
+    ret.append(dnf, undo, more, menu);
+    head.appendChild(ret);
     ui('trackgrid').appendChild(card);
-    live.trkCards.push({ lane: l, card, who });
+    live.trkCards.push({ lane: l, card, who, ret, dnf, undo, more, closeMenu });
   }
 
   // championship points of the heats finished so far: { on, list: points per position, done: [[driverId, points]] }
@@ -1449,6 +1507,7 @@ async function renderRace() {
     const msg = live.sender.pack(
       {
         notice: raceNotice(),
+        acks: live.acks || [],
         pluginViews: typeof PluginDisplayClient !== 'undefined' ? PluginDisplayClient.raceViews(live.raceId) : {},
         layout: find(layouts, setup.layout2) || layout,
         champ: champOf(),
@@ -1714,6 +1773,7 @@ async function renderRace() {
             : {}),
           idx: heat.idx,
           count: heat.count,
+          ...(heat.hasNext() ? { more: true } : {}), // (2.5.2: the phone's Stop asks End this heat or End the event)
           by: byPts ? 'points' : heat.scoring.byTime ? 'time' : 'laps',
           order: orderOf().order,
           ovBy: orderOf().by,
@@ -2140,7 +2200,13 @@ async function renderRace() {
         c = found?.virtualRival ? null : found;
       x.b.disabled = !(live.phase === 'running' && c && !c.done);
       x.b.hidden = !c;
-      x.b.title = x.b.disabled ? (c && c.done && live.phase === 'running' ? 'This car has finished' : trackHint() || 'Not now') : LAP_TITLE;
+      x.b.title = x.b.disabled
+        ? c && c.done && live.phase === 'running'
+          ? c.retired
+            ? 'This car is out of the race'
+            : 'This car has finished'
+          : trackHint() || 'Not now'
+        : LAP_TITLE;
     });
     {
       const h = trackHint();
@@ -2163,6 +2229,19 @@ async function renderRace() {
         name = c ? c.driverName || '' : '';
       x.card.hidden = !c;
       if (x.who.textContent !== name) x.who.textContent = name;
+      // (2.5.2) Retire car: the ⋯ menu while the car races; DNF and Undo once the Race Director retired it
+      const on = ['running', 'paused'].includes(live.phase) && !tokenSession && eng.type === 'race' && !solo, // (follow-up audit: not in practice, qualifying or Solo: a fastest lap does not need a DNF)
+        byHand = !!c && c.retiredBy === 'director',
+        dnfText = byHand ? `DNF · lap ${eng.lapsOf(eng.cars[eng.cars.indexOf(c)] || c)}` : '';
+      x.more.hidden = !(on && c && !c.done && !c.dq);
+      x.undo.hidden = !(on && byHand);
+      x.dnf.hidden = !byHand;
+      if (x.dnf.textContent !== dnfText && byHand) x.dnf.textContent = dnfText;
+      x.card.classList.toggle('trk-out', byHand);
+      const lcCard = x.card.closest ? x.card.closest('.lc-card') : null; // (on the Race Deck the lane card around it dims too)
+      if (lcCard) lcCard.classList.toggle('trk-out', byHand);
+      x.ret.hidden = x.more.hidden && x.undo.hidden && x.dnf.hidden;
+      if (x.more.hidden) x.closeMenu();
     });
     {
       const w = hwWarnEl,
@@ -2678,7 +2757,7 @@ async function renderRace() {
     } catch (x) {
       /* (the new announcer is told the race is waiting, and what it would say is thrown away: "next final A" was said already, once) */
     }
-    shareStatic();
+    shareStatic(true); // (follow-up audit: the same heat: a phone command on its way still counts)
     if (live.phase === 'between') ui('msg').textContent = betweenMsg();
     update();
   };
@@ -3010,6 +3089,8 @@ async function renderRace() {
       b.blur();
       if (act === 'home') return ui('back').click();
       if (act === 'stop') return actions.stop();
+      if (act === 'reconnect') return reconnectNow();
+      if (act === 'recovery') return recoveryInfo();
       if (['start', 'pause', 'yellow', 'red'].includes(act)) return actions[act]();
     };
     // (a click in the Tools menu closes it again; Escape too)
@@ -3047,6 +3128,66 @@ async function renderRace() {
       x = (s % 60).toFixed(1).padStart(4, '0');
     return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${x}` : `${m}:${x}`;
   };
+  // (2.5.2) the recovery pill: when the race was last saved for recovery (after a crash or a power cut); red when that failed
+  function cpPill() {
+    if (tokens || !api.saveResume || !live || live.cpOff || !['running', 'paused', 'review', 'between'].includes(live.phase)) return null;
+    if (live.resourceFault) return { tone: 'bad', text: 'Resource save failed', title: 'Racing is paused until the resources are saved' };
+    if (live.cpFailed)
+      return {
+        tone: 'bad',
+        text: 'Recovery save failed' + (live.cpFails > 1 ? ` · ${live.cpFails} tries` : ''),
+        title: 'A crash now would lose this race. Click for more'
+      };
+    if (!live.cpOkAt) return null;
+    const age = Math.max(0, Math.round((Date.now() - live.cpOkAt) / 1000));
+    return {
+      tone: age > 30 && ['running', 'paused'].includes(live.phase) ? 'warn' : 'ok',
+      // (follow-up audit: in steps of 10 s, so the bar is not drawn again every second and a click on Reconnect is not lost)
+      text: age < 10 ? 'Saved just now' : `Saved ${age < 60 ? Math.floor(age / 10) * 10 + ' s' : Math.floor(age / 60) + ' min'} ago`,
+      title: 'The race is saved for recovery after a crash or a power cut. Click for more'
+    };
+  }
+  // (2.5.2) Reconnect: the race lost the Trackmate or the Arduino box, and it is not back
+  function fixPill() {
+    const id = live && live.linkFault;
+    if (!['trackmate', 'arduino'].includes(id)) return null;
+    const on = id === 'trackmate' ? Trackmate.link.connected : !!(abLinkNow() && abLinkNow().connected);
+    return on ? null : { busy: !!live.reconnecting };
+  }
+  async function reconnectNow() {
+    const id = live.linkFault;
+    if (live.reconnecting || typeof reconnectTiming !== 'function' || !['trackmate', 'arduino'].includes(id)) return;
+    live.reconnecting = true;
+    live.rc.quick = '';
+    rcDraw();
+    let r;
+    try {
+      r = await reconnectTiming(id);
+    } catch (x) {
+      r = { ok: false, why: String((x && x.message) || x) };
+    }
+    live.reconnecting = false;
+    const name = id === 'trackmate' ? 'The Trackmate' : 'The Arduino box';
+    ui('msg').textContent = r.ok ? `${name} is back. The track power stays off: restart when the track is ready.` : r.why;
+    live.rc.quick = '';
+    update();
+  }
+  async function recoveryInfo() {
+    if (live.cpFailed) {
+      const ok = await Dialog.confirm(
+        `The race could not be saved for recovery${live.cpError ? ' (' + live.cpError + ')' : ''}. If Timing stopped now, this race could not be brought back.
+
+Racing goes on, and saving is tried again with every change. To be safe, save the results so far to a file.`,
+        { title: 'Recovery save failed', ok: 'Save results to a file…', cancel: 'Close' }
+      );
+      if (ok) await saveResultsFile();
+      return;
+    }
+    await Dialog.alert(
+      `Timing saves the race every few seconds while it runs${live.cpOkAt ? ', last at ' + new Date(live.cpOkAt).toLocaleTimeString() : ''}. After a crash or a power cut, Home offers to go on where it stopped.`,
+      { title: 'Saved for recovery' }
+    );
+  }
   // drawn with every update of the page; each part only when its words change
   function rcDraw() {
     const bar = ui('rcbar');
@@ -3093,7 +3234,9 @@ async function renderRace() {
       clock: rcClock(eng.elapsed(t)),
       clockNote: limitLaps ? `${left} ${left === 1 ? 'lap' : 'laps'} to go` : String(limitFull || ''),
       controls: RaceControl.controlsOf(S, { flag: eng.flag, picking: heats && live.phase === 'between' && !heat.picksDone() }),
-      sim: !!(ui('sim') && ui('sim').checked)
+      sim: !!(ui('sim') && ui('sim').checked),
+      fix: fixPill(),
+      cp: cpPill()
     });
     bar.style.setProperty('--rc', RaceControl.COLOR[S.key] || RaceControl.COLOR.done);
     bar.dataset.state = S.key;
@@ -3114,7 +3257,7 @@ async function renderRace() {
         if (eng.calls.some(k => k.open && k.car === i)) chips.push({ text: 'Call', kind: 'call' });
         if (c.pit) chips.push({ text: 'Pit', kind: 'pit' });
         if (c.dq) chips.push({ text: 'DQ', kind: 'dq' });
-        else if (c.retired) chips.push({ text: 'Out', kind: 'out' });
+        else if (c.retired) chips.push({ text: c.retiredBy === 'director' ? 'DNF' : 'Out', kind: 'out' });
         return {
           pos: x.pos,
           name: c.driverName,
@@ -3722,6 +3865,7 @@ async function renderRace() {
         total: x.car.total,
         dq: x.car.dq || undefined,
         retired: (x.car.retired && !x.car.dq) || undefined,
+        ...(x.car.retiredBy === 'director' && !x.car.dq ? { dnf: true } : {}), // (2.5.2: retired by the Race Director)
         ...(x.car.sector
           ? { sector: x.car.sector, ...(eng.sectorName(x.car.sector) ? { sectorName: eng.sectorName(x.car.sector) } : {}) }
           : {}),
@@ -3892,13 +4036,101 @@ async function renderRace() {
       if (typeof RaceOver !== 'undefined') roStart(session, savedId, laps).catch(() => roShow(''));
     } catch (x) {
       live.cpOff = false;
-      ui('msg').textContent = 'Could not save the results: ' + x.message;
+      live.rescue = { session, laps }; // (2.5.2: what Save results to a file writes)
+      ui('msg').textContent = 'Could not save the results: ' + x.message + ' Nothing is lost yet: the race stays here until it is saved. ';
       const retry = document.createElement('button');
-      retry.className = 'btn';
+      retry.className = 'btn primary';
       retry.textContent = 'Retry saving results';
       retry.onclick = () => finishAll();
-      ui('msg').appendChild(retry);
+      const file = document.createElement('button');
+      file.className = 'btn';
+      file.textContent = 'Save results to a file…';
+      file.title = 'An export file that Import (App Settings, Import and Export) reads back later';
+      file.onclick = () => saveResultsFile();
+      ui('msg').append(retry, ' ', file);
     }
+  }
+  // (2.5.2) Save results to a file: the result that could not be saved (or, while the race runs, the standings and laps so far, not checked) as an
+  // export file that Import reads back
+  function rescueSoFar() {
+    // (follow-up audit) the laps of the race that is racing now come from its cars (a single race keeps them there until the end); in a heat race
+    // they go with the laps of the heats already recorded, and the standings are the overall result so far
+    const date = new Date().toISOString(),
+      racing = ['countdown', 'running', 'paused', 'review'].includes(live.phase) && eng.status !== 'ready',
+      now = [];
+    if (racing) {
+      const extra = heats ? { heat: heat.idx + 1 } : {};
+      eng.cars.filter(c => !c.virtualRival).forEach(c => now.push(...lapRows(c, date, extra)));
+    }
+    if (heats && heat.results.length) {
+      const ov = heat.overall();
+      return {
+        session: {
+          setupName: setup.name || 'Race',
+          sessionType: setup.ofType || setup.sessionType,
+          trackId: r.track.id,
+          trackName: r.track.name,
+          date,
+          endedBy: 'rescued',
+          note: `Saved to a file during the event, when it could not be saved for recovery: the overall result after ${heat.results.length} heat${heat.results.length === 1 ? '' : 's'}, not checked${racing ? ', and the laps of the heat that was racing' : ''}.`,
+          standings: ov.map((o, i) => ({
+            pos: o.pos || i + 1,
+            driverId: o.driverId || '',
+            driverName: o.driverName || o.teamName || '',
+            ...(o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
+            laps: o.laps,
+            ...(Number.isFinite(o.points) ? { points: o.points } : {}),
+            best: o.best
+          }))
+        },
+        laps: (live.laps || []).concat(now)
+      };
+    }
+    const rows = eng.standings().map(x => ({
+      pos: x.pos,
+      driverId: x.car.driverId || '',
+      driverName: x.car.driverName || '',
+      carId: x.car.carId || '',
+      carName: x.car.carName || '',
+      ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}),
+      lane: x.car.lane,
+      laps: eng.lapsOf(x.car),
+      best: x.car.best,
+      total: x.car.total,
+      ...(x.car.dq ? { dq: true } : {}),
+      ...(x.car.retired && !x.car.dq ? { retired: true } : {})
+    }));
+    return {
+      session: {
+        setupName: (setup.name || 'Race') + (heats ? ' · ' + heat.raceName(heat.idx) : ''),
+        sessionType: setup.ofType || setup.sessionType,
+        trackId: r.track.id,
+        trackName: r.track.name,
+        date,
+        endedBy: 'rescued',
+        note: 'Saved to a file during the race, when it could not be saved for recovery: the standings at that moment, not checked.',
+        standings: rows
+      },
+      laps: (live.laps || []).concat(now)
+    };
+  }
+  async function saveResultsFile() {
+    if (!api.rescueResults) return Dialog.alert('This window cannot save files.');
+    const d = live.rescue || rescueSoFar();
+    let res;
+    try {
+      res = await api.rescueResults(d.session, d.laps, d.session.setupName);
+    } catch (x) {
+      res = { saved: false, error: x.message || String(x) };
+    }
+    if (res && res.saved)
+      await Dialog.alert(
+        `Saved to ${res.path}.
+
+Import it later in App Settings, Import and Export. ${live.rescue ? 'Retry saving results stays on the race screen.' : 'The race goes on.'}`,
+        { title: 'Results saved to a file' }
+      );
+    else await Dialog.alert('The file could not be written either: ' + ((res && res.error) || 'no answer') + '.', { title: 'Not saved' });
   }
 
   // ---- the controls (widgets and keys do the same things) ----
@@ -4169,7 +4401,7 @@ async function renderRace() {
     if (live.phase === 'countdown') {
       live.runId++;
       live.lights = 0;
-      live.phase = live.restarting ? 'paused' : 'ready';
+      live.phase = live.restarting ? 'paused' : live.beforeCountdown === 'between' ? 'between' : 'ready'; // (follow-up audit: heat 2 and later go back to the break)
       live.restarting = false;
     }
     if (live.phase === 'running') {
@@ -4251,12 +4483,37 @@ async function renderRace() {
       } // (the reason for the pause is over: an old message would make the race look paused)
       else if (!resuming && live.phase === 'paused' && live.ds) ui('msg').textContent = dsPausedText();
     },
-    async stop(force) {
-      // force: the Race Director page has already asked
+    async stop(force, how) {
+      // force: the Race Director page has already asked. how (2.5.2): 'heat' ends only the heat that is racing, 'event' the whole event
+      // (heat races with heats still to come; a phone of before 2.5.2 sends none: the event, as it was)
       if (cancelStart()) return;
       cancelRestart();
       if (!['running', 'paused', 'between'].includes(live.phase)) return;
-      if (
+      const choice = !tokens && heats && heat.hasNext() && live.phase !== 'between',
+        askedId = live.raceId; // (follow-up audit: the heat this question is about)
+      if (choice && force !== true) {
+        const name = heat.raceName ? heat.raceName(heat.idx) : 'this heat';
+        how = await Dialog.choose('The race clock stops at once. The laps so far are kept.', {
+          title: `Stop ${name}?`,
+          cancel: 'Keep racing',
+          danger: true,
+          choices: [
+            {
+              value: 'heat',
+              label: 'End this heat',
+              ok: 'End this heat',
+              note: `${name} ends now with the laps as they stand: you check it, then the break and the next heat. For a car that died on the track, or a heat that cannot finish by itself.`
+            },
+            {
+              value: 'event',
+              label: 'End the event',
+              ok: 'End the event',
+              note: `${name} is checked, then the event is over: the heats still to come are not raced. The overall result counts the heats raced.`
+            }
+          ]
+        });
+        if (!how) return;
+      } else if (
         force !== true &&
         !(await Dialog.confirm(
           tokens
@@ -4269,10 +4526,48 @@ async function renderRace() {
       )
         return;
       if (!['running', 'paused', 'between'].includes(live.phase)) return; // (the race goes on while the question is open: it may have ended by itself)
+      if (force !== true && live.raceId !== askedId && !(live.heatIds || []).includes(askedId)) return; // (a phone started the next heat while it was open)
+      if (choice && how === 'heat') {
+        if (live.phase === 'between') return; // (the heat ended by itself while the question was open: the next one comes as planned)
+        eng.stop(now());
+        return engineFinished(); // (2.5.2) only this heat: its check, then the break and the next heat
+      }
       live.stopping = true;
       if (live.phase === 'between') return finishAll();
       eng.stop(now());
       engineFinished();
+    },
+    // (2.5.2) Retire car: the Race Director takes the car on this lane out of the race (DNF); force: a phone has asked already
+    async retire(lane, force) {
+      if (!['running', 'paused'].includes(live.phase) || tokens || eng.type !== 'race' || solo) return;
+      let i = eng.cars.findIndex(c => c.lane === lane);
+      const c = eng.cars[i];
+      if (!c || c.done || c.dq || c.virtualRival) return;
+      const asked = live.raceId, // (follow-up audit: the race this question is about; a phone may start the next heat meanwhile)
+        last = !eng.cars.some(x => x !== c && !x.done && !x.dq && !x.virtualRival);
+      if (
+        force !== true &&
+        !(await Dialog.confirm(
+          `${c.driverName || 'The car on lane ' + (lane + 1)} is out of the race with ${eng.lapsOf(c)} lap${eng.lapsOf(c) === 1 ? '' : 's'}, listed as DNF. ${last ? 'It is the last car still racing, so this ends the race.' : 'The race no longer waits for this car to finish.'}
+
+Undo puts it back while the race runs.`,
+          { title: `Retire lane ${lane + 1}?`, ok: 'Retire car', cancel: 'Keep it racing', danger: true }
+        ))
+      )
+        return;
+      if (live.raceId !== asked && !(live.heatIds || []).includes(asked)) return; // (another heat now)
+      i = eng.cars.findIndex(x => x.lane === lane); // (the race went on while the question was open)
+      if (i < 0 || !['running', 'paused'].includes(live.phase) || !eng.retire(i, now())) return;
+      checkpoint(true);
+      if (eng.status === 'finished') engineFinished();
+      else update();
+    },
+    unretire(lane) {
+      if (!['running', 'paused'].includes(live.phase)) return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i < 0 || !eng.unretire(i, now())) return;
+      checkpoint(true);
+      update();
     },
     penalty(lane, n = 1) {
       // penalty points for the car on this lane (a negative number takes points back)
@@ -4671,14 +4966,64 @@ async function renderRace() {
     }); // the app lost track of the messages: send everything again
   if (api.onCommand)
     live.offCmd = api.onCommand(cmd => {
-      if (!live || live.actions !== actions || !cmd || live.restoring) return; // (2.4.0 review: not while the earlier session is being brought back)
-      if (cmd.raceId && cmd.raceId !== live.raceId && !(live.heatIds || []).includes(cmd.raceId)) return; // (audit 2026-11: meant for an earlier heat, from a phone that lagged behind)
-      if (cmd.type === 'pause' && cmd.want && (cmd.want === 'resume') !== (live.phase === 'paused')) return; // (a second tap of the same Pause)
+      if (!live || live.actions !== actions || !cmd) return;
+      // (2.5.2) the phone that sent it is answered with the next live message: done, or why nothing was done
+      const answer = (ok, why = '') => {
+        if (typeof cmd.cid !== 'string' || !cmd.cid) return;
+        live.acks = [...(live.acks || []).slice(-11), [cmd.cid, ok, why]];
+        const done = (live.cidsDone || []).find(x => x[0] === cmd.cid);
+        if (done) [done[1], done[2]] = [ok, why];
+        live.lastShare = 0;
+        // (follow-up audit) the answer goes out now, also when the race is not running and no message would come by itself
+        const L = live;
+        setTimeout(() => {
+          if (live === L && L.alive !== false) share();
+        }, 0);
+      };
+      // (follow-up audit) a command that came twice (the phone sent it again after a slow answer) is done once: the same answer again
+      if (typeof cmd.cid === 'string' && cmd.cid) {
+        live.cidsDone = live.cidsDone || [];
+        const seen = live.cidsDone.find(x => x[0] === cmd.cid);
+        if (seen) return answer(seen[1], seen[2]);
+        live.cidsDone = [...live.cidsDone.slice(-49), [cmd.cid, true, '']];
+      }
+      if (live.restoring) return answer(false, 'The race is being brought back. Try again in a moment.'); // (2.4.0 review: not while the earlier session is being brought back)
+      if (cmd.raceId && cmd.raceId !== live.raceId && !(live.heatIds || []).includes(cmd.raceId))
+        return answer(
+          false,
+          heats ? 'That heat had already ended. Nothing was changed.' : 'That race had already ended. Nothing was changed.'
+        ); // (audit 2026-11: meant for an earlier heat, from a phone that lagged behind)
+      if (cmd.type === 'pause' && cmd.want && (cmd.want === 'resume') !== (live.phase === 'paused')) return answer(true); // (a second tap of the same Pause: it is as asked)
+      const RACING = [
+        'penalty',
+        'assign',
+        'call',
+        'damage',
+        'failure',
+        'failureclear',
+        'pad',
+        'retire',
+        'unretire',
+        // (not tyre: the Tyre Change folder works before the start and in the break too)
+        'swap',
+        'pitrelease',
+        'pitreleaseearly'
+      ];
+      if (RACING.includes(cmd.type) && !['running', 'paused'].includes(live.phase))
+        return answer(
+          false,
+          live.phase === 'review' || live.phase === 'finished'
+            ? 'The race is over. Nothing was changed.'
+            : 'The race is not running. Nothing was changed.'
+        );
+      answer(true);
       if (cmd.type === 'start') actions.start();
       else if (cmd.type === 'pause') actions.pause();
-      else if (cmd.type === 'stop') actions.stop(true);
+      else if (cmd.type === 'stop') actions.stop(true, cmd.how === 'heat' ? 'heat' : 'event');
       else if (cmd.type === 'yellow') actions.yellow();
       else if (cmd.type === 'red') actions.red();
+      else if (cmd.type === 'retire') actions.retire(Number(cmd.lane), true);
+      else if (cmd.type === 'unretire') actions.unretire(Number(cmd.lane));
       else if (cmd.type === 'penalty') actions.penalty(Number(cmd.lane), Number(cmd.n) || 1);
       else if (cmd.type === 'assign') actions.assign(Number(cmd.lane), Number(cmd.typeIndex));
       else if (cmd.type === 'call') actions.call(Number(cmd.lane));
@@ -5345,6 +5690,7 @@ async function renderRace() {
       )
         .then(ok => {
           if (!ok) throw Error('Database write failed');
+          live.cpFails = 0;
           if (live.cpFailed) {
             // (audit 2026-11) saved again: the warning goes
             live.cpFailed = false;
@@ -5363,6 +5709,8 @@ async function renderRace() {
     if (!resourceState) {
       // (audit 2026-11) a race without resources goes on, but the Race Director is told that a crash now would lose it (it is tried again with the next change)
       live.cpFailed = true;
+      live.cpFails = (live.cpFails || 0) + 1;
+      live.cpError = String((x && x.message) || x || '');
       live.cpSig = '';
       if (ui('msg') && !/could not be saved for recovery/.test(ui('msg').textContent))
         ui('msg').textContent =

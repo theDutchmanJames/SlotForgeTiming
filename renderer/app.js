@@ -459,6 +459,35 @@ function unusedTimingConnected(settings = state.settings) {
 }
 // ---- timing hardware that is plugged in (2.3.0, hwdetect.js): the remembered one connects by itself, another one is offered on Home ----
 const hwPortUse = { trackmate: p => tmUsePort(p), arduino: p => abUsePort(p), ds: p => dscUsePort(p) };
+// (2.5.2) Reconnect on the race screen: the timing hardware the race lost is opened again, on the same port when it is still there, else on the
+// remembered device. { ok, why }
+async function reconnectTiming(id) {
+  if ((id === 'trackmate' && hw.open) || (id === 'arduino' && ab.open)) return { ok: true };
+  if (!hwPortUse[id]) return { ok: false, why: 'This timing hardware connects on its page in App Settings.' };
+  const serial = typeof navigator !== 'undefined' && navigator.serial;
+  let ports = [];
+  try {
+    ports = serial ? await serial.getPorts() : [];
+  } catch (x) {
+    /* none */
+  }
+  const cur = id === 'trackmate' ? hw.dev : id === 'arduino' ? ab.dev : null;
+  try {
+    if (cur && ports.includes(cur) && (id === 'trackmate' ? await tmOpen(true) : await abOpen())) return { ok: true };
+    const want = typeof HwDetect !== 'undefined' && state.settings[HwDetect.KEYS[id]],
+      port = ports.find(x => {
+        const i = x.getInfo ? x.getInfo() : {};
+        return x !== cur && want && i.usbVendorId === want.vid && i.usbProductId === want.pid;
+      });
+    if (port && (await hwPortUse[id](port))) return { ok: true };
+  } catch (x) {
+    return { ok: false, why: `${TIMING_NAMES[id] || id} could not be opened: ${x.message || x}` };
+  }
+  return {
+    ok: false,
+    why: `${TIMING_NAMES[id] || id} was not found. Check that it is plugged in: it connects by itself when it comes back.`
+  };
+}
 function mountHwDetect() {
   if (typeof HwDetect === 'undefined' || state.tab !== 'home') return;
   // (2.4.0, SlotForgeRestyle.md "Plugged In") the card says why it asks, keeps a failed connect on the card, takes the DS model, and can undo "Not timing hardware"

@@ -22,7 +22,7 @@ ipcRenderer.on('settings:changed', () => listeners.settings.forEach(f => f()));
 // (while the app closes, the main process answers with a marker rather than an error, so its log stays readable; the caller still gets the error)
 // (audit 2026-11) counts the writes of this window (before and after each): a page that read the results keeps them until this changes
 const WRITES =
-  /^(db:editor-save|db:merge-drivers|session:save|transfer:apply|backup:restore|backup:native-restore|library:restore|library:results-remove|backups:pick|library:save|paddock:shared-save|packs:(?:install|remove|enable|rollback|recover)|paddock:(?:link|transfer-accept|keep|shared-resolve|refresh|prepare|collection-migration)|library:(?:resolve|retry|results-retry)|storage:activate)$/;
+  /^(db:editor-save|db:merge-drivers|session:save|transfer:apply|backup:restore|backup:native-restore|library:restore|library:results-remove|backups:pick|library:save|paddock:shared-save|packs:(?:install|remove|enable|rollback|recover)|paddock:(?:link|transfer-accept|keep|shared-resolve|shared-retry|refresh|prepare|collection-migration|connect|disconnect|retry)|library:(?:resolve|retry|results-retry|service)|storage:activate|session:remove|custom:(?:add|remove|group))$/;
 let writeEpoch = 0;
 const call = async (channel, ...args) => {
   const writes = WRITES.test(channel);
@@ -65,6 +65,7 @@ async function editorSave(operation, channel, ...values) {
   const flight = editorCanonical({ operation, args });
   if (editorFlights.has(flight)) return editorFlights.get(flight);
   // Deferring the body lets the in-flight map be set before any write begins.
+  writeEpoch++; // (follow-up audit 2026-11: every add, update and remove is a write, in JSON storage too, so a page that keeps what it read reads again)
   const job = Promise.resolve()
     .then(async () => {
       const scope = await call('db:editor-scope');
@@ -141,7 +142,10 @@ async function editorSave(operation, channel, ...values) {
       if (!reply.ok) throw Error(reply.error || 'The save was rejected.');
       return reply.value;
     })
-    .finally(() => editorFlights.delete(flight));
+    .finally(() => {
+      editorFlights.delete(flight);
+      writeEpoch++; // (and after it, so a read made while it was on its way is not kept either)
+    });
   editorFlights.set(flight, job);
   return job;
 }
@@ -341,6 +345,7 @@ contextBridge.exposeInMainWorld('api', {
     return () => listeners.command.delete(f);
   },
   liveGet: () => call('live:get'),
+  rescueResults: (session, laps, name) => call('results:rescue', session, laps, name), // (2.5.2: the results to a file when saving failed)
   writeEpoch: () => writeEpoch,
   liveClosed: () => ipcRenderer.send('live:closed'), // (2.5.0: the race computer left its race)
   homeChanged: () => ipcRenderer.send('home:changed'), // (2.5.0: Home was drawn again; the second screen follows)

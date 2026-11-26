@@ -302,6 +302,7 @@
           raceClass: r.car.raceClass || '',
           dq: !!r.car.dq,
           retired: !!r.car.retired,
+          ...(r.car.retiredBy === 'director' && !r.car.dq ? { dnf: true } : {}), // (2.5.2: retired by the Race Director)
           outOfFuel: !!r.car.outOfFuel,
           participant: r.car.participant,
           pos: r.pos,
@@ -404,9 +405,10 @@
     H.overall = extra => {
       if (extra) return overallOf(extra);
       const last = H.results[H.results.length - 1] || null,
-        plan = H.finalPlan ? JSON.stringify(H.finalPlan) : '';
-      if (!memo || memo.n !== H.results.length || memo.last !== last || memo.plan !== plan)
-        memo = { n: H.results.length, last, plan, rows: overallOf(null) };
+        plan = H.finalPlan ? JSON.stringify(H.finalPlan) : '',
+        who = participants.map(p => (p ? `${p.driverId || ''}|${p.driverName || ''}|${p.teamId || ''}` : '')).join(','); // (follow-up audit: a driver changed in a team heat race)
+      if (!memo || memo.n !== H.results.length || memo.last !== last || memo.plan !== plan || memo.who !== who)
+        memo = { n: H.results.length, last, plan, who, rows: overallOf(null) };
       return memo.rows.map(o => ({ ...o }));
     };
     const overallOf = extra => {

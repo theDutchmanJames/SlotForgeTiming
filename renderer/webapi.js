@@ -172,6 +172,7 @@
     liveCommand: async cmd => {
       try {
         await postJson('/api/command', { token, cmd });
+        return true; // (2.5.2: it reached the timing computer; the race answers in its live messages)
       } catch (e) {
         if (e.code === 'login') {
           token = null;
@@ -181,6 +182,7 @@
             Dialog.alert('This was not sent: your Race Director login ran out. Log in again, then press the button once more.');
         } else if (typeof Dialog !== 'undefined')
           Dialog.alert('This did not reach the timing computer: ' + (e.message || 'no answer') + '. Try again.'); // (2.4.0 review: a command that failed is said, not lost without a word)
+        return false;
       }
     },
     onCommand: () => () => {},

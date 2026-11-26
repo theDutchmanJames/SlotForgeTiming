@@ -4494,6 +4494,14 @@ html dialog.appdlg>.appdlg-body p:last-child{margin-bottom:0}
 html dialog.appdlg>.appdlg-buttons{margin-top:18px}
 html dialog.appdlg-danger>.appdlg-buttons>.btn.danger{background:var(--accent-fill,var(--accent));color:#fff;font-weight:600}
 html dialog.appdlg-danger>.appdlg-buttons>.btn.danger:hover{background:color-mix(in srgb,var(--accent-fill,var(--accent)) 88%,#fff)}
+/* (2.5.2) Flag Dialog with Choice Rows: a question with a few answers (Stop in a heat race) */
+html dialog.appdlg-choose{width:min(540px,94vw)}
+html dialog.appdlg .appdlg-choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+html dialog.appdlg .appdlg-choice{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:color-mix(in srgb,var(--ink) 4%,var(--panel));color:var(--ink);font:inherit;cursor:pointer}
+html dialog.appdlg .appdlg-choice b{display:block;font-weight:700}
+html dialog.appdlg .appdlg-choice small{display:block;color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:2px}
+html dialog.appdlg .appdlg-choice:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+html dialog.appdlg .appdlg-choice.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
 html dialog.appdlg.st-dialog>h3:first-child::before{content:none}
 html dialog.appdlg.st-dialog>h3:first-child{padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px}
 /* the update notice on Home: a download badge, the same card as the others */
@@ -7913,3 +7921,39 @@ html body.app-shell>header>#tabs .mb-lights.mb-lights-one{padding:0;background:n
 .solo-bar .solo-msg{color:var(--c);font-weight:600}
 .insp-lanes>button.insp-follow{width:auto;padding:0 9px;font:600 12px "Segoe UI",system-ui,sans-serif}
 .solo-cars .solo-all td{border-top:1px solid var(--line)}
+/* (2.5.2) Retire car: the ⋯ menu of a lane card, DNF and Undo; a retired car's card is dimmed */
+.trk-ret{margin-left:auto;display:inline-flex;align-items:center;gap:6px;position:relative;flex:none}
+.trk-ret[hidden],.trk-ret>[hidden]{display:none}
+.trk-more{min-height:0;padding:1px 9px;font-weight:700;letter-spacing:1px;color:var(--muted);line-height:1.4}
+.trk-undo{min-height:0;padding:2px 10px;font-size:12.5px}
+.trk-dnf{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--accent-text,var(--accent));border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.trk-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:250px;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.trk-mi{display:block;width:100%;text-align:left;border:0;border-radius:7px;padding:8px 10px;background:none;color:var(--ink);font:inherit;cursor:pointer}
+.trk-mi b{display:block;font-weight:600;color:var(--accent-text,var(--accent))}
+.trk-mi small{display:block;color:var(--muted);font-size:11.5px}
+.trk-mi:hover,.trk-mi:focus-visible{background:color-mix(in srgb,var(--accent) 14%,var(--panel))}
+.trk-card.trk-out .trk-btn,.lc-card.trk-out .trk-btn{opacity:.45}
+html .rdeck .lc-head .trk-ret{margin-left:auto}
+/* (2.5.2) Race Control: the recovery pill (saved for recovery: green, late: amber, failed: red) and Reconnect when the timing hardware was lost */
+html .rc-bar .rc-cp{background:none;font:inherit;font-size:12.5px;cursor:pointer}
+html .rc-bar .rc-cp.ok i{background:#2fbf71}
+html .rc-bar .rc-cp.warn{border-color:#f2b33d;color:#f2b33d}
+html .rc-bar .rc-cp.warn i{background:#f2b33d}
+html .rc-bar .rc-cp.bad{border-color:var(--accent);color:var(--accent-text,var(--accent));background:color-mix(in srgb,var(--accent) 14%,transparent)}
+html .rc-bar .rc-cp.bad i{background:var(--accent)}
+html .rc-bar .rc-fix{height:30px;padding:0 14px;white-space:nowrap}
+/* (2.5.2) Live Race pages: the Live / Reconnecting pill, a command that is on its way or done, and the answer when the race did not take it */
+.lv-link{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;font-weight:600;white-space:nowrap;color:var(--muted)}
+.lv-link[hidden]{display:none}
+.lv-link i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.lv-link.ok i{background:#2fbf71}
+.lv-link.warn{border-color:#f2b33d;color:#f2b33d;background:color-mix(in srgb,#f2b33d 12%,transparent)}
+.lv-link.warn i{background:#f2b33d}
+.lv-link.lv-corner{position:fixed;right:16px;bottom:16px;z-index:50}
+.lv-link.lv-corner.ok{display:none}
+.lv-sending{position:relative;opacity:.85}
+.lv-sending::after{content:'';position:absolute;left:10px;right:10px;bottom:5px;height:3px;border-radius:2px;background:linear-gradient(90deg,#f2b33d 0 40%,color-mix(in srgb,var(--ink) 15%,transparent) 40%);animation:lv-send 1s linear infinite}
+@keyframes lv-send{from{background-position:0 0}to{background-position:200px 0}}
+.lv-done{border-color:#2fbf71 !important;box-shadow:inset 0 0 0 1px #2fbf71}
+.lv-ack{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;max-width:min(520px,92vw);padding:10px 14px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--ink);font-size:13px;line-height:1.4;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.lv-ack[hidden]{display:none}

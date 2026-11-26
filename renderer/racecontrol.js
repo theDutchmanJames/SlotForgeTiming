@@ -85,7 +85,14 @@
       .join(''),
     pills:
       (o.sim ? '<span class="rc-pill sim" title="Simulated cars drive laps by themselves (Tools)"><i></i>Simulated</span>' : '') +
-      (o.hw ? `<span class="rc-pill ${esc(o.hw.tone || '')}"><i></i>${esc(o.hw.text)}</span>` : '')
+      (o.hw ? `<span class="rc-pill ${esc(o.hw.tone || '')}"><i></i>${esc(o.hw.text)}</span>` : '') +
+      // (2.5.2) Reconnect, when the race lost its timing hardware; the recovery pill: when the race was last saved for recovery, red when it failed
+      (o.fix
+        ? `<button type="button" class="btn primary rc-fix" data-rc="reconnect"${o.fix.busy ? ' disabled' : ''}>${esc(o.fix.busy ? 'Connecting…' : 'Reconnect')}</button>`
+        : '') +
+      (o.cp
+        ? `<button type="button" class="rc-pill rc-cp ${esc(o.cp.tone || '')}" data-rc="recovery" title="${esc(o.cp.title || '')}"><i></i>${esc(o.cp.text)}</button>`
+        : '')
   });
   // the whole bar at once (the tests, and a first look)
   function barHtml(o) {

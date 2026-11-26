@@ -295,7 +295,7 @@ async function renderHome(opts = {}) {
   const rotProblems = rot ? Rot.problems(rot, { rows: rows.length, trackLanes: lanes, here: here.length }) : [];
 
   const mc =
-    !tokens && setup?.multiClass
+    !tokens && !solo && setup?.multiClass // (follow-up audit: Solo races no system, a multi-class value left on its setup included)
       ? MultiClass.freeze(
           multiProfiles.find(p => p.id === setup.multiClass),
           classDefs
@@ -303,7 +303,7 @@ async function renderHome(opts = {}) {
       : null;
   const mcRows = rows.map(r => ({ ...r, raceClass: MultiClass.resolve(r, mc, { cars, drivers, teams }) }));
   const mcErrors =
-    !tokens && setup?.multiClass && !mc
+    !tokens && !solo && setup?.multiClass && !mc
       ? ['The selected Multi-Class System is missing. Choose another in Race Setup.']
       : MultiClass.validate(mc, [], setup);
   const mcRowErrors = rows.map((r, i) =>

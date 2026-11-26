@@ -377,6 +377,7 @@ async function applyNetNow() {
   net.error = '';
   net.port = 0;
   const s = lifecycle.settings();
+  if (!s.netOn) netTokens.clear(); // (follow-up audit: sharing turned off logs every device out)
   if (!s.netOn || appWork.closing) return;
   const port = Math.max(1, Math.min(65535, Number(s.netPort) || 8787));
   const server = createServer({
@@ -1229,6 +1230,7 @@ function registerBackupHandlers() {
     await lifecycle.idle();
     // (audit 2026-11) the dialog asked about replacing a file that is there: it is moved aside, the backup written, and only then removed (the SQLite export never
     // writes over a file; a backup that fails puts the old file back)
+    if (typeof bulkStorage.assertExportTarget === 'function') bulkStorage.assertExportTarget(filePath); // (follow-up audit: before anything is moved)
     const aside = fs.existsSync(filePath) ? filePath + '.replaced-' + Date.now() : '';
     if (aside) fs.renameSync(filePath, aside);
     try {
@@ -1632,6 +1634,71 @@ function registerResumeAndLiveHandlers() {
   ipcMain.handle('resume:save', (e, snap) => {
     resourceOwner(e);
     return lifecycle.saveResume(snap);
+  });
+  // (2.5.2) the results could not be saved: they go to a file instead, an export file that Import reads back (the race with its laps, and what it
+  // uses when the database can still tell). In Documents\SlotForge Timing rescued results; the folder is shown. -> { saved, path, error }
+  ipcMain.handle('results:rescue', async (e, session, laps, name) => {
+    resourceOwner(e);
+    if (!session || typeof session !== 'object' || !Array.isArray(session.standings))
+      return { saved: false, error: 'There is no result to save.' };
+    const s = JSON.parse(JSON.stringify(session)),
+      list = Array.isArray(laps) ? JSON.parse(JSON.stringify(laps)) : [];
+    s.id = typeof s.id === 'string' && s.id ? s.id : 'rescued-' + Date.now().toString(36);
+    if (typeof s.saveKey === 'string' && s.saveKey) s.rescueKey = s.saveKey; // (an import skips it when the race was saved here after all)
+    list.forEach((l, i) => {
+      if (l && typeof l === 'object') {
+        l.sessionId = s.id;
+        if (typeof l.id !== 'string' || !l.id) l.id = s.id + '-' + i;
+      }
+    });
+    let bundle = null;
+    const picks = {};
+    try {
+      for (const row of [s, ...list.slice(0, 5000)])
+        transfer.refsOf(row === s ? 'sessions' : 'laps', row).forEach(r => {
+          const id = r.get();
+          if (typeof id === 'string' && id) (picks[r.entity] = picks[r.entity] || new Set()).add(id);
+        });
+      bundle = await bulkStorage.collect(Object.fromEntries(Object.entries(picks).map(([k, v]) => [k, [...v]])), true, {
+        version: app.getVersion()
+      });
+    } catch (x) {
+      bundle = null; // (the database cannot tell: the race alone, with its names)
+    }
+    if (!bundle || typeof bundle !== 'object' || !bundle.items)
+      bundle = {
+        format: transfer.FORMAT,
+        fileVersion: 1,
+        app: 'SlotForge Timing',
+        appVersion: app.getVersion(),
+        exported: new Date().toISOString(),
+        items: {},
+        customFields: {},
+        // (follow-up audit) the database could not tell: the drivers, cars and track keep their ids, so on this computer the race links to them again
+        keep: Object.fromEntries(Object.entries(picks).map(([k, v]) => [k, Object.fromEntries([...v].map(id => [id, id]))]))
+      };
+    bundle.items.sessions = [s];
+    bundle.items.laps = list.filter(l => l && typeof l === 'object');
+    const c = transfer.check(bundle);
+    if (!c.ok) return { saved: false, error: c.error };
+    const folder = path.join(app.getPath('documents'), 'SlotForge Timing rescued results'),
+      base =
+        String(name || s.setupName || 'Race')
+          .replace(/[\\/:*?"<>|]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 80) || 'Race';
+    try {
+      fs.mkdirSync(folder, { recursive: true });
+      const day = String(s.date || '').slice(0, 10) || localDate();
+      let file = path.join(folder, `${base} ${day}.json`);
+      for (let n = 2; fs.existsSync(file); n++) file = path.join(folder, `${base} ${day} (${n}).json`);
+      Database.writeAtomic(file, JSON.stringify(bundle));
+      require('electron').shell.showItemInFolder(file);
+      return { saved: true, path: file };
+    } catch (x) {
+      return { saved: false, error: x.message || String(x) };
+    }
   });
   ipcMain.handle('resume:clear', e => {
     resourceOwner(e);

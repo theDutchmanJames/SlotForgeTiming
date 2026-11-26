@@ -29,7 +29,7 @@ test('R3: nothing starts a token session while the question about the earlier on
   assert(has(c, 'live.restoring = true;'));
   assert(has(c, 'live.restoring = false; if (carryOn)'));
   assert(has(c, 'start() { if (live.restoring) return;'));
-  assert(has(c, 'if (!live || live.actions !== actions || !cmd || live.restoring) return;'));
+  assert(has(c, "if (live.restoring) return answer(false, 'The race is being brought back. Try again in a moment.');")); // (2.5.2: the phone is told why)
 });
 
 test('R4: Run again takes the laps of the run that was set aside out of the bests', () => {

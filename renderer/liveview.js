@@ -73,8 +73,8 @@ const LiveView = (() => {
     }
     const tile = TILES.find(t => t[0] === page);
     host.innerHTML = `<div class="lv-head${isControl(page) ? ' special' : ''}">${page === 'tiles' ? '<h2 style="margin:0">Live Race</h2>' : `<button class="btn" id="lv-back">‹ Live Race</button><div class="lv-titles"><strong class="lv-title">${esc(tile[1])}${isControl(page) ? BADGE : ''}</strong><span class="lv-sr" id="lv-status" role="status"></span><span class="muted lv-stline" id="lv-stline" aria-hidden="true"></span></div>`}
-      ${page === 'tiles' ? '<span class="muted" id="lv-status" role="status"></span>' : ''}<span style="flex:1"></span>
-      ${second ? '<button class="btn" id="lv-full">Full screen</button>' : '<button class="btn" id="lv-open">Open on a second screen</button>'}</div><div id="lv-body" class="lv-body"></div>`;
+      ${page === 'tiles' ? '<span class="muted" id="lv-status" role="status"></span>' : ''}<span style="flex:1"></span>${second ? '' : '<span class="lv-link" id="lv-link" hidden></span>'}
+      ${second ? '<button class="btn" id="lv-full">Full screen</button>' : '<button class="btn" id="lv-open">Open on a second screen</button>'}</div><div id="lv-body" class="lv-body"></div>${second ? '<span class="lv-link lv-corner" id="lv-link" hidden></span>' : ''}`;
     if ($('lv-back')) $('lv-back').onclick = () => go('tiles');
     if ($('lv-full'))
       $('lv-full').onclick = async () => {
@@ -92,6 +92,7 @@ const LiveView = (() => {
         }
       };
     status();
+    linkDraw(true);
   }
   // the ON AIR panel of the landing page: off air, or the race with its phase, clock, lap and leader
   const mmss = ms => {
@@ -607,12 +608,69 @@ const LiveView = (() => {
   // Race Director: the race's buttons and penalty points. The buttons are sent to the race in the main window.
   // The page is built once and then only updated, so a button never changes under your finger.
   // (audit 2026-11) every command names the race it was meant for, and Pause says which way it goes, so a slow phone or a double tap does no harm
-  const send = cmd => {
+  // (2.5.2) every command gets an id; the race answers in its live messages: the button that sent it shows Sending…, then Done, or a message says why not
+  const pending = new Map();
+  const mark = (el, how) => {
+    if (!el || !el.classList) return;
+    el.classList.toggle('lv-sending', how === 'sending');
+    el.classList.toggle('lv-done', how === 'done');
+    if (how === 'done') setTimeout(() => el.classList && el.classList.remove('lv-done'), 1500);
+  };
+  const toast = text => {
+    if (!host || !host.appendChild || typeof document === 'undefined') return;
+    let t = $('lv-ack');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'lv-ack';
+      t.className = 'lv-ack';
+      t.setAttribute('role', 'alert');
+      host.appendChild(t);
+    }
+    t.textContent = text;
+    t.hidden = false;
+    clearTimeout(t._t);
+    t._t = setTimeout(() => (t.hidden = true), 6000);
+  };
+  const answered = () => {
+    const acks = (V && V.dyn() && V.dyn().acks) || [];
+    for (const [cid, ok, why] of acks) {
+      const p = pending.get(cid);
+      if (!p) continue;
+      pending.delete(cid);
+      clearTimeout(p.timer);
+      mark(p.el, ok ? 'done' : '');
+      if (!ok) toast('Not done: ' + (why || 'the race did not take it.'));
+    }
+  };
+  const send = (cmd, el) => {
     const raceId = V && V.stat() ? V.stat().raceId : undefined,
-      phase = V && V.dyn() ? V.dyn().phase : '';
-    const out = { ...cmd, ...(raceId ? { raceId } : {}) };
+      phase = V && V.dyn() ? V.dyn().phase : '',
+      cid = Math.random().toString(36).slice(2, 12).padEnd(6, '0');
+    const out = { ...cmd, ...(raceId ? { raceId } : {}), cid };
     if (cmd.type === 'pause' && !cmd.want) out.want = phase === 'paused' ? 'resume' : 'pause';
-    return Promise.resolve(api.liveCommand(out)).then(() => {
+    mark(el, 'sending');
+    // (follow-up audit) after 4 s without an answer the phone says the command was sent and keeps waiting, instead of asking for a second tap
+    // (a second penalty); only after 30 s it says that nothing came back
+    pending.set(cid, {
+      el,
+      timer: setTimeout(() => {
+        if (!pending.has(cid)) return;
+        toast('Sent. Waiting for the timing computer to confirm…');
+        pending.get(cid).timer = setTimeout(() => {
+          if (!pending.delete(cid)) return;
+          mark(el, '');
+          toast('No answer from the timing computer. Check the race screen before you press it again.');
+        }, 26000);
+      }, 4000)
+    });
+    return Promise.resolve(api.liveCommand(out)).then(sent => {
+      if (sent === false) {
+        // (it did not leave this device: the page has said so already)
+        const p = pending.get(cid);
+        if (p) clearTimeout(p.timer);
+        pending.delete(cid);
+        mark(el, '');
+      }
       if (api.web && host && (page === 'director' || page === 'tokens') && !api.directorAuthed()) draw(true); // (the login ran out: its page now)
     });
   };
@@ -792,6 +850,8 @@ const LiveView = (() => {
               damage: (lane, n) => send({ type: 'damage', lane, n }),
               failure: (lane, k) => send({ type: 'failure', lane, k }),
               failureClear: lane => send({ type: 'failureclear', lane }),
+              retire: lane => send({ type: 'retire', lane }),
+              unretire: lane => send({ type: 'unretire', lane }),
               bop: (lane, how) => send({ type: 'bop', lane, how }),
               weather: state => send({ type: 'weather', state })
             },
@@ -831,27 +891,66 @@ const LiveView = (() => {
         const b = e.target.closest('[data-cmd]');
         if (!b) return cardsPanel ? cardsPanel.click(e.target) : adjPanel && adjPanel.click(e.target); // (not a button of the race: maybe one of the lane cards or of the Adjust folder)
         if (b.disabled) return;
+        let how;
         if (b.dataset.cmd === 'stop') {
           const asked = V && V.stat() ? V.stat().raceId : ''; // (audit 2026-11: the heat the question was about)
-          if (
-            !(await Dialog.confirm('Stop the race now? The laps so far are saved.', {
-              ok: 'Stop the race',
+          const h = V && V.dyn() ? V.dyn().heat : null;
+          if (h && h.more && V.dyn().phase !== 'between') {
+            // (2.5.2) a heat race with heats still to come: End this heat or End the event, as on the race computer
+            const name = typeof h.idx === 'number' ? (h.idx < h.count ? 'heat ' + (h.idx + 1) : 'this final') : 'this heat';
+            how = await Dialog.choose('The race clock stops at once. The laps so far are kept.', {
+              title: `Stop ${name}?`,
               cancel: 'Keep racing',
-              danger: true
-            }))
+              danger: true,
+              choices: [
+                {
+                  value: 'heat',
+                  label: 'End this heat',
+                  ok: 'End this heat',
+                  note: 'It ends now with the laps as they stand: it is checked, then the break and the next heat.'
+                },
+                {
+                  value: 'event',
+                  label: 'End the event',
+                  ok: 'End the event',
+                  note: 'It is checked, then the event is over: the heats still to come are not raced.'
+                }
+              ]
+            });
+            if (!how) return;
+          } else if (
+            !(await Dialog.confirm(
+              h && h.more
+                ? 'Stop the event now? The laps so far are saved, and the heats that are still to come are not raced.' // (follow-up audit: in the break Stop ends the event)
+                : 'Stop the race now? The laps so far are saved.',
+              {
+                ok: 'Stop the race',
+                cancel: 'Keep racing',
+                danger: true
+              }
+            ))
           )
             return;
           if (!V || !['running', 'paused', 'between'].includes(V.dyn()?.phase)) return; // (the race goes on while the question is open: it may have ended by itself)
-          if ((V.stat() ? V.stat().raceId : '') !== asked) return; // (...or the next heat may have started: it is not stopped by an answer about the last one)
+          if ((V.stat() ? V.stat().raceId : '') !== asked) {
+            // (...or the race changed while it was open; follow-up audit: said, not silent)
+            toast(
+              'Not sent: the race changed while you decided (a new heat, or new race data). Look again, then press Stop if it still has to stop.'
+            );
+            return;
+          }
         }
-        send({
-          type: b.dataset.cmd,
-          lane: b.dataset.lane === undefined ? undefined : Number(b.dataset.lane),
-          n: b.dataset.n === undefined ? undefined : Number(b.dataset.n),
-          typeIndex: b.dataset.type === undefined ? undefined : Number(b.dataset.type),
-          id: b.dataset.id === undefined ? undefined : Number(b.dataset.id),
-          how: b.dataset.how
-        });
+        send(
+          {
+            type: b.dataset.cmd,
+            lane: b.dataset.lane === undefined ? undefined : Number(b.dataset.lane),
+            n: b.dataset.n === undefined ? undefined : Number(b.dataset.n),
+            typeIndex: b.dataset.type === undefined ? undefined : Number(b.dataset.type),
+            id: b.dataset.id === undefined ? undefined : Number(b.dataset.id),
+            how: b.dataset.how || how
+          },
+          b
+        );
       };
     }
     const d = V.dyn(),
@@ -1230,6 +1329,46 @@ const LiveView = (() => {
 
   // ---- keeping up with the race ----
   let lastPaint = 0;
+  // (2.5.2) how old the data is: the Live / Reconnecting pill, and the clock held while nothing comes in during a race
+  let lastMsgAt = 0,
+    linkKey = '',
+    clockHeld = false;
+  const heard = () => {
+    lastMsgAt = performance.now();
+    if (clockHeld && V) V.freeze(null);
+    clockHeld = false;
+  };
+  function linkDraw(force) {
+    const el = $('lv-link'),
+      ph = V && V.dyn() ? V.dyn().phase : '',
+      flowing = ['running', 'paused'].includes(ph), // (follow-up audit: not the start lights: the race sends nothing during their random wait)
+      age = lastMsgAt ? (performance.now() - lastMsgAt) / 1000 : 0,
+      link = api.liveLink ? api.liveLink() : null;
+    // a race whose messages stopped (one comes every second): the clocks stop where they are, instead of running on without the race
+    if (V && flowing && lastMsgAt && age > 5 && !clockHeld) {
+      clockHeld = true;
+      V.freeze(lastMsgAt + 1000); // (follow-up audit: where the last real data put it, not 5 s on)
+    }
+    if (!el) return;
+    let tone = '',
+      text = '';
+    if ((link && !link.connected) || (flowing && lastMsgAt && age > 5)) {
+      tone = 'warn';
+      text = 'Reconnecting' + (flowing && lastMsgAt && age >= 1 ? ` · ${Math.round(age)} s old` : ''); // (an age only while a race runs: outside one nothing is sent)
+    } else if (link) {
+      tone = 'ok';
+      text = 'Live';
+    }
+    const key = tone + text;
+    if (!force && key === linkKey) return;
+    linkKey = key;
+    el.hidden = !text;
+    if (el.classList) {
+      el.classList.toggle('ok', tone === 'ok');
+      el.classList.toggle('warn', tone === 'warn');
+    }
+    el.innerHTML = text ? `<i></i>${esc(text)}` : '';
+  }
   function repaint() {
     lastPaint = performance.now();
     status();
@@ -1286,6 +1425,7 @@ const LiveView = (() => {
     if (second && page === 'tiles') page = live() ? 'timing' : 'home';
     offs.push(
       api.onLiveStatic(s => {
+        heard();
         V.feedStatic(s);
         LiveCanvas.dispose(nodes);
         nodes = null;
@@ -1302,11 +1442,14 @@ const LiveView = (() => {
       held = [];
     const onDyn = d => {
       if (!V) return;
+      heard();
       if (syncing) {
         if (held.length < 200) held.push(d);
         return;
       }
-      if (V.feedDynamic(d, performance.now())) {
+      const fed = V.feedDynamic(d, performance.now());
+      answered();
+      if (fed) {
         if (second && page === 'home' && live()) return go('timing'); // (audit 2026-11: the race was there before its first message: Home leaves now)
         if (followResults()) return;
         if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
@@ -1338,9 +1481,11 @@ const LiveView = (() => {
       const later = held;
       held = [];
       if (!V || V !== mine) return;
+      answered(); // (follow-up audit: an answer that came with the whole state)
       // the kept messages, oldest first; the last one that fits paints
       let painted = false;
       for (const d of later) if (V.feedDynamic(d, performance.now())) painted = true;
+      if (later.length) answered();
       if (ok || painted) {
         if (second && page === 'home' && live()) return go('timing');
         if (followResults()) return;
@@ -1378,7 +1523,12 @@ const LiveView = (() => {
         })
       );
     }
+    lastMsgAt = performance.now();
+    linkKey = '';
+    clockHeld = false;
+    if (api.onLiveLink) offs.push(api.onLiveLink(() => linkDraw()));
     ticker = setInterval(() => {
+      linkDraw();
       // (2.4.0 review, speed) no second paint when a live message has just painted
       if (live() && ['running', 'countdown'].includes(V.dyn().phase) && performance.now() - lastPaint >= 90) repaint();
     }, 100); // clocks keep running between messages

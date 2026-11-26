@@ -19,6 +19,8 @@ const LiveShare = (() => {
     'done',
     'place',
     'retired',
+    'retiredBy',
+    'retiredAt',
     'fuel',
     'outOfFuel',
     'blockAt',
@@ -183,6 +185,7 @@ const LiveShare = (() => {
       d = {
         raceId: c.raceId,
         notice: String(c.notice || '').slice(0, 400),
+        ...(Array.isArray(c.acks) && c.acks.length ? { acks: c.acks.slice(-12) } : {}), // (2.5.2: the answers to the phones' commands, [id, ok, why])
         pluginViews: c.pluginViews || {},
         sentNow: number(c.now),
         phase: c.phase,
@@ -409,7 +412,8 @@ const LiveShare = (() => {
       eng = null,
       offset = 0,
       personal = null,
-      need = false;
+      need = false,
+      frozen = null;
     const v = {
       hasRace: () => !!(stat && dyn && stat.raceId === dyn.raceId),
       stat: () => stat,
@@ -460,8 +464,11 @@ const LiveShare = (() => {
         return true;
       },
       needsSync: () => need,
-      // the race window's idea of "now", given our clock
-      clock: localNow => localNow - offset,
+      // the race window's idea of "now", given our clock (2.5.2: held at a moment while the data is old, so a clock does not run on without the race)
+      clock: localNow => (frozen !== null && localNow > frozen ? frozen : localNow) - offset,
+      freeze: at => {
+        frozen = Number.isFinite(at) ? at : null;
+      },
       engine: () => eng,
       shared(localNow) {
         const d = dyn,

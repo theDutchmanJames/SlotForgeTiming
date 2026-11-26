@@ -79,6 +79,7 @@
       held.fill(false);
       L.ticks = 0;
       L.lastTick = 0;
+      L.lastDataAt = 0; // (follow-up audit: a reconnected interface is not "silent" because of the time before it was unplugged)
     };
     // how long a sensor must stay covered before it is a car in the pits (milliseconds; the race sets it from its setup, never below half a second)
     L.setHold = ms => {

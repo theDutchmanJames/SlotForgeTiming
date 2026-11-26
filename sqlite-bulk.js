@@ -234,7 +234,10 @@ function dependencies(store, picks) {
 }
 function importItems(store, { bundle }) {
   // Reuse remapping/legacy upgrades; only existing titles and field definitions are needed.
-  const data = { customFields: store.get('@meta', 'customFields', true)?.value || {} };
+  const data = {
+    customFields: store.get('@meta', 'customFields', true)?.value || {},
+    savedKey: k => !!require('./sqlite-finalization').saved(store, k) // (2.5.2: a rescued race that was saved here after all)
+  };
   for (const entity of Transfer.ORDER) {
     data[entity] = [];
     data.customFields[entity] ||= [];

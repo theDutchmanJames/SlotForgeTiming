@@ -334,7 +334,10 @@ const LaneCards = (() => {
           hidden: true,
           title: 'Clear the failure of this car'
         });
-        [cd.penB, cd.dmgB, cd.failB, cd.failClr].forEach(b => cd.acts.appendChild(b));
+        // (2.5.2) Retire car (DNF), and Undo, where the page can send them (the Race Director page on a phone; the race screen has them on the card)
+        cd.retB = btn('lc-act lc-act-ret', 'Retire', { 'data-lc-retire': 1, hidden: true, title: 'Take this car out of the race (DNF)' });
+        cd.unretB = btn('lc-act lc-act-ret', 'Undo DNF', { 'data-lc-unretire': 1, hidden: true, title: 'Put this car back in the race' });
+        [cd.penB, cd.dmgB, cd.failB, cd.failClr, cd.retB, cd.unretB].forEach(b => cd.acts.appendChild(b));
         cd.penTitle = h('strong');
         cd.penNow = h('span', 'lc-popnow muted');
         cd.penPend = h('p', 'lc-popnote muted');
@@ -602,7 +605,13 @@ const LaneCards = (() => {
           });
           set(cd.failNow, r.fail.note || r.fail.chip);
         }
-        cd.acts.hidden = cd.penB.hidden && cd.dmgB.hidden && cd.failB.hidden && cd.failClr.hidden;
+        {
+          const car = (getE()?.cars || []).find(c => c.lane === cd.lane && !c.virtualRival),
+            racing = ['running', 'paused'].includes(o.phase ? o.phase() : '') && getE()?.type === 'race'; // (Retire only in a race)
+          cd.retB.hidden = !(send.retire && racing && car && !car.done && !car.dq);
+          cd.unretB.hidden = !(send.unretire && racing && car && car.retiredBy === 'director');
+        }
+        cd.acts.hidden = cd.penB.hidden && cd.dmgB.hidden && cd.failB.hidden && cd.failClr.hidden && cd.retB.hidden && cd.unretB.hidden;
         // Balance of Power
         cd.bop.hidden = !r.bop;
         if (r.bop) {
@@ -739,6 +748,29 @@ const LaneCards = (() => {
           sel = cd && cd.failRadios.find(x => x.checked);
         if (!b.disabled && cd && send.failure) send.failure(cd.lane, sel ? Number(sel.value) : -1);
         closePop();
+        unfocus(b);
+        return refresh();
+      }
+      if ((b = t.closest('[data-lc-retire]'))) {
+        const lane = laneOf(b),
+          car = (getE()?.cars || []).find(c => c.lane === lane);
+        if (b.disabled || !send.retire || !car) return;
+        unfocus(b);
+        const laps = Array.isArray(car.laps) ? car.laps.length : 0;
+        Promise.resolve(
+          typeof Dialog === 'undefined' ||
+            Dialog.confirm(
+              `${car.driverName || 'The car on lane ' + (lane + 1)} is out of the race with the laps so far, listed as DNF (about ${laps} lap${laps === 1 ? '' : 's'}). The race no longer waits for this car.`,
+              { title: `Retire lane ${lane + 1}?`, ok: 'Retire car', cancel: 'Keep it racing', danger: true }
+            )
+        ).then(yes => {
+          if (yes) send.retire(lane);
+          refresh();
+        });
+        return;
+      }
+      if ((b = t.closest('[data-lc-unretire]'))) {
+        if (!b.disabled && send.unretire) send.unretire(laneOf(b));
         unfocus(b);
         return refresh();
       }

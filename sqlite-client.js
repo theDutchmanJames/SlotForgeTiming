@@ -66,7 +66,12 @@ class SqliteClient {
         }
         this.failure = null;
         this.spawn();
-        if (this.opened) await this.send(this.opened.operation, this.opened.args);
+        try {
+          if (this.opened) await this.send(this.opened.operation, this.opened.args);
+        } catch (x) {
+          this.failure = x; // (follow-up audit 2026-11: the database did not open again: the next request tries another restart, within the limit)
+          throw x;
+        }
       })().finally(() => {
         this.reviving = null;
       });

@@ -283,6 +283,7 @@
           f = factsOf(lane),
           top = tc ? tc.card : callRow(lane);
         if (top && top.parentNode !== card) head.after(top);
+        if (tc && tc.ret && tc.ret.parentNode !== head) head.appendChild(tc.ret); // (2.5.2: Retire car, DNF and Undo in the head of the lane card)
         const anchor = top || head;
         if (f.box.previousSibling !== anchor) anchor.after(f.box);
       }

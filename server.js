@@ -49,6 +49,8 @@ const COMMANDS = [
   'start',
   'pause',
   'stop',
+  'retire',
+  'unretire',
   'yellow',
   'red',
   'penalty',
@@ -83,7 +85,8 @@ function plainCommand(c) {
   if (c.type === 'penalty')
     return LANE(c.lane) && (c.n === undefined || (typeof c.n === 'number' && Number.isFinite(c.n) && Math.abs(c.n) <= 1000));
   if (c.type === 'assign') return LANE(c.lane) && Number.isInteger(c.typeIndex) && c.typeIndex >= 0 && c.typeIndex < 100;
-  if (c.type === 'call' || c.type === 'pitrelease' || c.type === 'pitreleaseearly') return LANE(c.lane);
+  if (c.type === 'call' || c.type === 'pitrelease' || c.type === 'pitreleaseearly' || c.type === 'retire' || c.type === 'unretire')
+    return LANE(c.lane);
   if (c.type === 'callresolve') return Number.isInteger(c.id) && c.id >= 0 && typeof c.how === 'string' && c.how.length <= 30;
   return true;
 }
@@ -202,6 +205,8 @@ const REVIEW_OPS = {
 };
 // the fields every command may carry; whatever else a browser sends is not passed on to the race
 const FIELDS = {
+  retire: ['lane'],
+  unretire: ['lane'],
   penalty: ['lane', 'n'],
   assign: ['lane', 'typeIndex'],
   call: ['lane'],
@@ -226,6 +231,20 @@ const FIELDS = {
   pitreleaseearly: ['lane'],
   system: ['key', 'enabled']
 };
+// (follow-up audit) more that a phone never needs: the Time Token balances, hardware and plugin set-up, the edits of a heat plan
+const PRIVATE_KEYS = [
+  'tokenSessions',
+  'hwDiagnostics',
+  'dsSerial',
+  'parallelPort',
+  'pluginTiming',
+  'heatEdits',
+  'assignments',
+  'hwIgnored',
+  'tmDevice',
+  'abDevice',
+  'dsDevice'
+];
 const PRIVATE_SETTING = /^(net[A-Z]\w*|autoBackup\w*)$|(password|token|secret|folder|path)$/i;
 // a clean copy of a command that may go to the race, or null
 function cleanCommand(c) {
@@ -233,6 +252,7 @@ function cleanCommand(c) {
   const out = { type: c.type };
   // (audit 2026-11) the race the phone saw: the race window does nothing with a command meant for an earlier heat
   if (typeof c.raceId === 'string' && /^[0-9a-z]{1,40}$/.test(c.raceId)) out.raceId = c.raceId;
+  if (typeof c.cid === 'string' && /^[0-9a-z]{4,24}$/.test(c.cid)) out.cid = c.cid; // (2.5.2: the phone's id of the command, for its answer)
   if (c.type === 'review') {
     if (!KEY(c.op) || !own(REVIEW_OPS, c.op)) return null;
     out.op = c.op;
@@ -247,6 +267,7 @@ function cleanCommand(c) {
   }
   if (c.type === 'system' && !KEY(c.key)) return null;
   for (const f of FIELDS[c.type] || []) if (own(c, f) && c[f] !== undefined) out[f] = c[f];
+  if (c.type === 'stop' && (c.how === 'heat' || c.how === 'event')) out.how = c.how; // (2.5.2: End this heat or End the event)
   if (c.type === 'pause' && (c.want === 'pause' || c.want === 'resume')) out.want = c.want; // (audit 2026-11: what the button meant, so a second tap does not undo it)
   return out;
 }
@@ -321,8 +342,13 @@ function createServer(o) {
       tokens.delete(t);
       return false;
     }
-    if (e.pw !== pw) return false;
-    e.at = Date.now(); // (audit 2026-11: the login lasts 12 h after its last use, not after logging in, so it does not run out during an evening)
+    if (e.pw !== pw) {
+      tokens.delete(t); // (follow-up audit: a login of an old password is gone for good, also when that password is set again)
+      return false;
+    }
+    e.at = Date.now();
+    tokens.delete(t); // (and the one in use moves to the back: a full list lets go of the logins nobody uses)
+    tokens.set(t, e); // (audit 2026-11: the login lasts 12 h after its last use, not after logging in, so it does not run out during an evening)
     return true;
   };
   // Guessing the password: one try at a time (each wrong one waits failDelay), and after a few wrong ones from a device, or many from all devices together,
@@ -456,7 +482,7 @@ function createServer(o) {
         if (what === 'settings') {
           const s = { ...o.getSettings() };
           // (audit 2026-11) what a phone never needs: the password, the backup and network set-up of this computer, and anything that names a folder or a secret
-          for (const k of Object.keys(s)) if (PRIVATE_SETTING.test(k)) delete s[k];
+          for (const k of Object.keys(s)) if (PRIVATE_SETTING.test(k) || PRIVATE_KEYS.includes(k)) delete s[k];
           return send(res, 200, s);
         }
         if (what === 'live') return send(res, 200, o.getLive());

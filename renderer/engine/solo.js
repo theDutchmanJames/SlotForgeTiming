@@ -20,7 +20,8 @@
     multiClass: '',
     bop: '',
     bopSystem: '',
-    rotation: ''
+    rotation: '',
+    fuel: '' // (follow-up audit: the fuel switch of before the fuel systems)
   };
   const effective = setup =>
     setup && setup.sessionType === 'solo' ? { ...setup, ...NO_SYSTEMS, sessionType: 'practice', solo: true } : setup;

@@ -232,11 +232,11 @@ test('Live screens and phones: the race-over screen once, commands for the right
   assert.equal(S.cleanCommand({ type: 'pause', raceId: 'abc123' }).raceId, 'abc123');
   assert.equal(S.cleanCommand({ type: 'start', raceId: '<x>' }).raceId, undefined, 'only a plain race id is passed on');
   const race = code('renderer/race.js');
-  assert(has(race, 'if (cmd.raceId && cmd.raceId !== live.raceId && !(live.heatIds || []).includes(cmd.raceId)) return;'), 'a command for an earlier heat is not done');
-  assert(has(race, "if (cmd.type === 'pause' && cmd.want && (cmd.want === 'resume') !== (live.phase === 'paused')) return;"), 'a second tap of Pause does not resume');
+  assert(has(race, 'if (cmd.raceId && cmd.raceId !== live.raceId && !(live.heatIds || []).includes(cmd.raceId))') && has(race, "That heat had already ended. Nothing was changed."), 'a command for an earlier heat is not done, and the phone is told (2.5.2)');
+  assert(has(race, "if (cmd.type === 'pause' && cmd.want && (cmd.want === 'resume') !== (live.phase === 'paused')) return answer(true);"), 'a second tap of Pause does not resume');
   const view = code('renderer/liveview.js');
   assert(has(view, 'if (held.length < 200) held.push(d);'), 'messages during a resync are kept');
-  assert(has(view, "if ((V.stat() ? V.stat().raceId : '') !== asked) return;"), 'the Stop question is about one heat');
+  assert(has(view, "if ((V.stat() ? V.stat().raceId : '') !== asked) {") && has(view, 'Not sent: the race changed while you decided'), 'the Stop question is about one heat (follow-up audit: and says so)');
   const web = code('renderer/webapi.js');
   assert(has(web, 'retryT = setTimeout(stream, retryMs);'), 'a closed stream is made again');
   assert(has(code('main.js'), "relay('live:push', d, e.sender);"), 'not echoed to the race window');
@@ -339,4 +339,90 @@ test('Speed: results remembered while nothing changed, one query per session, on
   assert(has(code('renderer/race.js'), "racehost.classList.contains('parked')"), 'a parked race does not paint its widgets');
   assert(has(code('renderer/rows.js'), 'root.WidgetView.fitCells(viewCells);'), 'leaderboard cells fitted together');
   assert(has(code('renderer/landing.js'), 'homeLists.epoch === epoch'), 'a lane edit uses the lists of a moment ago');
+});
+
+test('Safety nets (2.5.2) and the follow-up audit: Retire, Stop with a choice, rescued results, command answers, writes counted', () => {
+  const E = require('../renderer/engine.js');
+  // Retire car: out with its laps, the race no longer waits; Undo starts the timing again; the last car ends the race
+  const r = E.createRace({ type: 'race', laps: 5, endRule: 'all', entries: [{ lane: 0 }, { lane: 1 }] });
+  r.start(0);
+  r.cross(0, 100);
+  r.cross(1, 100);
+  r.cross(0, 5000);
+  r.cross(1, 5200);
+  assert.equal(r.retire(1, 6000), true);
+  assert.equal(r.cars[1].retiredBy, 'director');
+  assert.equal(r.cross(1, 10000), false, 'a retired car counts no laps');
+  assert.equal(r.unretire(1, 11000), true);
+  assert.equal(r.cross(1, 12000), false, 'its first crossing after Undo starts the timing');
+  assert.equal(r.cross(1, 17000), true);
+  const q = E.createRace({ type: 'race', laps: 2, endRule: 'all', entries: [{ lane: 0 }, { lane: 1 }] });
+  q.start(0);
+  q.cross(0, 100);
+  q.cross(1, 100);
+  q.cross(0, 5000);
+  q.cross(0, 9000);
+  q.retire(1, 9500);
+  assert.equal(q.status, 'finished', 'retiring the last car still racing ends the race');
+  // a DNF is kept in the heat result
+  const people = ['A', 'B'].map((x, i) => ({ driverId: 'd' + i, carId: 'c' + i, driverName: x }));
+  const H = E.createHeatRace({ participants: people, schedule: [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }]], resultBy: 'laps' });
+  const h = E.createRace({ type: 'race', laps: 2, endRule: 'all', entries: H.entries() });
+  h.start(0);
+  h.cross(0, 100);
+  h.cross(1, 100);
+  h.cross(0, 5000);
+  h.retire(1, 6000);
+  h.cross(0, 9000);
+  assert.equal(H.record(h).rows.find(x => x.participant === 1).dnf, true);
+  // the server passes the new fields on, checked
+  const S = require('../server.js');
+  assert.equal(S.cleanCommand({ type: 'stop', how: 'heat' }).how, 'heat');
+  assert.equal(S.cleanCommand({ type: 'stop', how: 'x' }).how, undefined);
+  assert.equal(S.cleanCommand({ type: 'retire', lane: 1 }).lane, 1);
+  assert.equal(S.cleanCommand({ type: 'yellow', cid: 'abc123' }).cid, 'abc123');
+  assert.equal(S.cleanCommand({ type: 'yellow', cid: '<b>' }).cid, undefined);
+  // the answers travel with the live data; a viewer's clock can be held
+  const LS = require('../renderer/liveshare.js'),
+    sender = LS.sender({ heartbeat: 0 }),
+    race = E.createRace({ type: 'race', laps: 3, entries: [{ lane: 0 }] });
+  race.start(0);
+  const ctx = { raceId: 'x', eng: race, phase: 'review', calling: false, lights: 0, heat: null, season: null, flash: new Map(), bestAll: Infinity, bestAllName: '', bestBy: new Map(), now: 1000, acks: [['cid001', false, 'The race is over.']] };
+  const m = JSON.parse(JSON.stringify(sender.pack(ctx, 1000)));
+  assert.deepEqual(m.acks, [['cid001', false, 'The race is over.']]);
+  const V = LS.viewer();
+  V.freeze(500);
+  assert.equal(V.clock(9999), 500, 'held');
+  V.freeze(null);
+  assert.equal(V.clock(9999), 9999);
+  // a rescued race is skipped on import when it was saved here after all; the links it keeps stay
+  const T = require('../transfer.js');
+  const bundle = {
+    format: T.FORMAT,
+    fileVersion: 1,
+    items: { sessions: [{ id: 'rescued-1', rescueKey: 'run-1', setupName: 'Club night', standings: [{ driverId: 'd1' }] }], laps: [{ id: 'l1', sessionId: 'rescued-1', driverId: 'd1' }] },
+    keep: { drivers: { d1: 'd1' } }
+  };
+  const mk = sessions => ({ data: { sessions, laps: [], customFields: {}, ...Object.fromEntries(T.ORDER.filter(e => e !== 'sessions' && e !== 'laps').map(e => [e, []])) }, saveNow() {} });
+  const here = mk([{ id: 's9', saveKey: 'run-1', standings: [] }]);
+  T.apply(here, bundle);
+  assert.equal(here.data.sessions.length, 1, 'saved here after all: not added twice');
+  assert.equal(here.data.laps.length, 0);
+  const elsewhere = mk([]);
+  T.apply(elsewhere, bundle);
+  assert.equal(elsewhere.data.sessions.length, 1);
+  assert.equal(elsewhere.data.sessions[0].standings[0].driverId, 'd1', 'the driver link is kept, not blanked');
+  const planned = T.plan(bundle, [], {});
+  assert.equal(planned.bundle.keep.drivers.d1, 'd1', 'Import keeps the links the file names');
+  // the race side: tyres from a phone before the start, answers sent at once, Retire only in races, heat checks
+  const raceCode = code('renderer/race.js');
+  assert(has(raceCode, "// (not tyre: the Tyre Change folder works before the start and in the break too)"));
+  assert(has(raceCode, "if (live === L && L.alive !== false) share();"), 'an answer goes out at once');
+  assert(has(raceCode, "eng.type === 'race' && !solo"), 'Retire only in races');
+  assert(has(raceCode, "if (live.raceId !== asked && !(live.heatIds || []).includes(asked)) return;"), 'Retire does not land on the next heat');
+  assert(has(raceCode, "const late = performance.now() - tmTickAt > 1500;"), 'a window that stood still is no silent Trackmate');
+  // every editor save is a write (JSON storage too); SQLite keeps its error when it cannot reopen
+  assert(has(code('preload.js'), 'writeEpoch++; // (follow-up audit 2026-11: every add, update and remove is a write'));
+  assert(has(code('sqlite-client.js'), 'this.failure = x;'));
+  assert(has(code('main.js'), "if (typeof bulkStorage.assertExportTarget === 'function') bulkStorage.assertExportTarget(filePath);"), 'checked before the old backup is moved');
 });

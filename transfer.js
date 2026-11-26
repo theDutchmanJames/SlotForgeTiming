@@ -409,8 +409,17 @@ function apply(db, bundle) {
         (fieldMap[e] = fieldMap[e] || Object.create(null))[f.id] = mine.id;
       });
     });
+    // (2.5.2, follow-up audit) a race rescued to a file is skipped, with its laps, when that same race was saved here after all (its race key)
+    const rescuedHere = new Set(),
+      savedKey =
+        typeof d.savedKey === 'function' ? d.savedKey : k => d.sessions.some(x => x.saveKey === k) || (d.deletedSaveKeys || []).includes(k);
     for (const e of ORDER) {
       for (const src of bundle.items[e] || []) {
+        if (e === 'sessions' && typeof src.rescueKey === 'string' && src.rescueKey && savedKey(src.rescueKey)) {
+          rescuedHere.add(src.id);
+          continue;
+        }
+        if (e === 'laps' && rescuedHere.has(src.sessionId)) continue;
         const row = clone(src);
         delete row.paddock;
         delete row.paddockJournal;
@@ -462,9 +471,10 @@ function apply(db, bundle) {
     const CarStats = require('./renderer/carstats.js'),
       dateOf = new Map(d.sessions.slice(had.sessions).map(x => [x.id, x.date]));
     const old = new Map(d.slotcars.slice(0, had.slotcars).map(c => [c.id, c]));
+    const replaced = new Set(Array.isArray(bundle.replaced) ? bundle.replaced : []);
     for (const l of d.laps.slice(had.laps)) {
       const car = old.get(l.carId);
-      if (!car) continue;
+      if (!car || replaced.has('slotcars:' + car.id)) continue;
       counted.push([car, car.lapsSinceService, car.lapsDriven]);
       if (CarStats.afterService(car, l, dateOf.get(l.sessionId) || l.date)) car.lapsSinceService = CarStats.sinceOf(car) + 1;
       car.lapsDriven = (car.lapsDriven || 0) + 1;
@@ -537,7 +547,13 @@ function plan(bundle, list, choices, newId = () => crypto.randomUUID()) {
   // the laps of a session that is skipped go with it
   const goneSessions = drop.sessions || new Set();
   if (goneSessions.size && b.items.laps) b.items.laps = b.items.laps.filter(l => !goneSessions.has(l.sessionId));
+  // (2.5.2) a rescued results file names the links it keeps as they are (its drivers, car and track, which are not in the file); the choices win
+  if (bundle.keep && typeof bundle.keep === 'object')
+    for (const [e, ids] of Object.entries(bundle.keep))
+      if (ids && typeof ids === 'object')
+        for (const [k, v] of Object.entries(ids)) if (typeof v === 'string' && !(keep[e] && keep[e][k])) (keep[e] = keep[e] || {})[k] = v;
   b.keep = keep;
+  b.replaced = replace.map(r => r.e + ':' + r.id); // (follow-up audit: a replaced car brings its own lap counts)
   const rows = replace.map(r => {
     const row = clone((bundle.items[r.e] || []).find(x => x.id === r.from));
     delete row.id;
