@@ -6,7 +6,24 @@
 (function (root) {
   const on = setup => !!setup && (setup.sessionType === 'solo' || setup.solo === true);
   // the setup as the race runs it: a Free practice that knows it is a solo session
-  const effective = setup => (setup && setup.sessionType === 'solo' ? { ...setup, sessionType: 'practice', solo: true } : setup);
+  // (audit 2026-11) no race systems: a Solo setup does not ask for them, and a value left from when it was another kind is not used (one physical car on
+  // two lane entries would otherwise get a full tank and fresh tyres at every lane switch)
+  const NO_SYSTEMS = {
+    fuelRules: '',
+    penaltySystem: '',
+    damageSystem: '',
+    safetyCar: '',
+    tyreWear: '',
+    weather: '',
+    pushSave: '',
+    resourceSystem: '',
+    multiClass: '',
+    bop: '',
+    bopSystem: '',
+    rotation: ''
+  };
+  const effective = setup =>
+    setup && setup.sessionType === 'solo' ? { ...setup, ...NO_SYSTEMS, sessionType: 'practice', solo: true } : setup;
   const auto = setup => !!setup && setup.soloSwitch === 'auto';
   // the rows of the race: the one row of Home on every lane
   const rows = (row, lanes) => Array.from({ length: Math.max(1, Math.floor(Number(lanes)) || 1) }, () => ({ ...row }));

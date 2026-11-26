@@ -9,12 +9,13 @@ const { code, has } = require('./source.cjs');
 test('a Solo setup runs as a Free practice that knows it is solo', () => {
   assert.equal(So.on({ sessionType: 'solo' }), true);
   assert.equal(So.on({ sessionType: 'practice' }), false);
-  assert.deepEqual(So.effective({ sessionType: 'solo', name: 'Evening test', soloSwitch: 'auto' }), {
-    sessionType: 'practice',
-    solo: true,
-    name: 'Evening test',
-    soloSwitch: 'auto'
-  });
+  const eff = So.effective({ sessionType: 'solo', name: 'Evening test', soloSwitch: 'auto', fuelRules: 'f1', penaltySystem: 'p1' });
+  assert.equal(eff.sessionType, 'practice');
+  assert.equal(eff.solo, true);
+  assert.equal(eff.name, 'Evening test');
+  assert.equal(eff.soloSwitch, 'auto');
+  assert.equal(eff.fuelRules, '', 'audit 2026-11: a race system left from another kind is not used');
+  assert.equal(eff.penaltySystem, '');
   assert.equal(So.on(So.effective({ sessionType: 'solo' })), true);
   const race = { sessionType: 'race' };
   assert.equal(So.effective(race), race, 'any other setup is given back as it is');
@@ -52,7 +53,16 @@ test('the lanes: the same driver and car on every lane, a lane switch goes round
 
 test('by lane and car: laps driven, the best and the average of the laps that count, and all laps together', () => {
   const t = So.table([
-    { lane: 0, carId: 'c1', carName: 'NSR Mosler', laps: [9100, 9031, 15000, 9200], bad: [false, false, true, false], invalid: [], pitLaps: [], removed: [] },
+    {
+      lane: 0,
+      carId: 'c1',
+      carName: 'NSR Mosler',
+      laps: [9100, 9031, 15000, 9200],
+      bad: [false, false, true, false],
+      invalid: [],
+      pitLaps: [],
+      removed: []
+    },
     { lane: 1, carId: 'c1', carName: 'NSR Mosler', laps: [9180, 9300], bad: [false, false], invalid: [1], pitLaps: [], removed: [] },
     { lane: 2, carId: 'c1', carName: 'NSR Mosler', laps: [], bad: [] }
   ]);
@@ -64,7 +74,12 @@ test('by lane and car: laps driven, the best and the average of the laps that co
     ]
   );
   assert.deepEqual(t.all, { laps: 6, best: 9031, avg: 9128 });
-  const h = So.tableHtml(t, s => String(s), ms => (ms / 1000).toFixed(3), 'James, all laps');
+  const h = So.tableHtml(
+    t,
+    s => String(s),
+    ms => (ms / 1000).toFixed(3),
+    'James, all laps'
+  );
   assert(h.includes('<td>NSR Mosler</td><td>1</td><td>4</td><td>9.031</td><td>9.110</td>') && h.includes('<b>James, all laps</b>'));
 });
 
@@ -78,7 +93,10 @@ test('Home, the race, the second screen and the results are wired', () => {
   assert(has(race, 'if (live.soloSwitch) return live.soloSwitch();'), 'the call button switches the lane');
   assert(has(race, "if (k === 'tab' && live.soloSwitch) {"), 'and Tab');
   assert(has(race, 'if (live.soloLast >= 0) eng.cars[i].started = false;'), 'a lap never runs across a switch');
-  assert(has(race, 'if (live.fsView && live.fsView.relayout) live.fsView.relayout(live.soloLayout());'), 'the full screen view follows too');
+  assert(
+    has(race, 'if (live.fsView && live.fsView.relayout) live.fsView.relayout(live.soloLayout());'),
+    'the full screen view follows too'
+  );
   assert(has(race, 'session.soloTable = Solo.table(eng.cars);'));
   assert(has(race, 'follow: solo ? live.soloLane : null,'), 'the second screen and the phones are told the lane');
   assert(has(code('renderer/liveshare.js'), 'follow: Number.isInteger(c.follow) ? c.follow : null,'));

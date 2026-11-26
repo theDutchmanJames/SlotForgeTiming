@@ -476,7 +476,7 @@
     const out = {};
     const make = (rail, row, state) => ({ rail: rail.join(' · '), row: cap(row.join(', ')), state });
     // Session: the kind, the format and the swaps (a race), and the track
-    const kindName = { practice: 'Free practice', qualifying: 'Qualifying', tokens: 'Time tokens', race: 'Race' }[p.kind];
+    const kindName = { practice: 'Free practice', qualifying: 'Qualifying', tokens: 'Time tokens', solo: 'Solo', race: 'Race' }[p.kind];
     const tn = c.track && text(c.track.name).trim(),
       named = text(s.name).trim() !== '';
     out.session = make(

@@ -12,7 +12,8 @@ const SESSION_LABEL = {
   timed: 'Timed race',
   heats: 'Heat-based race',
   endurance: 'Endurance Race',
-  tokens: 'Time Token Session'
+  tokens: 'Time Token Session',
+  solo: 'Solo' // (2.5.2: saved as practice with solo: true)
 };
 
 // The page has two pools that never mix: Racing Records (everything raced) and Token Records (the stints of Time Token Sessions, with their own records).
@@ -349,7 +350,7 @@ async function renderResultsPool(box, pool, supplied = null) {
   const sumHead = (s, extra) => {
     const d = s.date ? new Date(s.date) : null,
       ok = d && Number.isFinite(d.getTime());
-    return `<span class="rr-date"${ok ? ` title="${esc(dateText(s.date))}"` : ''}><b>${ok ? d.getDate() : '–'}</b><small>${ok ? esc(rsFmt('mon', { month: 'short' }).format(d)) : ''}</small></span><span class="rr-what"><b>${esc(extra ? extra.name : s.setupName || 'Time token stint')}</b><small>${ok ? esc(rsFmt('when', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(d)) + ' · ' : ''}${esc(extra ? extra.line : [SESSION_LABEL[s.sessionType] || '', s.trackName || ''].filter(Boolean).join(' · '))}</small></span>`;
+    return `<span class="rr-date"${ok ? ` title="${esc(dateText(s.date))}"` : ''}><b>${ok ? d.getDate() : '–'}</b><small>${ok ? esc(rsFmt('mon', { month: 'short' }).format(d)) : ''}</small></span><span class="rr-what"><b>${esc(extra ? extra.name : s.setupName || 'Time token stint')}</b><small>${ok ? esc(rsFmt('when', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(d)) + ' · ' : ''}${esc(extra ? extra.line : [SESSION_LABEL[s.solo ? 'solo' : s.sessionType] || '', s.trackName || ''].filter(Boolean).join(' · '))}</small></span>`;
   };
   const sessionCards = [...sessions]
     .reverse()

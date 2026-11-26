@@ -2087,13 +2087,17 @@
         side = Math.abs(right) >= box.w ? right : Math.abs(left) >= box.w ? left : null;
       if (side !== null) dx = side; // (dy stays what fits: a copy never leaves the page)
     }
-    return sel.map(g => ({
-      ...JSON.parse(JSON.stringify(g)),
-      id: uid(),
-      x: g.x + dx,
-      y: g.y + dy,
-      lane: g.lane === null || g.lane === undefined ? g.lane : Math.min(LANES - 1, g.lane + 1)
-    }));
+    return sel.map(g => {
+      const copy = {
+        ...JSON.parse(JSON.stringify(g)),
+        id: uid(),
+        x: g.x + dx,
+        y: g.y + dy,
+        lane: g.lane === null || g.lane === undefined ? g.lane : Math.min(LANES - 1, g.lane + 1)
+      };
+      delete copy.follow; // (audit 2026-11: a copy for the next lane shows that lane, not the followed one again)
+      return copy;
+    });
   }
   // The saved order is the paint order: later widgets appear in front of earlier
   // ones, including their shadows. Move a selection by one neighbouring layer or

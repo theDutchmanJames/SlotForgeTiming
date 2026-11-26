@@ -99,3 +99,29 @@ test('importing races that are already here skips them, so the same file twice d
   assert(has(T, "(unseen.has(m) || (m.e === 'sessions' && m.how === 'id') ? 'skip'"));
   assert(has(T, 'already here</b> and skipped'));
 });
+
+test('Solo and the second screen: the slips of 2.5.1 and 2.5.2', () => {
+  const So = require('../renderer/engine/solo.js');
+  assert.equal(So.effective({ sessionType: 'solo', fuelRules: 'f', multiClass: 'm' }).fuelRules, '', 'no race systems in Solo');
+  assert(has(code('renderer/database/views.js'), "['solo', 'Solo']"), 'the Solo filter on Race Setups');
+  assert(has(code('renderer/database/views.js'), "solo: 'driver'"), 'and its picture');
+  assert(has(code('renderer/setupwords.js'), "solo: 'Solo', race: 'Race' }[p.kind]"), 'the note on the side list');
+  assert(has(code('renderer/timing.js'), "sessionLabel[(S.setup.solo && 'solo') ||"), 'the race type text');
+  assert(has(code('renderer/database/results.js'), "SESSION_LABEL[s.solo ? 'solo' : s.sessionType]"), 'the results list');
+  assert(has(code('renderer/championship.js'), "'a Solo session' : 'a Time Token Session'"));
+  assert(
+    has(code('renderer/race.js'), 'solo && eng.cars.find(c => c.driverId === x.driverId && eng.lapsOf(c) === x.laps && c.best === x.best)'),
+    'Race over: the lane of each Solo row'
+  );
+  const W = require('../renderer/widgets.js');
+  const [copy] = W.duplicateWidgets([{ id: 'a', type: 'laptime', lane: 0, follow: true, x: 0, y: 0, w: 10, h: 10 }], null, 1000, 1000);
+  assert.equal(copy.lane, 1);
+  assert.equal('follow' in copy, false, 'a copy for the next lane is not Followed');
+  const lv = code('renderer/liveview.js');
+  assert(
+    has(lv, "if (second && page === 'home' && live()) return go('timing');"),
+    'the second screen leaves Home when the race data arrives later'
+  );
+  assert(has(lv, 'api.onSettingsChanged(() => {'), 'and follows the theme');
+  assert(has(code('main.js'), "liveWin.webContents.send('settings:changed');"));
+});

@@ -161,7 +161,8 @@
     timed: 'Timed race',
     heats: 'Heats',
     endurance: 'Endurance',
-    tokens: 'Time tokens'
+    tokens: 'Time tokens',
+    solo: 'Solo'
   };
   const flagText = { ready: 'Ready', running: 'Racing', paused: 'Paused', between: 'Heat finished', finished: 'Finished' };
 
@@ -331,7 +332,11 @@
       track: esc((S.track && S.track.name) || ''),
       session: esc(S.setup.name || ''),
       type: esc(
-        sessionLabel[S.setup.ofType || (S.setup.sessionType === 'race' && S.setup.raceBy === 'time' ? 'timed' : S.setup.sessionType)] || ''
+        sessionLabel[
+          (S.setup.solo && 'solo') ||
+            S.setup.ofType ||
+            (S.setup.sessionType === 'race' && S.setup.raceBy === 'time' ? 'timed' : S.setup.sessionType)
+        ] || ''
       ), // (1.62.0: a Race limited by a time is a Timed race, as the race screen says)
       sessionrecord: rec(sr),
       sessionrecordby: by(sr),

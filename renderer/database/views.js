@@ -42,7 +42,8 @@ const SETUP_FILTERS = [
   ['race', 'Race'],
   ['heats', 'Heats'],
   ['endurance', 'Endurance'],
-  ['tokens', 'Time tokens']
+  ['tokens', 'Time tokens'],
+  ['solo', 'Solo']
 ];
 // the kinds of the row "Start from a kind": the short names of the kinds, with the session type each one starts
 const SETUP_START = [
@@ -51,7 +52,8 @@ const SETUP_START = [
   ['race', 'Race'],
   ['heats', 'Heats'],
   ['endurance', 'Endurance'],
-  ['tokens', 'Time tokens']
+  ['tokens', 'Time tokens'],
+  ['solo', 'Solo']
 ];
 const SETUP_KIND_ICON = {
   practice: 'car',
@@ -59,7 +61,8 @@ const SETUP_KIND_ICON = {
   race: 'racesetups',
   heats: 'layers',
   endurance: 'rotation',
-  tokens: 'tokens'
+  tokens: 'tokens',
+  solo: 'driver'
 };
 const folderClosed = new Set();
 const folderKey = (page, id) => page + ':' + id;

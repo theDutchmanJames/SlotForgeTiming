@@ -611,7 +611,9 @@
     if (!s.setup) out.push(`${who} has no race setup. Choose one in Race Setup > Championships.`);
     else if (!setup) out.push(`${who}: its race setup was deleted. Choose another in Race Setup > Championships.`);
     else if (!kindOf(setup))
-      out.push(`${who}: "${setup.name || '(unnamed)'}" is a Time Token Session, which can not be part of a championship.`);
+      out.push(
+        `${who}: "${setup.name || '(unnamed)'}" is ${setup.sessionType === 'solo' ? 'a Solo session' : 'a Time Token Session'}, which can not be part of a championship.`
+      );
     else if (!trackFor(r, setup, ctx.tracks)) out.push(`${who} has no track. Choose a track for the round, or in the race setup.`);
     return out;
   }

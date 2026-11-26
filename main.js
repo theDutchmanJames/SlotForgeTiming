@@ -1706,6 +1706,8 @@ function registerSettingsAndNetHandlers() {
       throw Error('Finish or leave the race before changing its parallel-port setup.');
     const s = await lifecycle.updateSettings(patch);
     if (db) db.bg = backgroundOn(s);
+    // (audit 2026-11) the second screen follows the theme, the depth and the layers without being reopened
+    if (liveWin && !liveWin.isDestroyed() && _e.sender !== liveWin.webContents) liveWin.webContents.send('settings:changed');
     if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet();
     return s;
   });

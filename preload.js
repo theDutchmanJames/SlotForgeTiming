@@ -3,13 +3,22 @@
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 const thumbnailListeners = new Set();
 ipcRenderer.on('library:thumbnail-job', (_e, job) => thumbnailListeners.forEach(fn => fn(job)));
-const listeners = { static: new Set(), push: new Set(), command: new Set(), resync: new Set(), closed: new Set(), home: new Set() };
+const listeners = {
+  static: new Set(),
+  push: new Set(),
+  command: new Set(),
+  resync: new Set(),
+  closed: new Set(),
+  home: new Set(),
+  settings: new Set()
+};
 ipcRenderer.on('live:command', (_e, c) => listeners.command.forEach(f => f(c)));
 ipcRenderer.on('live:static', (_e, s) => listeners.static.forEach(f => f(s)));
 ipcRenderer.on('live:push', (_e, d) => listeners.push.forEach(f => f(d)));
 ipcRenderer.on('live:resync', () => listeners.resync.forEach(f => f()));
 ipcRenderer.on('live:closed', () => listeners.closed.forEach(f => f()));
 ipcRenderer.on('home:changed', () => listeners.home.forEach(f => f()));
+ipcRenderer.on('settings:changed', () => listeners.settings.forEach(f => f()));
 // (while the app closes, the main process answers with a marker rather than an error, so its log stays readable; the caller still gets the error)
 const call = async (channel, ...args) => {
   const value = await ipcRenderer.invoke(channel, ...args);
@@ -326,6 +335,10 @@ contextBridge.exposeInMainWorld('api', {
   onLiveClosed: f => {
     listeners.closed.add(f);
     return () => listeners.closed.delete(f);
+  },
+  onSettingsChanged: f => {
+    listeners.settings.add(f);
+    return () => listeners.settings.delete(f);
   },
   onHomeChanged: f => {
     listeners.home.add(f);

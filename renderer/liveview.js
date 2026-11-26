@@ -1299,6 +1299,7 @@ const LiveView = (() => {
             nodes = null;
           }
           if (g.dyn && V.feedDynamic(g.dyn, performance.now())) {
+            if (second && page === 'home' && live()) return go('timing');
             if (followResults()) return;
             if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
             else repaint();
@@ -1314,6 +1315,7 @@ const LiveView = (() => {
       api.onLive(d => {
         if (!V) return;
         if (V.feedDynamic(d, performance.now())) {
+          if (second && page === 'home' && live()) return go('timing'); // (audit 2026-11: the race was there before its first message: Home leaves now)
           if (followResults()) return;
           if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
           else repaint();
@@ -1330,6 +1332,25 @@ const LiveView = (() => {
         })
       );
     if (second && api.onHomeChanged) offs.push(api.onHomeChanged(homeAgain));
+    if (second && api.onSettingsChanged) {
+      // (audit 2026-11) a theme, depth or layer change on the race computer shows here at once (debounced: the settings are written often)
+      let lookT = null;
+      offs.push(
+        api.onSettingsChanged(() => {
+          clearTimeout(lookT);
+          lookT = setTimeout(async () => {
+            try {
+              state.settings = await api.getSettings();
+            } catch {
+              return;
+            }
+            if (typeof applyTheme === 'function') applyTheme();
+            if (typeof applyDepth === 'function') applyDepth();
+            if (typeof applyLayers === 'function') applyLayers();
+          }, 300);
+        })
+      );
+    }
     ticker = setInterval(() => {
       // (2.4.0 review, speed) no second paint when a live message has just painted
       if (live() && ['running', 'countdown'].includes(V.dyn().phase) && performance.now() - lastPaint >= 90) repaint();

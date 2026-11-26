@@ -1122,7 +1122,7 @@ async function renderRace() {
   const rcOn = !tokenSession && typeof RaceControl !== 'undefined'; // (2.4.0: Race Control; a Time Token Session keeps its tool bar)
   const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
-  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"${rcOn ? ' class="rc-on"' : ''}>${rcOn ? '<div id="rcbar" class="rc-bar" role="region" aria-label="Race control"></div>' : ''}<button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>${solo ? '<div class="solo-bar" id="solobar" role="group" aria-label="Solo"></div>' : ''}
+  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><section id="raceover" class="ro-host" aria-label="The race is over" hidden></section><section id="racebreak" class="ro-host" aria-label="The break between two heats" hidden></section><div id="raceactive"${rcOn ? ' class="rc-on"' : ''}>${rcOn ? '<div id="rcbar" class="rc-bar" role="region" aria-label="Race control"></div>' : ''}<button type="button" class="btn ro-back" id="robackbreak" hidden>Back to the break</button><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.solo ? 'solo' : setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>${solo ? '<div class="solo-bar" id="solobar" role="group" aria-label="Solo"></div>' : ''}
     ${rulePlan ? `<p class="muted" id="race-rule-summary">Plugin rules: <strong>${esc(rulePlan.name)}</strong> · v${esc(rulePlan.version)} · frozen for this race. Raw lap timing is unchanged.</p>` : ''}
     ${rcOn ? '<div class="rc-row" id="rcrow"><section class="rc-order" aria-label="The order of the race"><div class="rc-oh"><b>Order</b><small id="rcorderline"></small></div><div id="rctower"></div></section><section class="rc-mon" id="rcmon" aria-label="The race screen"><div class="rc-mh" id="rcmonhead"></div><div class="rc-mb">' : ''}<div class="rt-stage"><div class="canvas live" id="canvas"></div></div>${rcOn ? '</div></section></div>' : ''}
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
@@ -1219,8 +1219,11 @@ async function renderRace() {
   function soloSet(lane) {
     if (!solo || lane === live.soloLane) return;
     live.soloLane = lane;
-    buildCanvas();
-    if (live.fsView && live.fsView.relayout) live.fsView.relayout(live.soloLayout());
+    // (audit 2026-11) only a layout with Followed widgets is built again
+    if ((layout.widgets || []).some(w => w && w.follow)) {
+      buildCanvas();
+      if (live.fsView && live.fsView.relayout) live.fsView.relayout(live.soloLayout());
+    }
     drawSoloBar('Now on lane ' + (lane + 1));
     update();
   }
@@ -1326,7 +1329,7 @@ async function renderRace() {
     });
   live.pluginDisplayState = shared;
   // ---- share the race with the second-screen window (and later other devices) ----
-  const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.ofType || setup.sessionType]} on ${r.track.name} · ${limit}`;
+  const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.solo ? 'solo' : setup.ofType || setup.sessionType]} on ${r.track.name} · ${limit}`;
   const tokenUi = () =>
     tokenSession
       ? {
@@ -3375,7 +3378,10 @@ async function renderRace() {
     const s = { ...session, id: savedId };
     // the lane and the picture of every row: a race knows the car of each driver; an event of heats, the lane of the last heat
     s.standings = (session.standings || []).map(x => {
-      const car = !heats ? eng.cars.find(c => c.driverId === x.driverId && c.carId === x.carId) : null,
+      const car = !heats
+          ? (solo && eng.cars.find(c => c.driverId === x.driverId && eng.lapsOf(c) === x.laps && c.best === x.best)) || // (audit 2026-11, Solo: every lane has the same driver and car)
+            eng.cars.find(c => c.driverId === x.driverId && c.carId === x.carId)
+          : null,
         p = heats ? people[x.participant] : car;
       return { ...x, lane: car ? car.lane : null, avatar: (p && p.avatar) || '' };
     });
@@ -5105,7 +5111,7 @@ async function renderRace() {
       trkCards: () => live.trkCards || [],
       color: l => HomeStats.laneColor(layout, l),
       title: setup.name || '',
-      sub: `${SESSION_LABEL[setup.ofType || setup.sessionType] || ''} · ${limitFull} · ${r.track.name}`,
+      sub: `${SESSION_LABEL[setup.solo ? 'solo' : setup.ofType || setup.sessionType] || ''} · ${limitFull} · ${r.track.name}`,
       elapsed: () => eng.elapsed(now()),
       weather: st => actions.weather(st),
       tyreNext: (l, code) => actions.tyreNext(l, code)
@@ -5177,7 +5183,7 @@ async function renderRace() {
           v: 1,
           savedAt: new Date().toISOString(),
           name: setup.name,
-          kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '',
+          kind: SESSION_LABEL[setup.solo ? 'solo' : setup.ofType || setup.sessionType] || '',
           trackName: r.track.name,
           wxSeed,
           wxHeat: wxLast,
