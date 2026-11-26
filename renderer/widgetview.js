@@ -153,20 +153,34 @@
     for (const key of ['style', 'look', 'gaugeScale', 'pictureScale']) if (w.opt?.[key] !== undefined) opt[key] = w.opt[key];
     return `data-wv-type="${esc(w.type)}" data-wv-fit="${esc(JSON.stringify({ opt, composition: !!w.opt?.composition, typography: w.typography }))}"`;
   }
-  function fitCell(el, parent = {}) {
+  // (audit 2026-11, speed) many cells at once: every size is cleared, then all are measured, then each is fitted, so the page is laid out once
+  // for the measuring, not once per cell
+  function fitCells(els, parent = {}) {
+    const vals = els.map(el => el?.querySelector?.(':scope > .lw-val') || null);
+    vals.forEach(v => {
+      if (v) v.style.fontSize = '';
+    });
+    const pre = els.map((el, i) =>
+      vals[i] && el.clientWidth ? { w: el.clientWidth, size: parseFloat(root.getComputedStyle(vals[i]).fontSize) || 20 } : null
+    );
+    els.forEach((el, i) => {
+      if (pre[i]) fitCell(el, parent, pre[i]);
+    });
+  }
+  function fitCell(el, parent = {}, pre = null) {
     const val = el?.querySelector?.(':scope > .lw-val');
-    if (!val || !el.clientWidth) return;
+    if (!val || !(pre ? pre.w : el.clientWidth)) return;
     let saved = {};
     try {
       saved = JSON.parse(el.dataset.wvFit || '{}');
     } catch {
       /* older markup */
     }
-    val.style.fontSize = '';
-    const size = parseFloat(root.getComputedStyle(val).fontSize) || 20;
+    if (!pre) val.style.fontSize = '';
+    const size = pre ? pre.size : parseFloat(root.getComputedStyle(val).fontSize) || 20;
     const w = {
       type: el.dataset.wvType || 'rowcell',
-      w: el.clientWidth,
+      w: pre ? pre.w : el.clientWidth,
       // Render-only size from the proportionally scaled row, never saved.
       ...(!saved.typography && !parent.typography && el.closest('.rrow') ? { rowTextSize: size } : {}),
       opt: saved.opt || {},
@@ -191,6 +205,7 @@
     mount,
     fit,
     fitCell,
+    fitCells,
     attributes,
     updateComponents,
     adapters

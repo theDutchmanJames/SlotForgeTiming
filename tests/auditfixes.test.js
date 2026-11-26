@@ -278,3 +278,65 @@ test('Live screens and phones: the race-over screen once, commands for the right
     await sv.close();
   }
 });
+
+test('Speed: results remembered while nothing changed, one query per session, one request per records page, paint in two phases', () => {
+  const E = require('../renderer/engine.js'),
+    M = require('../renderer/multiclass.js');
+  // the overall result of heats: remembered, but each caller gets copies, and a new heat counts
+  const people = ['A', 'B', 'C'].map((x, i) => ({ driverId: 'd' + i, carId: 'c' + i, driverName: x, carName: 'car' + x }));
+  const H = E.createHeatRace({ participants: people, schedule: [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }], [{ p: 2, lane: 0 }, { p: 0, lane: 1 }]], resultBy: 'points', points: [10, 8, 6] });
+  const run = () => {
+    const q = E.createRace({ type: 'race', laps: 2, endRule: 'all', entries: H.entries() });
+    q.start(0);
+    q.cross(0, 5000);
+    q.cross(0, 10000);
+    q.cross(1, 6000);
+    q.cross(1, 12000);
+    return q;
+  };
+  H.record(run());
+  const a = H.overall();
+  a[0].points = 999;
+  assert.notEqual(H.overall()[0].points, 999, 'a caller cannot change what is remembered');
+  const before = JSON.stringify(H.overall());
+  H.record(run());
+  assert.notEqual(JSON.stringify(H.overall()), before, 'a new heat is counted');
+  // class standings: a crossing changes them at once
+  const p = M.clean({ name: 'x', classes: [{ id: 'gt', name: 'GT' }, { id: 'pr', name: 'P' }] });
+  const r = E.createRace({ type: 'race', laps: 10, endRule: 'all', skipFirst: false, multiclass: p, entries: [{ lane: 0, driverId: 'a', raceClass: 'gt' }, { lane: 1, driverId: 'b', raceClass: 'gt' }], classPoints: [10, 8] });
+  r.start(100);
+  r.cross(1, 8100);
+  assert.equal(r.classStandings()[0].car.driverId, 'b');
+  r.cross(0, 8200);
+  r.cross(0, 12000);
+  assert.equal(r.classStandings()[0].car.driverId, 'a', 'not the remembered order');
+  // one query for the fields of a session, as the field-by-field read gives them
+  const C = require('../sqlite-catalogue.js');
+  const rows = [
+    ['["id"]', '"s1"'],
+    ['["date"]', '"2026-11-26"'],
+    ['["champ","id"]', '"c1"'],
+    ['["champ","round"]', '2'],
+    ['["standings","0","pos"]', '1'],
+    ['["laps","0"]', '5000']
+  ];
+  const fake = {
+    statement: sql => ({
+      get: (e, id, path) => {
+        const x = rows.find(y => y[0] === path);
+        return x ? { json: x[1] } : undefined;
+      },
+      all: (e, id, n, prefix) => rows.filter(y => (prefix === undefined ? true : y[0].slice(0, n) === prefix)).map(([path, json]) => ({ path, json }))
+    })
+  };
+  const keys = ['id', 'date', 'champ', 'standings', 'trackId'];
+  const old = Object.fromEntries(keys.map(k => [k, C.read(fake, 'sessions', 's1', [k])]).filter(([, v]) => v !== undefined));
+  assert.deepEqual(JSON.parse(JSON.stringify(C.readFields(fake, 'sessions', 's1', keys))), JSON.parse(JSON.stringify(old)));
+  assert(has(code('sqlite-dashboard.js'), "yield C.readFields(s, 'sessions', id, D.SESSION);"));
+  assert(has(code('shared-library-reads.js'), 'looked.push(...(await base.historyReferences(wanted.slice(at, at + 100))));'), 'the records page asks for its references together');
+  const canvas = code('renderer/canvas.js');
+  assert(has(canvas, 'fits.forEach(([n, fit]) => protect(n, fit));'), 'widgets are written first, then fitted');
+  assert(has(code('renderer/race.js'), "racehost.classList.contains('parked')"), 'a parked race does not paint its widgets');
+  assert(has(code('renderer/rows.js'), 'root.WidgetView.fitCells(viewCells);'), 'leaderboard cells fitted together');
+  assert(has(code('renderer/landing.js'), 'homeLists.epoch === epoch'), 'a lane edit uses the lists of a moment ago');
+});

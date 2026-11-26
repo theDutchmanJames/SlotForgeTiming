@@ -398,7 +398,18 @@
         }
       return [...by].map(([p, a]) => [p, a[0], a[1]]);
     };
+    // (audit 2026-11, speed) the overall result without a race that is racing now is remembered until a heat is added or the finals change:
+    // the race screen asks for it several times on every update. Each caller gets its own copies of the rows.
+    let memo = null;
     H.overall = extra => {
+      if (extra) return overallOf(extra);
+      const last = H.results[H.results.length - 1] || null,
+        plan = H.finalPlan ? JSON.stringify(H.finalPlan) : '';
+      if (!memo || memo.n !== H.results.length || memo.last !== last || memo.plan !== plan)
+        memo = { n: H.results.length, last, plan, rows: overallOf(null) };
+      return memo.rows.map(o => ({ ...o }));
+    };
+    const overallOf = extra => {
       // (extra: the result of the race that is racing now, from H.preview, to see where everybody stands if it ended now; 1.67.0)
       const rs = extra ? H.results.concat([extra]) : H.results,
         heatsOf = participants.map(() => []),

@@ -17,7 +17,7 @@ function source(s) {
     get: (entity, id) => s.get(entity, id, true)?.value ?? null,
     *sessions() {
       for (const { id } of s.statement('SELECT id FROM history_sessions ORDER BY ordinal').iterate())
-        yield Object.fromEntries(D.SESSION.map(k => [k, C.read(s, 'sessions', id, [k])]).filter(([, v]) => v !== undefined));
+        yield C.readFields(s, 'sessions', id, D.SESSION); // (audit 2026-11: one query per session, not one per field)
     },
     *navigationSessions(o) {
       for (const { id } of s
@@ -25,7 +25,7 @@ function source(s) {
           "SELECT id FROM history_sessions WHERE (json_extract(summary,'$.sessionType')='qualifying' AND json_extract(summary,'$.trackId')=?) OR (?<>'' AND json_extract(summary,'$.champ.id')=?) ORDER BY ordinal"
         )
         .iterate(o.trackId, o.champId, o.champId))
-        yield Object.fromEntries(D.SESSION.map(k => [k, C.read(s, 'sessions', id, [k])]).filter(([, v]) => v !== undefined));
+        yield C.readFields(s, 'sessions', id, D.SESSION); // (audit 2026-11: one query per session, not one per field)
     },
     navigationSession: id => {
       const row = s.get('sessions', id, false)?.value;

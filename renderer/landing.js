@@ -109,6 +109,7 @@ async function timingReady(lanes) {
     { title: 'Timing hardware not connected', ok: 'Start anyway', cancel: 'Do not start' }
   );
 }
+let homeLists = null; // (audit 2026-11: the lists of the last drawing of Home, see renderHome)
 // 2.5.0: opts.into: Home drawn read-only into that element for the audience (the second screen, liveview.js): no controls, no handlers, nothing saved
 async function renderHome(opts = {}) {
   const into = opts.into || null,
@@ -130,15 +131,41 @@ async function renderHome(opts = {}) {
   ];
   const readEntities = entities.filter(e => e !== 'sessions' || !api.homeSessions);
   // (2.4.0 review, speed) the other lists are asked for at the same time as the main ones, not one after another
-  const extraLists = Promise.all(['multiclasssystems', 'raceclasses', 'virtualrivalsystems'].map(e => api.list(e)));
+  // (audit 2026-11, speed) a lane edit draws Home again at once: the lists of a moment ago are used again while this window wrote nothing
+  // (3 s at most, for a change made elsewhere, like the shared library). Every drawing gets its own copies of the lists.
+  const epoch = api.writeEpoch ? api.writeEpoch() : null,
+    reuse =
+      !display &&
+      epoch !== null &&
+      homeLists &&
+      homeLists.epoch === epoch &&
+      Date.now() - homeLists.at < 3000 &&
+      homeLists.key === readEntities.join();
+  const extraLists = reuse
+    ? Promise.resolve(homeLists.extra.map(l => (Array.isArray(l) ? l.slice() : l)))
+    : Promise.all(['multiclasssystems', 'raceclasses', 'virtualrivalsystems'].map(e => api.list(e)));
   const sharedRead = api.paddockCatalogue && !display ? api.paddockCatalogue(false).catch(() => null) : Promise.resolve(null); // (the second screen does not offer Paddock cars)
   const resumeRead =
     api.getResume && !(typeof raceActive === 'function' && raceActive()) ? api.getResume().catch(() => null) : Promise.resolve(null);
   extraLists.catch(() => {});
-  const referenceGroups =
-    typeof readReferenceGroups === 'function'
+  const referenceGroups = reuse
+    ? homeLists.groups.map(g => ({ ...g, items: Array.isArray(g.items) ? g.items.slice() : g.items }))
+    : typeof readReferenceGroups === 'function'
       ? await readReferenceGroups(readEntities)
       : await Promise.all(readEntities.map(async e => ({ items: await api.list(e), revision: null })));
+  if (!reuse && !display && epoch !== null && api.writeEpoch() === epoch)
+    extraLists
+      .then(extra => {
+        if (api.writeEpoch() === epoch)
+          homeLists = {
+            epoch,
+            at: Date.now(),
+            key: readEntities.join(),
+            groups: referenceGroups.map(g => ({ ...g, items: Array.isArray(g.items) ? g.items.slice() : g.items })),
+            extra: extra.map(l => (Array.isArray(l) ? l.slice() : l))
+          };
+      })
+      .catch(() => {});
   if (api.homeSessions) referenceGroups.splice(entities.indexOf('sessions'), 0, { items: [], revision: null });
   const [allDrivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets, imagesets, champRaw] = referenceGroups.map(
     g => g.items

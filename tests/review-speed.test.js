@@ -39,7 +39,7 @@ test('the widget list is looked up in a map', () => {
 
 test('Home asks for its other lists at the same time as the main ones', () => {
   const L = code('renderer/landing.js');
-  assert.ok(has(L, "const extraLists = Promise.all(['multiclasssystems', 'raceclasses', 'virtualrivalsystems'].map(e => api.list(e)));"));
+  assert.ok(has(L, ": Promise.all(['multiclasssystems', 'raceclasses', 'virtualrivalsystems'].map(e => api.list(e)));"), 'asked for together (audit 2026-11: unless the lists of a moment ago are used again)');
   assert.ok(has(L, 'const [multiProfiles, classDefs, rivalProfiles] = await extraLists;'));
 });
 

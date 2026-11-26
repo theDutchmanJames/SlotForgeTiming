@@ -144,10 +144,11 @@
   };
   function fitText(container, measure) {
     const m = measure || measureCell,
+      viewCells = [],
       cells = Array.from(container.querySelectorAll('.rrow .rcell > .lw-val')).filter(v => {
         const el = v.parentElement;
         if (!measure && root.WidgetView && el?.clientWidth && globalThis.getComputedStyle) {
-          root.WidgetView.fitCell(el);
+          viewCells.push(el); // (audit 2026-11: fitted together below, not one layout per cell)
           return false;
         }
         if (v.querySelector?.('.wc-root')) {
@@ -156,6 +157,10 @@
         }
         return true;
       });
+    if (viewCells.length) {
+      if (root.WidgetView.fitCells) root.WidgetView.fitCells(viewCells);
+      else viewCells.forEach(el => root.WidgetView.fitCell(el));
+    }
     cells.forEach(v => {
       v.style.fontSize = '';
     });

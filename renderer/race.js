@@ -493,10 +493,12 @@ function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, 
       return;
     }
     let was = null;
+    const mine = live;
     live.fsView = LiveCanvas.fullView(live.soloLayout ? live.soloLayout() : layout, lanes, {
       onClose: () => {
         live.fsView = null;
         if (api.windowFullscreen && was !== null) api.windowFullscreen(was);
+        if (live === mine && mine.alive) update(); // (the race screen's widgets were not painted meanwhile)
       }
     });
     if (api.windowFullscreen)
@@ -2064,7 +2066,14 @@ async function renderRace() {
     ph('announcer');
     const S = shared();
     ph('state');
-    LiveCanvas.paint(live.nodes, S, typeof PerfUI !== 'undefined' ? PerfUI.widgetTimer() : null);
+    // (audit 2026-11, speed) the widgets of the race screen are not painted while nobody sees them: the race is parked behind another tab, or
+    // the full-screen view covers them. Coming back paints them at once (app.js showRace, and closing the full-screen view)
+    const racehost = typeof document !== 'undefined' && document.getElementById ? document.getElementById('racehost') : null;
+    if (
+      !live.fsView &&
+      !(racehost && racehost.classList && typeof racehost.classList.contains === 'function' && racehost.classList.contains('parked'))
+    )
+      LiveCanvas.paint(live.nodes, S, typeof PerfUI !== 'undefined' ? PerfUI.widgetTimer() : null);
     ph('widgets');
     if (live.fsView) {
       LiveCanvas.paint(live.fsView.nodes, S);
@@ -2202,6 +2211,7 @@ async function renderRace() {
     ph('share');
   };
   // (how long a screen update takes is measured for the Performance line, only while it is shown: 1.60.0)
+  live.repaintNow = () => update(); // (audit 2026-11: app.js, when the Race tab is shown again)
   const update = () => {
     const t0 = typeof PerfUI !== 'undefined' && PerfUI.active() ? performance.now() : -1;
     if (live.pitSensors) live.pitSensors.sync();

@@ -200,12 +200,20 @@ async function historyPage(base, client, pool, options = {}) {
       sections[section].items = mergeRecords(section, sections[section].items, local, page.nextOffset === null);
       if (first) for (const k of Object.keys(refs)) refs[k].push(...(pending.refs[k] || []));
     }
-    for (const r of page.rows) {
-      const m = mappedRecord(r, client),
-        [track, car] = await base.historyReferences([
-          { entity: 'tracks', id: r.sourceId === client.installationId ? r.trackId : '' },
-          { entity: 'slotcars', id: m.carId }
-        ]);
+    // (audit 2026-11, speed) the track and car of every row in one request, not two per row one after another
+    // (a request holds at most 100 references: fifty rows)
+    const mapped = page.rows.map(r => mappedRecord(r, client)),
+      wanted = page.rows.flatMap((r, i) => [
+        { entity: 'tracks', id: r.sourceId === client.installationId ? r.trackId : '' },
+        { entity: 'slotcars', id: mapped[i].carId }
+      ]),
+      looked = [];
+    for (let at = 0; at < wanted.length; at += 100) looked.push(...(await base.historyReferences(wanted.slice(at, at + 100))));
+    for (let i = 0; i < page.rows.length; i++) {
+      const r = page.rows[i],
+        m = mapped[i],
+        track = looked[2 * i],
+        car = looked[2 * i + 1];
       refs.tracks.push({ ...H.pick(track, H.TRACK), id: m.trackId, name: r.trackName });
       refs.drivers.push({ id: m.driverId, name: r.driverName || 'Unknown driver' });
       refs.slotcars.push({ ...H.pick(car, ['scale']), id: m.carId, name: r.carName, model: r.carName });

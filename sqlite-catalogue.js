@@ -24,6 +24,41 @@ function read(s, entity, id, parts) {
   }
   return result;
 }
+// (audit 2026-11, speed) several top-level fields of one record in one query, each as read() gives it (undefined when it is not there)
+function readFields(s, entity, id, keys) {
+  const want = new Set(keys),
+    leaves = new Map(),
+    trees = new Map();
+  for (const l of s.statement('SELECT path,json FROM fields WHERE entity=? AND id=?').all(entity, id)) {
+    const p = JSON.parse(l.path);
+    if (!Array.isArray(p) || !p.length || !want.has(p[0])) continue;
+    if (p.length === 1) leaves.set(p[0], l.json);
+    else {
+      if (!trees.has(p[0])) trees.set(p[0], []);
+      trees.get(p[0]).push([p.slice(1), l.json]);
+    }
+  }
+  const out = {};
+  for (const k of keys) {
+    if (leaves.has(k)) {
+      out[k] = JSON.parse(leaves.get(k));
+      continue;
+    }
+    const rows = trees.get(k);
+    if (!rows) continue;
+    const result = {};
+    for (const [p, json] of rows) {
+      let target = result;
+      for (const x of p.slice(0, -1)) {
+        if (!Object.hasOwn(target, x)) Object.defineProperty(target, x, { value: {}, enumerable: true });
+        target = target[x];
+      }
+      Object.defineProperty(target, p.at(-1), { value: JSON.parse(json), enumerable: true });
+    }
+    out[k] = result;
+  }
+  return out;
+}
 function index(s, entity, id) {
   s.statement('DELETE FROM catalogue_index WHERE entity=? AND id=?').run(entity, id);
   if (!s.statement('SELECT 1 FROM records WHERE entity=? AND id=?').get(entity, id)) return;
@@ -158,4 +193,4 @@ function picture(s, entity, id, expected) {
     return asset ? `data:${asset.mime};base64,${asset.bytes.toString('base64')}` : read(s, entity, id, parts) || null;
   });
 }
-module.exports = { upgrade, sync, page, picture, read, revision, unchangedSince };
+module.exports = { upgrade, sync, page, picture, read, readFields, revision, unchangedSince };

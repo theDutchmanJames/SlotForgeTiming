@@ -81,7 +81,9 @@ const LiveCanvas = (() => {
     if (o.imageSets && Widgets.prepareLights) Widgets.prepareLights(layout, o.imageSets);
     return nodes;
   }
-  function drawNode(n, S, tm) {
+  // (audit 2026-11, speed) drawNode writes; what it returns measures and fits. paint() writes every widget first and fits them all after, so the
+  // page is laid out once for the fitting, not once per widget. The theme is read once per paint.
+  function drawNode(n, S, tm, theme) {
     const t0 = tm ? tm.now() : 0,
       L = n.last;
     const inputKey = n.w.designRules?.length ? null : Timing.contentKey?.(n.w, S);
@@ -94,7 +96,7 @@ const LiveCanvas = (() => {
               : n.w,
             S
           );
-    const themeKey = Frame.themeKey?.() || '';
+    const themeKey = theme !== undefined ? theme : Frame.themeKey?.() || '';
     const contentChanged = !L || L[0] !== out.html;
     const appearanceChanged =
       !L || L[1] !== out.color || L[2] !== out.bg || n.themeKey !== themeKey || L[4] !== JSON.stringify(out.designRule);
@@ -121,13 +123,21 @@ const LiveCanvas = (() => {
       n.el.style.setProperty?.('--wf', String(Frame.solidity(n.w, n.layout)));
     }
     const t2 = tm ? tm.now() : 0;
+    const wasError = !!n.error; // (protect() clears it before the fit runs)
+    return () => {
+      const t3 = tm ? tm.now() : 0;
+      finishNode(n, S, tm, { out, L, contentChanged, appearanceChanged, inputKey, themeKey, wasError });
+      if (tm) tm.add(n.w.type, t1 - t0, t2 - t1, tm.now() - t3);
+    };
+  }
+  function finishNode(n, S, tm, { out, L, contentChanged, appearanceChanged, inputKey, themeKey, wasError }) {
     // Colours/control state do not rebuild SVG, images or compound child nodes.
     // (2.4.0 review, speed) a running lap timer: only digits changed in plain text whose font has equal-width digits, so the last fit still holds
     // and the forced layouts of a new fit are skipped. A resize or a font that loaded still fits again.
     const digitsOnly =
       contentChanged &&
       !appearanceChanged &&
-      !n.error &&
+      !wasError &&
       L &&
       n.val._sfDigitsFit != null &&
       n.val._sfDigitsFit === Frame.fontEpoch?.() &&
@@ -136,7 +146,7 @@ const LiveCanvas = (() => {
       !/[<&]/.test(L[0]) &&
       out.html.length === L[0].length &&
       out.html.replace(/\d/g, '0') === L[0].replace(/\d/g, '0');
-    if ((contentChanged || appearanceChanged || n.error) && !digitsOnly) fitValue(n, out, tm);
+    if ((contentChanged || appearanceChanged || wasError) && !digitsOnly) fitValue(n, out, tm);
     else if (digitsOnly) view().updateComponents?.(n, out);
     // Only a fully successful update becomes the unchanged-output baseline.
     lap().update(n, S);
@@ -144,12 +154,19 @@ const LiveCanvas = (() => {
     n.out = out;
     n.inputKey = inputKey;
     n.themeKey = themeKey;
-    if (tm) tm.add(n.w.type, t1 - t0, t2 - t1, tm.now() - t2);
   }
   function paint(nodes, S, tm) {
     if (!nodes || nodes.disposed) return;
-    const frame = Timing.beginFrame ? Timing.beginFrame(S) : S;
-    nodes.forEach(n => protect(n, () => drawNode(n, frame, tm)));
+    const frame = Timing.beginFrame ? Timing.beginFrame(S) : S,
+      theme = Frame.themeKey?.() || '',
+      fits = [];
+    nodes.forEach(n =>
+      protect(n, () => {
+        const fit = drawNode(n, frame, tm, theme);
+        if (fit) fits.push([n, fit]);
+      })
+    );
+    fits.forEach(([n, fit]) => protect(n, fit));
   }
   // The fullscreen view: only the widgets of the layout, as large as the window allows, without the buttons (the race is run with the keys).
   // A small bar with a way out appears when the pointer moves (or the screen is touched) and goes away again after a moment. Esc closes the view.

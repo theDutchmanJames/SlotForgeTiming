@@ -22,7 +22,7 @@ ipcRenderer.on('settings:changed', () => listeners.settings.forEach(f => f()));
 // (while the app closes, the main process answers with a marker rather than an error, so its log stays readable; the caller still gets the error)
 // (audit 2026-11) counts the writes of this window (before and after each): a page that read the results keeps them until this changes
 const WRITES =
-  /^(db:editor-save|db:merge-drivers|session:save|transfer:apply|backup:restore|backup:native-restore|library:restore|library:results-remove|backups:pick|library:save|paddock:shared-save)$/;
+  /^(db:editor-save|db:merge-drivers|session:save|transfer:apply|backup:restore|backup:native-restore|library:restore|library:results-remove|backups:pick|library:save|paddock:shared-save|packs:(?:install|remove|enable|rollback|recover)|paddock:(?:link|transfer-accept|keep|shared-resolve|refresh|prepare|collection-migration)|library:(?:resolve|retry|results-retry)|storage:activate)$/;
 let writeEpoch = 0;
 const call = async (channel, ...args) => {
   const writes = WRITES.test(channel);

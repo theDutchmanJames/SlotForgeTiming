@@ -287,6 +287,7 @@ const LiveShare = (() => {
   // simply gives a smaller `from`, so nothing needs to be told separately. After reset() (or for a new race) the first message holds everything (from: 0).
   function sender(opts = {}) {
     const heartbeat = opts.heartbeat === undefined ? 1000 : opts.heartbeat;
+    const evText = new WeakMap();
     let seq = 0,
       afterKey = null,
       last = null,
@@ -327,7 +328,15 @@ const LiveShare = (() => {
           laps: part(base.cars[i].laps, car.laps, number),
           bad: part(base.cars[i].bad, car.bad, same)
         }));
-        const evStr = (e.events || []).map(x => JSON.stringify(x)),
+        // (audit 2026-11, speed) an event is written out once and remembered; the last few are written again each time (an event can still be
+        // filled in just after it was logged, like the points of a fast yellow lap)
+        const evs = e.events || [],
+          evStr = evs.map((x, i) => {
+            if (!x || typeof x !== 'object' || i >= evs.length - 4) return JSON.stringify(x);
+            let k = evText.get(x);
+            if (k === undefined) evText.set(x, (k = JSON.stringify(x)));
+            return k;
+          }),
           evFrom = prefix(base.events, evStr);
         if (evStr.length > evFrom || evFrom < base.events.length) changed = true;
         if (!changed && t - lastAt < heartbeat) return null;

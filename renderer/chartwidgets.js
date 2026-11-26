@@ -387,6 +387,14 @@
   }
   const sample = (d, width, height, layout = {}) => html(model(d, { ...sampleState(), layout }), width, height);
   const cache = new WeakMap();
+  // (audit 2026-11, speed) the lane routes of a track design, written out once per object and not four times a second (a changed design is a new object)
+  const routeKeys = new WeakMap(),
+    routesKey = r => {
+      if (!r || typeof r !== 'object') return r;
+      let k = routeKeys.get(r);
+      if (k === undefined) routeKeys.set(r, (k = JSON.stringify(r)));
+      return k;
+    };
   function content(w, S) {
     const raw = (S.chartDesigns || []).find(d => d.id === w.opt?.chartDesign);
     if (!raw) return { html: '<div class="race-chart-empty">Choose a saved design from Customization → Chart Editor</div>' };
@@ -413,7 +421,7 @@
         S.track?.targetLap,
         S.track?.lanes,
         S.track?.trackDesign?.document?.design?.revision,
-        S.track?.trackDesign?.laneRoutes,
+        routesKey(S.track?.trackDesign?.laneRoutes),
         S.track?.trackDesign?.confirmedMappingRevision,
         S.layout?.laneColors,
         S.trackRecord?.()?.time,

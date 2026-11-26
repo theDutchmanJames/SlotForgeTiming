@@ -187,7 +187,15 @@ const tabsNow = () =>
 function showRace(on) {
   // on: the Race tab is shown; otherwise the race (if there is one) is parked out of sight
   const h = document.getElementById('racehost');
+  const wasParked = !!(h && h.classList && typeof h.classList.contains === 'function' && h.classList.contains('parked'));
   if (h) h.classList.toggle('parked', !on);
+  // (audit 2026-11) a parked race does not paint its widgets: paint them now, not at the next tick
+  if (on && wasParked && typeof live !== 'undefined' && live && live.repaintNow)
+    try {
+      live.repaintNow();
+    } catch (x) {
+      console.error(x);
+    }
   view.hidden = !!(h && on);
   const footer = document.getElementById('app-footer'),
     credits = document.getElementById('app-credits');

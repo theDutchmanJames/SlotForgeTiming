@@ -155,7 +155,42 @@
       const cls = R.multiclass.classes.find(x => x.id === c.raceClass);
       if (cls) Object.assign(c, { className: cls.name, classColor: cls.color });
     });
+    // (audit 2026-11, speed) the race screen asks several times per update: the answer is kept while nothing in the result changed, for at most 100 ms
+    // (gaps by distance move with the clock). Each caller gets its own copies.
+    let memo = null;
+    const keyOf = () =>
+      R.status +
+      '|' +
+      R.cars
+        .map(c =>
+          [
+            c.laps.length,
+            c.done,
+            c.dq,
+            c.retired,
+            c.dmgOut,
+            c.failOut,
+            c.outOfFuel,
+            c.points,
+            c.adjMs,
+            c.adjLaps,
+            c.adjPoints,
+            c.removed?.length,
+            c.invalid?.length,
+            c.extraMs,
+            c.best,
+            c.pending?.length,
+            c.sector
+          ].join(':')
+        )
+        .join(',');
     R.classStandings = () => {
+      const key = keyOf(),
+        at = Date.now();
+      if (!memo || memo.key !== key || at - memo.at > 100 || at < memo.at) memo = { key, at, rows: classRows() };
+      return memo.rows.map(x => ({ ...x }));
+    };
+    const classRows = () => {
       const rows = decorate(R.standings(), R.multiclass, x => ({
         laps: R.lapsOf(x.car),
         time: R.timeOf(x.car),
