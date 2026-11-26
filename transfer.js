@@ -455,9 +455,31 @@ function apply(db, bundle) {
     rollback();
     throw new Error('Nothing was imported: the file is damaged.');
   }
+  // (audit 2026-11) laps imported for a car that was already here count on its lap counters (service reminders), as a saved race does; a car that came in
+  // with the file brings its own counters
+  const counted = [];
+  try {
+    const CarStats = require('./renderer/carstats.js'),
+      dateOf = new Map(d.sessions.slice(had.sessions).map(x => [x.id, x.date]));
+    const old = new Map(d.slotcars.slice(0, had.slotcars).map(c => [c.id, c]));
+    for (const l of d.laps.slice(had.laps)) {
+      const car = old.get(l.carId);
+      if (!car) continue;
+      counted.push([car, car.lapsSinceService, car.lapsDriven]);
+      if (CarStats.afterService(car, l, dateOf.get(l.sessionId) || l.date)) car.lapsSinceService = CarStats.sinceOf(car) + 1;
+      car.lapsDriven = (car.lapsDriven || 0) + 1;
+      if (db.touch) db.touch(car);
+    }
+  } catch {
+    /* the counters are a convenience: the import itself stands */
+  }
   try {
     (db.saveNow || db.save).call(db);
   } catch (x) {
+    for (const [car, since, driven] of counted.reverse()) {
+      car.lapsSinceService = since;
+      car.lapsDriven = driven;
+    }
     rollback();
     throw x;
   } // (1.61.2: written at once even when the database writes its changes in the background: all or nothing)

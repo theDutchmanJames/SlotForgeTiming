@@ -31,8 +31,14 @@ class JsonBulkStorage {
   async backup(file, info = {}) {
     this.assertExportTarget(file);
     await this.db.writesIdle();
-    Database.writeAtomic(file, JSON.stringify(Backup.make(this.db.data, info)));
+    Database.writeChunksSync(file, this.backupChunks(info));
     return { saved: true, path: file };
+  }
+  // (audit 2026-11) the backup as pieces of text: the head, the data in the pieces the database writes its own file in (the texts of items that did not change are
+  // reused), and the end. One JSON.stringify of the whole collection froze the app for seconds and fails above about 512 MB (the longest string of V8).
+  backupChunks(info = {}) {
+    const meta = JSON.stringify({ ...Backup.make(null, info), data: undefined });
+    return [meta.slice(0, -1) + ',"data":', ...this.db.fileChunks().chunks, '}'];
   }
   async safetyCopy() {
     await this.db.writesIdle();
@@ -40,7 +46,7 @@ class JsonBulkStorage {
     // Include current settings, not a potentially older main-file copy. Never swallow failure.
     const fd = fs.openSync(file, 'wx');
     try {
-      fs.writeFileSync(fd, JSON.stringify(Backup.make(this.db.data)));
+      for (const c of this.backupChunks()) for (const s of Database.slicesOf(c)) fs.writeSync(fd, s); // (audit 2026-11: in pieces)
       fs.fsyncSync(fd);
     } finally {
       fs.closeSync(fd);

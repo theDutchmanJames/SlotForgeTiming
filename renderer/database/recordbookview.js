@@ -12,8 +12,17 @@ const RB_ICON = {
   back: rbIcon('<path d="m15 6-6 6 6 6"/>', 16),
   x: rbIcon('<path d="M6 6l12 12M18 6 6 18"/>', 16)
 };
-// everything the book needs, read once per drawing: the sessions, the records (every page), the names
+// everything the book needs: the sessions, the records (every page), the names. (audit 2026-11) Read once and kept while nothing is written: a filter, a
+// search or Show more used to read every race and every record page again, seconds with a large history.
+let rbCache = null;
 async function rbLoad() {
+  const epoch = api.writeEpoch ? api.writeEpoch() : null;
+  if (epoch !== null && rbCache && rbCache.epoch === epoch && Date.now() - rbCache.at < 10 * 60000) return rbCache.data;
+  const data = await rbRead();
+  if (epoch !== null && api.writeEpoch() === epoch) rbCache = { epoch, at: Date.now(), data };
+  return data;
+}
+async function rbRead() {
   const [sessions, tracks, drivers, champs] = await Promise.all([
     api.list('sessions'),
     referenceList('tracks'),
@@ -299,7 +308,12 @@ async function rbTakeOut(lapId, kind) {
     ))
   )
     return false;
-  await api.update('laps', lapId, isTrack ? { noTrackRecord: true } : { noPersonalBest: true });
+  try {
+    await api.update('laps', lapId, isTrack ? { noTrackRecord: true } : { noPersonalBest: true });
+  } catch (x) {
+    await Dialog.alert('Could not take the lap out of the records: ' + x.message); // (audit 2026-11)
+    return false;
+  }
   return true;
 }
 // the history of a track record: the record, who holds it, how long it stood, how often it was beaten; each time it was beaten, newest first

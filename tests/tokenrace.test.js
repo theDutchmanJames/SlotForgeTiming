@@ -20,7 +20,7 @@ const sent = { stat: null, dyn: null, n: 0, last: null, log: [], gaps: 0 }, cbs 
 const merge = (state, m) => vm.runInContext('LiveShare', ctx).applyDynamic(state, m);
 const plain = d => { const x = { ...d }; delete x.seq; return x; }; // a whole state without a message number (what an older race window sends): always accepted
 const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(structuredClone(s))); sent.dyn = null; sent.last = null; }, livePush: d => { const m = JSON.parse(JSON.stringify(structuredClone(d))); sent.last = m; sent.log.push(m); sent.n++; const r = merge(sent.dyn, m); if (r.ok) { if (!r.stale) sent.dyn = r.state; } else { sent.dyn = null; sent.gaps++; } },
-  liveGet: async () => JSON.parse(JSON.stringify({ stat: sent.stat, dyn: sent.dyn })), onLive: f => { cbs.dyn.push(f); return () => {}; }, onLiveStatic: f => { cbs.stat.push(f); return () => {}; }, liveOpen: async () => ({ second: true }), liveCommand: c => { cmds.push(c); cbs.cmd.forEach(f => f(JSON.parse(JSON.stringify(c)))); }, onCommand: f => { cbs.cmd.push(f); return () => { cbs.cmd = cbs.cmd.filter(x => x !== f); }; },
+  liveGet: async () => JSON.parse(JSON.stringify({ stat: sent.stat, dyn: sent.dyn })), onLive: f => { cbs.dyn.push(f); return () => {}; }, onLiveStatic: f => { cbs.stat.push(f); return () => {}; }, liveOpen: async () => ({ second: true }), liveCommand: c => { cmds.push((({ raceId, want, ...x }) => x)(c)); /* (audit 2026-11: the race id and the way of Pause are checked by the race, not here) */ cbs.cmd.forEach(f => f(JSON.parse(JSON.stringify(c)))); }, onCommand: f => { cbs.cmd.push(f); return () => { cbs.cmd = cbs.cmd.filter(x => x !== f); }; },
   schema: async () => schema, getSettings: async () => ({ theme: 'dark', rules: 'Be kind. No bumping.' }), setSettings: async p => ({ ...(ctx.__ready ? vm.runInContext('state.settings', ctx) : {}), ...p }), dbPath: async () => 'x',
   list: async e => JSON.parse(JSON.stringify(store[e] || [])), customFields: async () => [], linkedLaps: async () => 0,
   saveSession: async (s, l) => { saved.push([s, l]); }, add: async () => ({}), update: async () => ({}), remove: async () => {} };
@@ -668,7 +668,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('a Guest can be chosen too', last().driverId === '' && eng().cars[1].driverName === 'Guest' && sent.stat.cfg.entries[1].driverName === 'Guest');
     press('pause'); await wait(100);
     say('Pause all on the page pauses the session, and again resumes it', last().type === 'pause' && phase() === 'paused');
-    press('pause'); await wait(100); say('...', phase() === 'running');
+    fresh(); await wait(150); /* (audit 2026-11: the page has heard of the pause, so this tap resumes) */ press('pause'); await wait(100); say('...', phase() === 'running');
     ops().who(1, 'd3'); await wait(250); // (a real driver on lane 2: an unknown or missing driver must not turn it into a Guest)
     const sets = ends(), who0 = eng().cars.map(c => c.driverName).join();
     [{ type: 'addtime', lane: 1, minutes: -5 }, { type: 'addtime', lane: 1, minutes: 99999 }, { type: 'addtime', lane: 1, minutes: '10' }, { type: 'addtime', lane: 1, minutes: NaN }, { type: 'addtime', lane: 9, minutes: 5 }, { type: 'addtime', lane: '1', minutes: 5 }, { type: 'addtime', lane: 1.5, minutes: 5 }, { type: 'addtime', minutes: 5 },

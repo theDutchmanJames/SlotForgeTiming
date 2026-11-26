@@ -89,7 +89,7 @@ test('Home, the race, the second screen and the results are wired', () => {
   assert(has(home, 'data-solo-lane="${l}"'), 'the lane it starts on');
   assert(has(home, '...(solo ? { soloLane: soloStart } : {}),'));
   const race = code('renderer/race.js');
-  assert(has(race, 'const setup = Solo.effective(Endurance.effective(r.setup)),'));
+  assert(has(race, 'Solo.effective(Endurance.effective(r.setup))'));
   assert(has(race, 'if (live.soloSwitch) return live.soloSwitch();'), 'the call button switches the lane');
   assert(has(race, "if (k === 'tab' && live.soloSwitch) {"), 'and Tab');
   assert(has(race, 'if (live.soloLast >= 0) eng.cars[i].started = false;'), 'a lap never runs across a switch');

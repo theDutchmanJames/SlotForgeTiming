@@ -1357,6 +1357,8 @@ async function renderRules() {
 }
 
 async function render() {
+  // (audit 2026-11) the check of the next race is made on Home: on the pages where its drivers, cars and setups are changed it may be out of date
+  if (state.raceCheckInput && (state.tab === 'database' || state.tab === 'setup')) state.raceCheckInput.stale = true;
   if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
   view.onclick = null;

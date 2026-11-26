@@ -112,6 +112,13 @@ async function mountManagerPage(box, e) {
   if (e === 'slotcars') state.refs.tyrewearsystems = await api.list('tyrewearsystems');
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
   if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
+  // (audit 2026-11) every other kind a race setup links to (layouts, audio sets, rotation setups, Multi-Class, BoP, tokens, resources): the delete question names
+  // the setups too
+  const setupKeys =
+    e === 'racesetups' || s.used
+      ? []
+      : ((state.schema.racesetups && state.schema.racesetups.fields) || []).filter(f => f.type === 'ref' && f.ref === e).map(f => f.key);
+  if (setupKeys.length) state.refs.racesetups = await api.list('racesetups');
   // the figures of the cards: races, wins, best laps and records, from the saved races
   const gx = garage ? garageContext(e, items, Garage.statsOf(await api.list('sessions').catch(() => [])), direct) : null;
   if (run !== subRun) return;
@@ -502,7 +509,11 @@ async function mountManagerPage(box, e) {
             ? (state.refs[s.used.entity] || [])
                 .filter(r => r && ids.has(r[s.used.key]))
                 .map(r => String(r.name || '').trim() || '(unnamed)')
-            : [];
+            : setupKeys.length
+              ? (state.refs.racesetups || [])
+                  .filter(r => r && setupKeys.some(k => ids.has(r[k])))
+                  .map(r => String(r.name || '').trim() || '(unnamed)')
+              : [];
     if (!names.length) return '';
     const what =
       e === 'racesetups' ? (names.length === 1 ? 'championship' : 'championships') : names.length === 1 ? 'race setup' : 'race setups';

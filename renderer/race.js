@@ -669,7 +669,8 @@ async function renderRace() {
     (r.setup?.sessionType === 'tokens' ? state.settings.tokenSessions?.[r.setup.id]?.timingPlugin : null) ||
     (Hardware.timingChosen(state.settings) === 'plugin' && typeof pt !== 'undefined' ? TimingPlugin.provenance(pt.identity) : null);
   const speed = state.speed || 1; // only changed by automated tests
-  const setup = Solo.effective(Endurance.effective(r.setup)), // (2.5.2: a Solo session is a Free practice with solo: true)
+  // (2.5.2: a Solo session is a Free practice with solo: true; audit 2026-11: a Time Token Session, like Solo, uses no race system left from another kind)
+  const setup = (s0 => (s0 && s0.sessionType === 'tokens' ? Solo.withoutSystems(s0) : s0))(Solo.effective(Endurance.effective(r.setup))),
     solo = !!setup.solo,
     heats = setup.sessionType === 'heats',
     tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
@@ -1368,8 +1369,10 @@ async function renderRace() {
           drivers: drivers.map(d => ({ id: d.id, name: titleOf('drivers', d) }))
         }
       : null; // what the Tokens page on other screens needs: the time buttons and the drivers to choose from
-  const shareStatic = () => {
+  const shareStatic = sameHeat => {
     // everything heavy, once per heat
+    // (audit 2026-11) sent again in the same heat (new charts, another driver): a phone command that still names the id before is for this heat too
+    live.heatIds = sameHeat && live.raceId ? [...(live.heatIds || []).slice(-7), live.raceId] : [];
     live.raceId = String(Date.now()) + Math.random().toString(36).slice(2, 6);
     if (live.sender) live.sender.reset(); // a new heat: the first message after the static part holds everything
     if (api.liveStatic)
@@ -3864,8 +3867,9 @@ async function renderRace() {
       } catch (audioError) {
         /* Saving succeeded even if a voice fails. */
       }
-      await clearCheckpoint();
+      const cleared = await clearCheckpoint();
       ui('msg').textContent =
+        (cleared ? '' : 'The race is saved, but its recovery data could not be removed: Home may offer it again; choose Delete there. ') + // (audit 2026-11: not hidden)
         `Saved ${laps.length} laps.${r.champ ? ' It is part of ' + (r.champ.name || 'the championship') + '.' : ''} See Database > Results and Records.`;
       if (r.champ && state.settings && state.settings.champTag) {
         try {
@@ -4658,6 +4662,8 @@ async function renderRace() {
   if (api.onCommand)
     live.offCmd = api.onCommand(cmd => {
       if (!live || live.actions !== actions || !cmd || live.restoring) return; // (2.4.0 review: not while the earlier session is being brought back)
+      if (cmd.raceId && cmd.raceId !== live.raceId && !(live.heatIds || []).includes(cmd.raceId)) return; // (audit 2026-11: meant for an earlier heat, from a phone that lagged behind)
+      if (cmd.type === 'pause' && cmd.want && (cmd.want === 'resume') !== (live.phase === 'paused')) return; // (a second tap of the same Pause)
       if (cmd.type === 'start') actions.start();
       else if (cmd.type === 'pause') actions.pause();
       else if (cmd.type === 'stop') actions.stop(true);
@@ -4693,7 +4699,7 @@ async function renderRace() {
     const fresh = api.raceCharts && inputs ? await api.raceCharts(inputs.chartIds) : await api.list('chartdesigns');
     if (live !== chartOwner || !chartOwner.alive || request !== chartReload) return;
     chartDesigns.splice(0, chartDesigns.length, ...fresh);
-    shareStatic();
+    shareStatic(true);
     live.nodes.forEach(n => {
       n.last = null;
     });
@@ -4927,7 +4933,7 @@ async function renderRace() {
       eng.restartCar(i, now(), p);
       live.flash.delete(car);
       Object.assign(eng.cfg.entries[i], p);
-      shareStatic();
+      shareStatic(true);
       live.lastShare = 0; // the other screens get the new driver with the next message (the names are part of the static data of a race)
       afterTokenChange();
       return true;

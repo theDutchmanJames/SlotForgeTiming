@@ -45,21 +45,50 @@
     base = {};
   const lists = { static: new Set(), push: new Set() },
     no = () => Promise.reject(new Error('This device can only follow the race.'));
-  let es = null;
+  let es = null,
+    everOpened = false,
+    retryT = null,
+    retryMs = 2000;
+  // (audit 2026-11) whether the live stream is up, for a "Reconnecting" sign: { connected, since }
+  const link = { connected: false, since: Date.now() },
+    linkLists = new Set();
+  const setLink = on => {
+    if (link.connected === on) return;
+    link.connected = on;
+    link.since = Date.now();
+    linkLists.forEach(f => f({ ...link }));
+  };
   const stream = () => {
     if (es || typeof EventSource === 'undefined') return;
+    if (retryT) clearTimeout(retryT);
     es = new EventSource('/events');
+    const mine = es;
     // (after the stream reconnects, for instance when the wifi dropped or Timing let go of a device that fell behind, the whole state is fetched again:
-    // a new picture snapshot of the same race may have been missed)
-    let opened = false;
+    // a new picture snapshot of the same race may have been missed. Audit 2026-11: the moving part goes along, so the next message fits and is not
+    // fetched a second time)
     es.addEventListener('open', () => {
-      if (opened)
+      retryMs = 2000;
+      setLink(true);
+      if (everOpened)
         getJson('/api/live')
           .then(g => {
-            if (g && g.stat) lists.static.forEach(f => f(g.stat));
+            if (!g || !g.stat) return;
+            lists.static.forEach(f => f(g.stat));
+            if (g.dyn) lists.push.forEach(f => f(g.dyn));
           })
           .catch(() => {});
-      opened = true;
+      everOpened = true;
+    });
+    // (audit 2026-11) an answer that is not a stream (503: too many connections, or Timing restarting its server) ends an EventSource for good:
+    // make a new one after a while, longer each time (up to 30 s)
+    es.addEventListener('error', () => {
+      if (es !== mine) return;
+      setLink(false);
+      if (mine.readyState !== 2) return; // (CONNECTING: the browser tries again by itself)
+      mine.close();
+      es = null;
+      retryT = setTimeout(stream, retryMs);
+      retryMs = Math.min(30000, retryMs * 2);
     });
     es.addEventListener('static', e => {
       try {
@@ -111,6 +140,11 @@
       stream();
       return () => lists.push.delete(f);
     },
+    liveLink: () => ({ ...link }),
+    onLiveLink: f => {
+      linkLists.add(f);
+      return () => linkLists.delete(f);
+    },
     liveOpen: async () => ({ second: false }),
     liveFullscreen: async on => {
       try {
@@ -142,6 +176,9 @@
         if (e.code === 'login') {
           token = null;
           store('slt-token', null);
+          // (audit 2026-11: said, not lost without a word)
+          if (typeof Dialog !== 'undefined')
+            Dialog.alert('This was not sent: your Race Director login ran out. Log in again, then press the button once more.');
         } else if (typeof Dialog !== 'undefined')
           Dialog.alert('This did not reach the timing computer: ' + (e.message || 'no answer') + '. Try again.'); // (2.4.0 review: a command that failed is said, not lost without a word)
       }

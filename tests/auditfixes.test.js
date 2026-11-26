@@ -179,3 +179,102 @@ test('hardware: power off when the device comes back in a fault, at the finish a
     '...unless the race lost exactly this device'
   );
 });
+
+test('Home and Race Setup: hidden values not used, lane cars kept, wording, plan lanes, two teams, a deleted rotation, used by, a stale check', () => {
+  const SS = require('../renderer/heats/swapseats.js');
+  assert.equal(SS.on({ sessionType: 'heats', heatCars: 'lanes' }), true);
+  assert.equal(
+    SS.on({ sessionType: 'heats', ofType: 'endurance', heatCars: 'lanes' }),
+    false,
+    'an Endurance Race of heats is no Swap Seats race'
+  );
+  assert.deepEqual(SS.problems(['a', '', '', 'd'], new Set([0, 3])), [], 'lanes no heat uses need no car');
+  assert.equal(SS.problems(['a', '', '', ''], new Set([0, 3])).length, 1);
+  const So = require('../renderer/engine/solo.js');
+  assert.equal(So.withoutSystems({ sessionType: 'tokens', fuelRules: 'f' }).fuelRules, '');
+  const MC = require('../renderer/multiclass.js');
+  const p = { classes: [{ id: 'g' }], heats: 'separate' };
+  assert.deepEqual(MC.validate(p, [], { sessionType: 'race', finals: 'a' }), [], 'a plain race with a hidden finals value is not blocked');
+  const L = code('renderer/landing.js');
+  assert(has(L, 'next = SwapSeats.laneIds(nowCars, lanes);'), 'lane cars from the settings as they are now');
+  assert(has(L, 'a driver in two teams is allowed'), 'a shared team driver is handled by the swaps, not refused');
+  assert(has(L, 'The rotation setup of this race setup was deleted'));
+  assert(has(L, "kind: heats ? (byTeam ? 'teams' : seats ? 'seats' : 'heats') : solo ? 'solo' : '',"));
+  const RC = require('../renderer/racecheck.js');
+  const titles = o => RC.build(o).sections.find(x => x.key === 'race').items.map(x => x.title);
+  assert(titles({ hasSetup: true, entries: 8, lanes: 4, kind: 'heats' }).includes('8 participants with a car'));
+  assert(titles({ hasSetup: true, stale: true, entries: 2, lanes: 2 }).includes('Open Home to check the next race again'));
+  assert(
+    has(code('renderer/database/manager.js'), "f.type === 'ref' && f.ref === e"),
+    'the delete question names the race setups that use it'
+  );
+});
+
+test('Live screens and phones: the race-over screen once, commands for the right heat, a one-way Pause, logins that last, private settings', async () => {
+  const LS = require('../renderer/liveshare.js'),
+    E = require('../renderer/engine.js');
+  const r = E.createRace({ type: 'race', laps: 3, entries: [{ lane: 0 }] });
+  r.start(0);
+  const s = LS.sender({ heartbeat: 0 }),
+    after = { key: 'k1', html: '<p>' + 'x'.repeat(5000) + '</p>' };
+  const ctx = t => ({ raceId: 'x', eng: r, phase: 'between', calling: false, lights: 0, heat: null, season: null, flash: new Map(), bestAll: Infinity, bestAllName: '', bestBy: new Map(), now: t, after });
+  const m1 = JSON.parse(JSON.stringify(s.pack(ctx(1000), 1000))),
+    m2 = JSON.parse(JSON.stringify(s.pack(ctx(3000), 3000)));
+  assert.equal(m1.after.html.length > 4000, true, 'the first message holds the screen');
+  assert.deepEqual(m2.after, { key: 'k1', keep: true }, 'later ones only name it');
+  const a = LS.applyDynamic(null, m1),
+    b = LS.applyDynamic(a.state, m2);
+  assert.equal(b.ok, true);
+  assert.equal(b.state.after.html, after.html, 'the receiver keeps the one it has');
+  assert.equal(LS.applyDynamic(null, m2).ok, false, 'without it, the message does not fit: the whole state is fetched');
+  const S = require('../server.js');
+  assert.equal(S.cleanCommand({ type: 'pause', want: 'resume', raceId: 'abc123' }).want, 'resume');
+  assert.equal(S.cleanCommand({ type: 'pause', raceId: 'abc123' }).raceId, 'abc123');
+  assert.equal(S.cleanCommand({ type: 'start', raceId: '<x>' }).raceId, undefined, 'only a plain race id is passed on');
+  const race = code('renderer/race.js');
+  assert(has(race, 'if (cmd.raceId && cmd.raceId !== live.raceId && !(live.heatIds || []).includes(cmd.raceId)) return;'), 'a command for an earlier heat is not done');
+  assert(has(race, "if (cmd.type === 'pause' && cmd.want && (cmd.want === 'resume') !== (live.phase === 'paused')) return;"), 'a second tap of Pause does not resume');
+  const view = code('renderer/liveview.js');
+  assert(has(view, 'if (held.length < 200) held.push(d);'), 'messages during a resync are kept');
+  assert(has(view, "if ((V.stat() ? V.stat().raceId : '') !== asked) return;"), 'the Stop question is about one heat');
+  const web = code('renderer/webapi.js');
+  assert(has(web, 'retryT = setTimeout(stream, retryMs);'), 'a closed stream is made again');
+  assert(has(code('main.js'), "relay('live:push', d, e.sender);"), 'not echoed to the race window');
+  // logins: 12 h after the last use, and kept over a restart of the server
+  const http = require('node:http'),
+    tokens = new Map(),
+    settings = { netPassword: 'pw', netPort: 9, autoBackup: { folder: 'C:/x' }, exportFolder: 'C:/y', theme: 'dark' };
+  const serve = () => {
+    const sv = S.createServer({ getSettings: () => settings, schema: {}, getLive: () => ({}), list: async () => [], customFields: async () => [], onCommand: async () => {}, root: path.join(__dirname, '..', 'renderer'), appRoot: path.join(__dirname, '..'), failDelay: 1, lockMs: 1, tokenMs: 400, tokens });
+    return sv.listen(0, '127.0.0.1').then(port => ({ sv, port }));
+  };
+  const req = (port, method, p, data) =>
+    new Promise((resolve, reject) => {
+      const body = data ? JSON.stringify(data) : '';
+      const q = http.request({ host: '127.0.0.1', port, path: p, method, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), Host: '127.0.0.1:' + port, Origin: 'http://127.0.0.1:' + port } }, res => {
+        let t = '';
+        res.on('data', c => (t += c));
+        res.on('end', () => resolve({ code: res.statusCode, body: JSON.parse(t || '{}') }));
+      });
+      q.on('error', reject);
+      q.end(body);
+    });
+  const wait = ms => new Promise(f => setTimeout(f, ms));
+  let { sv, port } = await serve();
+  try {
+    const got = (await req(port, 'GET', '/api/settings')).body;
+    assert.deepEqual(Object.keys(got), ['theme'], 'no password, network, backup or folder settings for a phone');
+    const token = (await req(port, 'POST', '/api/auth', { password: 'pw' })).body.token;
+    for (let i = 0; i < 3; i++) {
+      await wait(250);
+      assert.equal((await req(port, 'POST', '/api/command', { token, cmd: { type: 'yellow' } })).code, 200, 'used within the time: still logged in');
+    }
+    await sv.close();
+    ({ sv, port } = await serve());
+    assert.equal((await req(port, 'POST', '/api/command', { token, cmd: { type: 'yellow' } })).code, 200, 'a new server (a network setting changed) keeps the login');
+    await wait(500);
+    assert.equal((await req(port, 'POST', '/api/command', { token, cmd: { type: 'yellow' } })).code, 401, 'unused for longer: logged out');
+  } finally {
+    await sv.close();
+  }
+});

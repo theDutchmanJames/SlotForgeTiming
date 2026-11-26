@@ -9,8 +9,9 @@ const { DatabaseSync } = require('node:sqlite');
 const fixture = require('./support/shared-library-merge-fixture');
 const { RECORDS } = require('../sqlite-history');
 
+// (audit 2026-11: a Guest has no personal best in either list)
 const OLD = (group, field, token) =>
-  `WITH winners AS (SELECT *,ROW_NUMBER() OVER(PARTITION BY ${group} ORDER BY time,ordinal) AS place,MIN(ordinal) OVER(PARTITION BY ${group}) AS firstOrdinal FROM history_laps WHERE token=? AND ${field}=1 AND time>0 ${token && field === 'personal' ? "AND driverId<>''" : ''}) SELECT w.id FROM winners w LEFT JOIN catalogue_index c ON c.entity='tracks' AND c.id=w.trackId WHERE w.place=1 ORDER BY COALESCE(c.sortKey,?),w.time,w.firstOrdinal LIMIT ? OFFSET ?`;
+  `WITH winners AS (SELECT *,ROW_NUMBER() OVER(PARTITION BY ${group} ORDER BY time,ordinal) AS place,MIN(ordinal) OVER(PARTITION BY ${group}) AS firstOrdinal FROM history_laps WHERE token=? AND ${field}=1 AND time>0 ${field === 'personal' ? "AND driverId<>''" : ''}) SELECT w.id FROM winners w LEFT JOIN catalogue_index c ON c.entity='tracks' AND c.id=w.trackId WHERE w.place=1 ORDER BY COALESCE(c.sortKey,?),w.time,w.firstOrdinal LIMIT ? OFFSET ?`;
 
 test('the records of this computer are the same laps in the same order as when every lap was ranked', () => {
   const db = new DatabaseSync(':memory:');

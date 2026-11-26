@@ -226,10 +226,13 @@ const FIELDS = {
   pitreleaseearly: ['lane'],
   system: ['key', 'enabled']
 };
+const PRIVATE_SETTING = /^(net[A-Z]\w*|autoBackup\w*)$|(password|token|secret|folder|path)$/i;
 // a clean copy of a command that may go to the race, or null
 function cleanCommand(c) {
   if (!c || typeof c !== 'object' || Array.isArray(c) || !KEY(c.type) || !COMMANDS.includes(c.type)) return null;
   const out = { type: c.type };
+  // (audit 2026-11) the race the phone saw: the race window does nothing with a command meant for an earlier heat
+  if (typeof c.raceId === 'string' && /^[0-9a-z]{1,40}$/.test(c.raceId)) out.raceId = c.raceId;
   if (c.type === 'review') {
     if (!KEY(c.op) || !own(REVIEW_OPS, c.op)) return null;
     out.op = c.op;
@@ -244,6 +247,7 @@ function cleanCommand(c) {
   }
   if (c.type === 'system' && !KEY(c.key)) return null;
   for (const f of FIELDS[c.type] || []) if (own(c, f) && c[f] !== undefined) out[f] = c[f];
+  if (c.type === 'pause' && (c.want === 'pause' || c.want === 'resume')) out.want = c.want; // (audit 2026-11: what the button meant, so a second tap does not undo it)
   return out;
 }
 
@@ -296,7 +300,7 @@ function createServer(o) {
     requests = new Set();
   let closing;
   const clients = new Set(),
-    tokens = new Map(); // token -> { pw: the password it was given for (a changed password logs everyone out), at: when }
+    tokens = o.tokens || new Map(); // (audit 2026-11: main.js keeps the map, so changing the port or another network setting does not log the phones out) // token -> { pw: the password it was given for (a changed password logs everyone out), at: when }
   const TOKEN_MS = o.tokenMs ?? 12 * 3600e3,
     MAX_TOKENS = 32;
   // Pairing a phone by QR code (2.3.0): a one-time code, valid for a few minutes, that logs one device in as the password would. It is made on this
@@ -317,7 +321,9 @@ function createServer(o) {
       tokens.delete(t);
       return false;
     }
-    return e.pw === pw;
+    if (e.pw !== pw) return false;
+    e.at = Date.now(); // (audit 2026-11: the login lasts 12 h after its last use, not after logging in, so it does not run out during an evening)
+    return true;
   };
   // Guessing the password: one try at a time (each wrong one waits failDelay), and after a few wrong ones from a device, or many from all devices together,
   // nothing is tried for a while that doubles with every further wrong one (up to lockMaxMs). A right password resets it; a quiet hour forgets it.
@@ -449,7 +455,8 @@ function createServer(o) {
         if (what === 'schema') return send(res, 200, o.schema);
         if (what === 'settings') {
           const s = { ...o.getSettings() };
-          delete s.netPassword;
+          // (audit 2026-11) what a phone never needs: the password, the backup and network set-up of this computer, and anything that names a folder or a secret
+          for (const k of Object.keys(s)) if (PRIVATE_SETTING.test(k)) delete s[k];
           return send(res, 200, s);
         }
         if (what === 'live') return send(res, 200, o.getLive());
@@ -469,7 +476,9 @@ function createServer(o) {
           addr = String(req.socket.remoteAddress || ''),
           mine = recOf(addr);
         if (!pw) return send(res, 403, { error: 'nopassword' });
-        const wait = Math.max(mine.until, allUntil(addr)) - Date.now();
+        // (audit 2026-11) only this device's own lock: wrong passwords from elsewhere on the wifi must not stop a phone from pairing by QR code,
+        // the way back in when somebody keeps the lock for all devices going (a code is far too long to guess)
+        const wait = mine.until - Date.now();
         if (wait > 0) {
           res.setHeader('Retry-After', String(Math.ceil(wait / 1000)));
           return send(res, 429, { error: `Too many wrong tries. Try again in ${Math.ceil(wait / 1000)} s.` });
@@ -502,7 +511,8 @@ function createServer(o) {
           return true;
         };
         if (locked()) return;
-        if (AUTH.waiting >= 8) {
+        if (AUTH.waiting >= 8 && !loopback(addr) && !trusted.has(addr)) {
+          // (audit 2026-11: a device that logged in before, or this computer, is never turned away as busy by a flood of tries from another)
           res.setHeader('Retry-After', '2');
           return send(res, 429, { error: 'Busy. Try again in a moment.' });
         }

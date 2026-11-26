@@ -20,8 +20,19 @@ ipcRenderer.on('live:closed', () => listeners.closed.forEach(f => f()));
 ipcRenderer.on('home:changed', () => listeners.home.forEach(f => f()));
 ipcRenderer.on('settings:changed', () => listeners.settings.forEach(f => f()));
 // (while the app closes, the main process answers with a marker rather than an error, so its log stays readable; the caller still gets the error)
+// (audit 2026-11) counts the writes of this window (before and after each): a page that read the results keeps them until this changes
+const WRITES =
+  /^(db:editor-save|db:merge-drivers|session:save|transfer:apply|backup:restore|backup:native-restore|library:restore|library:results-remove|backups:pick|library:save|paddock:shared-save)$/;
+let writeEpoch = 0;
 const call = async (channel, ...args) => {
-  const value = await ipcRenderer.invoke(channel, ...args);
+  const writes = WRITES.test(channel);
+  if (writes) writeEpoch++;
+  let value;
+  try {
+    value = await ipcRenderer.invoke(channel, ...args);
+  } finally {
+    if (writes) writeEpoch++;
+  }
   if (value && value.__sfAppClosing === true)
     throw Object.assign(Error('Timing is closing. Reopen it before trying again.'), { code: 'APP_CLOSING' });
   return value;
@@ -330,6 +341,7 @@ contextBridge.exposeInMainWorld('api', {
     return () => listeners.command.delete(f);
   },
   liveGet: () => call('live:get'),
+  writeEpoch: () => writeEpoch,
   liveClosed: () => ipcRenderer.send('live:closed'), // (2.5.0: the race computer left its race)
   homeChanged: () => ipcRenderer.send('home:changed'), // (2.5.0: Home was drawn again; the second screen follows)
   onLiveClosed: f => {

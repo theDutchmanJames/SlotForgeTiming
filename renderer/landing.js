@@ -412,10 +412,10 @@ async function renderHome(opts = {}) {
     };
     if (withTeam) {
       if (dup('teamId')) issues.push('A team is used more than once.');
+      // (a driver in two teams is allowed: swaps and team heats skip a driver who drives for another team now)
     } else if (dup('driverId')) issues.push('A driver is used more than once.');
     if (!seats && dup('carId')) issues.push('A car is used more than once.');
     if (seats) {
-      issues.push(...SwapSeats.problems(laneCarIds));
       if (setup.multiClass) issues.push('Swap Seats does not go with a Multi-Class System. Turn one of the two off in Race Setup.');
     }
     if ((seats ? laneCarIds.map(carId => ({ carId })) : rows).some(r => !isRival(r) && cars.find(c => c.id === r.carId)?.paddock?.archived))
@@ -528,6 +528,8 @@ async function renderHome(opts = {}) {
     heatPlan.stats = Heats.stats(heatPlan.schedule, heatPlan.count, lanes);
     heatPlan.notes.push('Class heats are separated while retaining every planned lane assignment.');
   }
+  // (audit 2026-11) Swap Seats: a car on every lane the heat plan uses (checked here, now the plan is known)
+  if (seats) issues.push(...SwapSeats.problems(laneCarIds, heatPlan ? new Set(heatPlan.schedule.flat().map(e => e.lane)) : null));
   const heatPlanHtml = !heatPlan
     ? ''
     : (() => {
@@ -688,8 +690,12 @@ async function renderHome(opts = {}) {
       ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
       ${note ? `<div class="hs-note">${note}</div>` : ''}</div>`;
   };
+  // (audit 2026-11) the rotation setup of this race was deleted: the heats are planned from the settings instead, and Home says so
+  const rotGone = heats && setup.rotation && !rotRec;
   const rotHtml = !rot
-    ? ''
+    ? rotGone
+      ? '<p class="hint2 hpwarn" role="status">The rotation setup of this race setup was deleted, so the heats are planned from its own settings. Choose another rotation in Race Setup.</p>'
+      : ''
     : `<p class="hint2">Rotation setup <strong>${esc(rot.name)}</strong>: ${esc(Rot.describe(rot))}. Tick "Not here today" for ${byTeam ? 'every team' : 'anybody'} that does not come: their places stay empty. ${rot.names.some(x => x.trim()) ? `<button class="btn" id="rotnames" title="Choose the ${byTeam ? 'team' : 'driver'} whose name is the name of a participant in the rotation (only for participants who have no ${byTeam ? 'team' : 'driver'} yet)">${byTeam ? 'Pick the teams by name' : 'Pick the drivers by name'}</button>` : ''}</p>
       ${state.rotMsg && state.rotMsg.setupId === setupId ? `<p class="hint2" role="status">${esc(state.rotMsg.text)}</p>` : ''}`;
 
@@ -846,12 +852,13 @@ async function renderHome(opts = {}) {
       setupName: setup ? setup.name || '' : '',
       issues: issues.slice(),
       entries: filled.length,
+      kind: heats ? (byTeam ? 'teams' : seats ? 'seats' : 'heats') : solo ? 'solo' : '', // (audit 2026-11: how the race check words the entries)
       lanes: lanes || 0,
       trackName: track ? track.name || '' : '',
       systems: setup
-        ? SYS.filter(([k]) => setup[k])
+        ? SYS.filter(([k]) => setup[k] && !tokens && !solo) // (audit 2026-11: these kinds use no race system)
             .map(([, n]) => n)
-            .concat(setup.bop === 'on' ? ['Balance of Power'] : [])
+            .concat(setup.bop === 'on' && !tokens && !solo ? ['Balance of Power'] : [])
         : [],
       layoutName: setup ? (layout ? layout.name || 'A layout' : 'Default layout') : '',
       audioName: setup ? audioName : '',
@@ -1279,9 +1286,11 @@ async function renderHome(opts = {}) {
         }
         if (state.tab !== 'home' || draw !== homeDraw) return;
       }
-      const next = laneCarIds.slice();
+      // (audit 2026-11) from the settings as they are now, not as this drawing read them: a second car picked before the redraw keeps the first one
+      const nowCars = (state.settings.laneCars || {})[setupId],
+        next = SwapSeats.laneIds(nowCars, lanes);
       next[l] = v;
-      state.settings = await api.setSettings({ lastSetupId: setupId, laneCars: { ...(saved.laneCars || {}), [setupId]: next } });
+      state.settings = await api.setSettings({ lastSetupId: setupId, laneCars: { ...(state.settings.laneCars || {}), [setupId]: next } });
       renderHome();
       return;
     }
@@ -1579,7 +1588,7 @@ async function renderHome(opts = {}) {
     }
     if (b.dataset && b.dataset.soloLane !== undefined) {
       // Solo: the lane the car starts on, kept with the race setup
-      state.settings = await api.setSettings({ soloLane: { ...(saved.soloLane || {}), [setupId]: Number(b.dataset.soloLane) } });
+      state.settings = await api.setSettings({ soloLane: { ...(state.settings.soloLane || {}), [setupId]: Number(b.dataset.soloLane) } });
       renderHome();
       return;
     }

@@ -363,6 +363,7 @@ const safe =
 // Network access: other devices on the wifi follow the race in a browser (App Settings > Network access)
 const net = { server: null, port: 0, error: '' };
 let netChain = Promise.resolve();
+const netTokens = new Map(); // (audit 2026-11) the Race Director logins outlive a restart of the server (a changed password still logs everyone out)
 function applyNet() {
   const run = netChain.then(applyNetNow, applyNetNow);
   netChain = run.catch(() => {});
@@ -386,7 +387,8 @@ async function applyNetNow() {
     list: e => records.list(e),
     customFields: e => records.customFields(e),
     getLive: () => ({ stat: live.stat, dyn: live.dyn }),
-    onCommand: c => relay('live:command', c, null)
+    onCommand: c => relay('live:command', c, null),
+    tokens: netTokens
   });
   try {
     net.port = await server.listen(port);
@@ -1106,11 +1108,20 @@ function registerBackupHandlers() {
     // (2.4.0 review) an item to replace that is gone since the file was opened stops the import before anything is added
     for (const r of p.replace)
       if (!(await records.get(r.e, r.id))) throw Error('An item to replace is no longer here. Open the file again. Nothing was imported.');
+    // (audit 2026-11) the items to replace first (each replace is a plain update, so doing it again is harmless), then the copies in one go, and only then is
+    // the file let go: a failure on the way leaves the import open, so Import can be pressed again
+    for (const r of p.replace)
+      try {
+        await records.update(r.e, r.id, r.row);
+      } catch (x) {
+        throw Error(
+          `Could not replace "${(r.row && (r.row.name || r.row.model)) || r.id}": ${x.message} Nothing was added; press Import to try again.`
+        );
+      }
     const counts = has ? await bulkStorage.importItems(p.bundle) : {};
     // (2.4.0 review) once the copies are in, the file is applied: Import again would add them a second time
     pendingImport = null;
     pendingImportList = null;
-    for (const r of p.replace) await records.update(r.e, r.id, r.row);
     return { ...counts, ...(p.replace.length ? { _replaced: p.replace.length } : {}), ...(p.skipped ? { _skipped: p.skipped } : {}) };
   }); // (1.61.2: nothing is being written to the database file while the import is saved)
   bulkAccess.handle('transfer:cancel', () => {
@@ -1216,7 +1227,24 @@ function registerBackupHandlers() {
     if (canceled || !filePath) return { saved: false };
     await resourceStore.idle();
     await lifecycle.idle();
-    await bulkStorage.backup(filePath, { version: app.getVersion() });
+    // (audit 2026-11) the dialog asked about replacing a file that is there: it is moved aside, the backup written, and only then removed (the SQLite export never
+    // writes over a file; a backup that fails puts the old file back)
+    const aside = fs.existsSync(filePath) ? filePath + '.replaced-' + Date.now() : '';
+    if (aside) fs.renameSync(filePath, aside);
+    try {
+      await bulkStorage.backup(filePath, { version: app.getVersion() });
+    } catch (x) {
+      if (aside) {
+        try {
+          fs.rmSync(filePath, { force: true });
+          fs.renameSync(aside, filePath);
+        } catch {
+          /* the old file stays next to it under its other name */
+        }
+      }
+      throw x;
+    }
+    if (aside) fs.rmSync(aside, { force: true });
     await noteBackup(filePath, { kind: 'hand', outside: true }).catch(() => {}); // (2.4.0: it shows in the list of backups)
     return { saved: true, path: filePath };
   });
@@ -1615,7 +1643,7 @@ function registerResumeAndLiveHandlers() {
       live.stat = s;
       live.dyn = null;
       live.closed = false;
-      relay('live:static', s, null);
+      relay('live:static', s, e.sender); // (audit 2026-11: not back to the race window that sent it)
       if (net.server) net.server.broadcast('static', s);
     })
   );
@@ -1628,7 +1656,7 @@ function registerResumeAndLiveHandlers() {
         live.dyn = null;
         e.sender.send('live:resync');
       } else if (!r.stale) live.dyn = r.state; // a message that does not fit: the race window is asked to send everything again
-      relay('live:push', d, null);
+      relay('live:push', d, e.sender);
       if (net.server) net.server.broadcast('push', d);
     })
   );

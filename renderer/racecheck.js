@@ -33,7 +33,16 @@
         sub: 'Finish it on the Race tab before the next one',
         fix: { go: 'race', label: 'Open the race' }
       });
-    else if (!o.hasSetup)
+    else if (o.stale && o.hasSetup)
+      race.push({
+        level: 'warn',
+        title: 'Open Home to check the next race again',
+        sub: 'Drivers, cars or setups may have changed since',
+        fix: { go: 'home', label: 'Open Home' }
+      });
+    if (o.raceOn) {
+      /* (said above) */
+    } else if (!o.hasSetup)
       race.push({ level: 'warn', title: 'No race setup chosen', sub: 'Pick one on Home', fix: { go: 'home', label: 'Choose one' } });
     else {
       const issues = (o.issues || []).filter(Boolean);
@@ -42,7 +51,17 @@
       if (!rowsBad && o.entries)
         race.push({
           level: 'ok',
-          title: `Drivers and cars on ${o.entries === o.lanes ? 'all ' : ''}${plural(o.entries, 'lane', 'lanes')}`,
+          // (audit 2026-11) said for the kind of race: a heat race has participants (or teams), not lanes; Solo is one driver and one car
+          title:
+            o.kind === 'solo'
+              ? 'Driver and car ready'
+              : o.kind === 'teams'
+                ? `${plural(o.entries, 'team', 'teams')} with a car`
+                : o.kind === 'seats'
+                  ? `${plural(o.entries, 'participant', 'participants')}, a car on every lane`
+                  : o.kind === 'heats'
+                    ? `${plural(o.entries, 'participant', 'participants')} with a car`
+                    : `Drivers and cars on ${o.entries === o.lanes ? 'all ' : ''}${plural(o.entries, 'lane', 'lanes')}`,
           sub: o.names || ''
         });
       if (o.trackName && !issues.some(t => /track|lanes/i.test(t)))

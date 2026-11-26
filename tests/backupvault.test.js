@@ -173,7 +173,12 @@ test('the main process, the bridge and the page are wired', () => {
     'library:restore takes a backup of the list'
   );
   assert(has(main, 'const p = transfer.plan(pendingImport,'));
-  assert(has(main, 'for (const r of p.replace) await records.update(r.e, r.id, r.row);'));
+  assert(
+    has(main, 'await records.update(r.e, r.id, r.row);') &&
+      main.indexOf('await records.update(r.e, r.id, r.row);') <
+        main.indexOf('const counts = has ? await bulkStorage.importItems(p.bundle) : {};'),
+    'audit 2026-11: replaced first, then the copies'
+  );
   assert(has(code('bulk-access.js'), "'backups:pick'"), 'picking a backup to restore is guarded like the other restores');
   const pre = code('preload.js');
   assert(has(pre, "backupPick: id => call('backups:pick', id),") && has(pre, "importApply: choices => call('transfer:apply', choices),"));

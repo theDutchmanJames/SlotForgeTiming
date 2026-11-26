@@ -3,7 +3,9 @@
 // car for the drivers; the race gives the driver of a heat the car of the lane (race.js, seated); every heat result row keeps the lane and its car
 // (engine/heats.js), and the saved race the cars of the lanes (session.laneCars). Pure: no page, no settings store.
 (function (root) {
-  const on = setup => !!setup && setup.sessionType === 'heats' && setup.heatCars === 'lanes';
+  // (audit 2026-11) a heat race of its own kind only: an Endurance Race of heats keeps a hidden 'lanes' left from when it was heats (its effective setup
+  // says heats too, with ofType 'endurance'), and teams there bring their own car
+  const on = setup => !!setup && setup.sessionType === 'heats' && !setup.ofType && setup.heatCars === 'lanes';
 
   // the car of every lane, as saved for a race setup: one id for each lane ('' = none chosen), cleaned of cars that are gone (known: id => whether the car is still there)
   const laneIds = (list, lanes, known) =>
@@ -13,15 +15,16 @@
     });
 
   // what stops a race from starting: a lane without a car, a car on two lanes
-  const problems = ids => {
+  // (audit 2026-11) used: the lanes the heat plan races on (a Set), when known: a lane no heat uses needs no car
+  const problems = (ids, used) => {
     const out = [];
-    const empty = ids.map((id, l) => (id ? -1 : l)).filter(l => l >= 0);
+    const empty = ids.map((id, l) => (id || (used && !used.has(l)) ? -1 : l)).filter(l => l >= 0);
     if (empty.length)
       out.push(
         `${empty.length === 1 ? 'Lane' : 'Lanes'} ${empty.map(l => l + 1).join(', ')} ${empty.length === 1 ? 'needs a car' : 'need a car'} (Swap Seats).`
       );
-    const used = ids.filter(Boolean);
-    if (used.length !== new Set(used).size) out.push('A car is on two lanes. Every lane needs its own car.');
+    const picked = ids.filter(Boolean);
+    if (picked.length !== new Set(picked).size) out.push('A car is on two lanes. Every lane needs its own car.');
     return out;
   };
 

@@ -741,7 +741,11 @@ async function renderResultsPool(box, pool, supplied = null) {
           { ok: isTrack ? 'Remove the track record' : 'Remove the personal best', danger: true }
         )
       ) {
-        await api.update('laps', rec.dataset.lap, isTrack ? { noTrackRecord: true } : { noPersonalBest: true });
+        try {
+          await api.update('laps', rec.dataset.lap, isTrack ? { noTrackRecord: true } : { noPersonalBest: true });
+        } catch (x) {
+          await Dialog.alert('Could not remove the record: ' + x.message); // (audit 2026-11: said, not lost)
+        }
         reload();
       }
       return;
@@ -756,7 +760,11 @@ async function renderResultsPool(box, pool, supplied = null) {
         { ok: tokenPool ? 'Delete the stint' : 'Delete the session', danger: true }
       )
     ) {
-      await api.removeSession(b.dataset.delsession);
+      try {
+        await api.removeSession(b.dataset.delsession);
+      } catch (x) {
+        await Dialog.alert(`Could not delete the ${tokenPool ? 'stint' : 'session'}: ` + x.message); // (audit 2026-11)
+      }
       reload();
     }
   };

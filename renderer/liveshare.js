@@ -288,6 +288,7 @@ const LiveShare = (() => {
   function sender(opts = {}) {
     const heartbeat = opts.heartbeat === undefined ? 1000 : opts.heartbeat;
     let seq = 0,
+      afterKey = null,
       last = null,
       lastKey = null,
       lastAt = -Infinity;
@@ -302,6 +303,7 @@ const LiveShare = (() => {
       reset() {
         last = null;
         lastKey = null;
+        afterKey = null;
       },
       pack(c, nowMs) {
         const e = c.eng,
@@ -342,6 +344,9 @@ const LiveShare = (() => {
         lastKey = key;
         lastAt = t;
         d.seq = ++seq;
+        // (audit 2026-11) the screen after a race, pictures and all, goes out once: later messages only name it, while it stays the same
+        if (d.after && d.after.key && !first && d.after.key === afterKey) d.after = { key: d.after.key, keep: true };
+        else afterKey = d.after ? d.after.key || null : null;
         d.events = { from: evFrom, tail: (e.events || []).slice(evFrom) };
         d.cars = cars.map((o, i) => ({
           ...o,
@@ -379,7 +384,13 @@ const LiveShare = (() => {
       if (!laps || !bad) return { ok: false, state };
       cars.push({ ...c, laps, bad });
     }
-    return { ok: true, state: { ...d, events, cars } };
+    let after = d.after;
+    if (after && after.keep) {
+      // (the one named is the one we have; else this message does not fit)
+      if (!mine || !state.after || state.after.key !== after.key) return { ok: false, state };
+      after = state.after;
+    }
+    return { ok: true, state: { ...d, events, cars, after } };
   }
 
   // A viewer keeps one of these per window. feed() takes what arrives, shared(now) gives the object to draw from.

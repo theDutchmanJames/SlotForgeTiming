@@ -606,7 +606,16 @@ const LiveView = (() => {
 
   // Race Director: the race's buttons and penalty points. The buttons are sent to the race in the main window.
   // The page is built once and then only updated, so a button never changes under your finger.
-  const send = cmd => api.liveCommand(cmd);
+  // (audit 2026-11) every command names the race it was meant for, and Pause says which way it goes, so a slow phone or a double tap does no harm
+  const send = cmd => {
+    const raceId = V && V.stat() ? V.stat().raceId : undefined,
+      phase = V && V.dyn() ? V.dyn().phase : '';
+    const out = { ...cmd, ...(raceId ? { raceId } : {}) };
+    if (cmd.type === 'pause' && !cmd.want) out.want = phase === 'paused' ? 'resume' : 'pause';
+    return Promise.resolve(api.liveCommand(out)).then(() => {
+      if (api.web && host && (page === 'director' || page === 'tokens') && !api.directorAuthed()) draw(true); // (the login ran out: its page now)
+    });
+  };
   // The Race Director page (1.11.1): the buttons and the calls on top, then folders like the ones in the Help, each with a colour of its own (Penalties yellow, Balance of Power white,
   // Damage red, Weather blue, Endurance brown). They are open to begin with, as the page was; a folder you close stays closed while the page is open.
   const folder = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner); // (the folders are made in dirfolder.js, as on the Race tab)
@@ -823,6 +832,7 @@ const LiveView = (() => {
         if (!b) return cardsPanel ? cardsPanel.click(e.target) : adjPanel && adjPanel.click(e.target); // (not a button of the race: maybe one of the lane cards or of the Adjust folder)
         if (b.disabled) return;
         if (b.dataset.cmd === 'stop') {
+          const asked = V && V.stat() ? V.stat().raceId : ''; // (audit 2026-11: the heat the question was about)
           if (
             !(await Dialog.confirm('Stop the race now? The laps so far are saved.', {
               ok: 'Stop the race',
@@ -831,7 +841,8 @@ const LiveView = (() => {
             }))
           )
             return;
-          if (!['running', 'paused', 'between'].includes(V.dyn()?.phase)) return; // (the race goes on while the question is open: it may have ended by itself)
+          if (!V || !['running', 'paused', 'between'].includes(V.dyn()?.phase)) return; // (the race goes on while the question is open: it may have ended by itself)
+          if ((V.stat() ? V.stat().raceId : '') !== asked) return; // (...or the next heat may have started: it is not stopped by an answer about the last one)
         }
         send({
           type: b.dataset.cmd,
@@ -1285,11 +1296,29 @@ const LiveView = (() => {
       })
     );
     // a message that does not fit (one was missed, for instance after the wifi dropped out for a moment): fetch the whole state from the app and carry on from there
-    let syncing = false;
+    // (audit 2026-11) messages that come in while the whole state is fetched are kept and fed after it (the ones already in it are skipped as stale),
+    // so a phone does not stay a step behind or fetch again and again
+    let syncing = false,
+      held = [];
+    const onDyn = d => {
+      if (!V) return;
+      if (syncing) {
+        if (held.length < 200) held.push(d);
+        return;
+      }
+      if (V.feedDynamic(d, performance.now())) {
+        if (second && page === 'home' && live()) return go('timing'); // (audit 2026-11: the race was there before its first message: Home leaves now)
+        if (followResults()) return;
+        if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
+        else repaint();
+      } else if (V.needsSync()) resync();
+    };
     const resync = async () => {
       if (syncing) return;
       syncing = true;
+      held = [];
       const mine = V; // (2.4.0 review: the viewer from before the wait, so an unmount or a new mount is seen)
+      let ok = false;
       try {
         const g = await api.liveGet();
         if (V && V === mine && g && g.stat) {
@@ -1298,30 +1327,28 @@ const LiveView = (() => {
             LiveCanvas.dispose(nodes);
             nodes = null;
           }
-          if (g.dyn && V.feedDynamic(g.dyn, performance.now())) {
-            if (second && page === 'home' && live()) return go('timing');
-            if (followResults()) return;
-            if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
-            else repaint();
-          }
+          if (g.dyn) V.feedDynamic(g.dyn, performance.now());
+          ok = true;
         }
       } catch {
         /* the next message tries again */
       } finally {
         syncing = false;
       }
+      const later = held;
+      held = [];
+      if (!V || V !== mine) return;
+      // the kept messages, oldest first; the last one that fits paints
+      let painted = false;
+      for (const d of later) if (V.feedDynamic(d, performance.now())) painted = true;
+      if (ok || painted) {
+        if (second && page === 'home' && live()) return go('timing');
+        if (followResults()) return;
+        if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
+        else repaint();
+      }
     };
-    offs.push(
-      api.onLive(d => {
-        if (!V) return;
-        if (V.feedDynamic(d, performance.now())) {
-          if (second && page === 'home' && live()) return go('timing'); // (audit 2026-11: the race was there before its first message: Home leaves now)
-          if (followResults()) return;
-          if (page !== 'tiles' && !nodes && page === 'timing') draw(true);
-          else repaint();
-        } else if (V.needsSync()) resync();
-      })
-    );
+    offs.push(api.onLive(onDyn));
     if (second && api.onLiveClosed)
       offs.push(
         api.onLiveClosed(() => {

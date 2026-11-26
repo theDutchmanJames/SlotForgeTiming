@@ -862,6 +862,9 @@ class Database {
         throw Error('Invalid finalization identity.');
       const prior = this.data.sessions.find(s => s.saveKey === session.saveKey);
       if (prior) return prior.id;
+      // (audit 2026-11) as SQLite does: a race that was saved and then deleted is not saved again from old recovery data
+      if ((this.data.deletedSaveKeys || []).includes(session.saveKey))
+        throw Error('This race was already finalized and its result deleted.');
     }
     const s = { ...session, id: crypto.randomUUID() },
       before = new Map(),
@@ -930,6 +933,8 @@ class Database {
     }
     this.removeLapsWhere(l => l.sessionId === id);
     this.data.sessions = this.data.sessions.filter(s => s.id !== id);
+    if (session && typeof session.saveKey === 'string' && session.saveKey)
+      this.data.deletedSaveKeys = [...(this.data.deletedSaveKeys || []), session.saveKey].slice(-500); // (audit 2026-11)
     this.touchAll();
     this.guard(this.untilChanged(saved));
   }
@@ -1157,6 +1162,7 @@ class Database {
 }
 
 Database.writeAtomic = writeAtomic;
+Database.writeChunksSync = writeChunksSync; // (audit 2026-11: a backup is written in pieces, as the database itself)
 Database.renameSyncWithRetry = renameSyncWithRetry; // (2.4.0 review)
 Database.LatestWriter = LatestWriter;
 Database.approxSize = approxSize;

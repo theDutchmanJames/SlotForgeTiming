@@ -97,8 +97,8 @@ test('a heat keeps the lane and the car each driver drove, and the saved race te
 test('Home, the race and the results are wired', () => {
   const home = code('renderer/landing.js');
   assert(has(home, "const seats = heats && typeof SwapSeats !== 'undefined' && SwapSeats.on(setup);"));
-  assert(has(home, 'issues.push(...SwapSeats.problems(laneCarIds));'));
-  assert(has(home, 'laneCars: { ...(saved.laneCars || {}), [setupId]: next }'), 'the cars of the lanes are kept by race setup');
+  assert(has(home, 'issues.push(...SwapSeats.problems(laneCarIds,')); // (audit 2026-11: with the lanes the heat plan uses)
+  assert(has(home, 'laneCars: { ...(state.settings.laneCars || {}), [setupId]: next }'), 'the cars of the lanes are kept by race setup');
   assert(has(home, '...(seats ? { laneCars: laneCarIds } : {}),'), 'the race gets them');
   assert(has(home, 'const allowRival = !tokens && !withTeam && !endu && !seats && !solo;'), 'no virtual rivals');
   const race = code('renderer/race.js');

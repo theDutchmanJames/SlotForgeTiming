@@ -1093,7 +1093,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   click('penalty', '1', '1'); click('penalty', '1', '1'); click('penalty', '1', '1'); click('penalty', '1', '1'); click('penalty', '1', '1');
   say('reaching the disqualify limit (12 points) disqualifies', run('live.engine().cars[1].dq') === true && run('live.engine().standings().find(x => x.index === 1).gap') === 'DQ');
   await wait(60); key('1'); await wait(60); key('1');
-  click('pause'); say('Race Director: pause', phase() === 'paused'); click('pause'); say('and resume', phase() === 'running');
+  click('pause'); say('Race Director: pause', phase() === 'paused'); await wait(150); cbs.dyn.forEach(f => f(plain(sent.dyn))); /* (audit 2026-11: the page has heard of the pause before the second tap, or that tap counts as a repeat) */ click('pause'); say('and resume', phase() === 'running');
   saved.length = 0; click('stop');
   for (let i = 0; i < 150 && !(phase() === 'finished' && saved.length); i++) await wait(20); // (the save, up to 3 s on a busy computer)
   say('Race Director: stop ends the race and the penalties are saved in the results', phase() === 'finished' && saved.length === 1 && saved[0][0].standings.some(x => x.penaltyPoints === 12 && x.dq === true && x.penalty === 10000 && !x.retired) && saved[0][0].standings.some(x => x.penaltyPoints === 5 && x.penalty === 5000));

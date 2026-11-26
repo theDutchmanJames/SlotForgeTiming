@@ -112,7 +112,7 @@ function sync(s) {
 // a Results page asks for both lists three times. The same laps in the same order. (?1 the token list, ?2 the order of a deleted track,
 // ?3 and ?4 the page)
 function RECORDS(group, field, token) {
-  const extra = token && field === 'personal' ? " AND driverId<>''" : '',
+  const extra = field === 'personal' ? " AND driverId<>''" : '', // (audit 2026-11: a Guest has no personal best in either list)
     same = group
       .split(',')
       .map(k => `l.${k}=g.${k}`)
@@ -136,7 +136,10 @@ function page(s, pool, value) {
       let rows;
       if (section === 'sessions')
         rows = s
-          .statement('SELECT summary FROM history_sessions WHERE token=? ORDER BY ordinal DESC LIMIT ? OFFSET ?')
+          // (audit 2026-11) by the date of the race, newest first (an imported old race is not the newest); added later first within the same moment
+          .statement(
+            "SELECT summary FROM history_sessions WHERE token=? ORDER BY COALESCE(json_extract(summary,'$.date'),'') DESC,ordinal DESC LIMIT ? OFFSET ?"
+          )
           .all(token, limit + 1, offset)
           .map(x => JSON.parse(x.summary));
       else {

@@ -5,7 +5,7 @@ const entries=[{lane:0,participant:0,driverId:'a',driverName:'Alex',raceClass:'g
 const cfg=extra=>({type:'race',laps:10,endRule:'all',skipFirst:false,multiclass:profile(),entries:structuredClone(entries),classPoints:[10,8,6],...extra});
 const race=extra=>{const r=E.createRace(cfg(extra));r.start(100);return r;};
 test('assignment defaults, overrides and missing classes are explicit',()=>{
- const p=profile(),db={cars:[{id:'car',raceClass:'gt'}]};assert.equal(M.resolve({carId:'car'},p,db),'gt');assert.equal(M.resolve({carId:'car',raceClass:'proto'},p,db),'proto');assert.equal(M.validate(p,[{raceClass:'deleted'}]).length,1);assert.equal(M.validate(p,entries).length,0);assert(M.validate({...p,heats:'separate'},entries,{finals:'ab'}).length);
+ const p=profile(),db={cars:[{id:'car',raceClass:'gt'}]};assert.equal(M.resolve({carId:'car'},p,db),'gt');assert.equal(M.resolve({carId:'car',raceClass:'proto'},p,db),'proto');assert.equal(M.validate(p,[{raceClass:'deleted'}]).length,1);assert.equal(M.validate(p,entries).length,0);assert(M.validate({...p,heats:'separate'},entries,{sessionType:'heats',finals:'ab'}).length);
  const defs=p.classes;const frozen=M.freeze(p,defs);defs[0].name='Changed';assert.equal(frozen.classes[0].name,'GT3');assert.equal(M.freeze(p,[]).classes.length,0);
 });
 test('class positions and gap use adjusted physical classification',()=>{

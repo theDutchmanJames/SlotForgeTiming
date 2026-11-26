@@ -88,7 +88,8 @@
     );
   }
 
-  const api = { on, effective, auto, rows, laneOf, next, layout, table, tableHtml };
+  const withoutSystems = setup => (setup ? { ...setup, ...NO_SYSTEMS } : setup); // (audit 2026-11: a Time Token Session asks for no race systems either)
+  const api = { on, effective, withoutSystems, auto, rows, laneOf, next, layout, table, tableHtml };
   root.Solo = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

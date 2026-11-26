@@ -19,8 +19,10 @@ test('F1: an import checks every item to replace first, and is not pending any m
   assert(has(main, 'for (const r of p.replace) if (!(await records.get(r.e, r.id))) throw Error('));
   const flat = main.replace(/\s+/g, '');
   const imported = flat.indexOf('constcounts=has?awaitbulkStorage.importItems(p.bundle):{};'),
-    cleared = flat.indexOf('pendingImport=null;pendingImportList=null;for(constrofp.replace)awaitrecords.update(r.e,r.id,r.row);');
-  assert(imported > 0 && cleared > imported, 'the pending file is cleared right after the import, before the replacements');
+    cleared = flat.indexOf('pendingImport=null;pendingImportList=null;', imported),
+    replaced = flat.indexOf('awaitrecords.update(r.e,r.id,r.row);');
+  // (audit 2026-11) the replacements first (a plain update, harmless to do again), then the copies, and the pending file is cleared right after them
+  assert(imported > 0 && cleared > imported && replaced > 0 && replaced < imported, 'replaced, then the copies, then the pending file cleared');
 });
 
 test('F2: merging drivers relabels team members, stints, best lap by, class and heat rows, and virtual rivals', () => {

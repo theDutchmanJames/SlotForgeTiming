@@ -100,7 +100,8 @@
     rows.forEach((r, i) => {
       if (!r.absent && !p.classes.some(c => c.id === r.raceClass)) errors.push(`Entry ${i + 1} needs a class included in this system.`);
     });
-    if (p.heats === 'separate' && setup.finals && setup.finals !== 'none')
+    // (audit 2026-11) only a race in heats has finals: a plain race keeps a hidden value from when it was heats
+    if (p.heats === 'separate' && setup && setup.sessionType === 'heats' && setup.finals && setup.finals !== 'none')
       errors.push('Separate class heats require finals to be off. Overall A/B finals mix classes; use mixed heats for that format.');
     return errors;
   }

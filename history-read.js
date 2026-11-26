@@ -174,15 +174,17 @@ function jsonPage(db, pool, value) {
     revision = C.jsonRevision(db),
     token = pool === 'tokens';
   for (const c of Object.values(opts)) if (c) checkRevision(c.revision, revision);
+  // (audit 2026-11) by the date of the race, newest first (an imported old race is not the newest); added later first within the same moment
   const sessions = db.data.sessions
     .filter(s => (s.sessionType === 'tokens') === token)
-    .map(summary)
-    .reverse();
+    .map((s, i) => [summary(s), i, String(s.date || '')])
+    .sort((a, b) => (a[2] < b[2] ? 1 : a[2] > b[2] ? -1 : b[1] - a[1]))
+    .map(x => x[0]);
   const maps = { tracks: new Map(), personal: new Map() };
   for (const l of db.data.laps) {
     if (!!l.token !== token || !Number.isFinite(Number(l.time)) || !(Number(l.time) > 0)) continue;
     for (const kind of ['tracks', 'personal']) {
-      if (l[kind === 'tracks' ? 'noTrackRecord' : 'noPersonalBest'] || (token && kind === 'personal' && !l.driverId)) continue;
+      if (l[kind === 'tracks' ? 'noTrackRecord' : 'noPersonalBest'] || (kind === 'personal' && !l.driverId)) continue; // (audit 2026-11: a Guest has no personal best in either list)
       const key = JSON.stringify(kind === 'tracks' ? [l.trackId || ''] : [l.trackId || '', l.driverId || '']),
         old = maps[kind].get(key);
       if (!old || Number(l.time) < Number(old.time)) maps[kind].set(key, l);
